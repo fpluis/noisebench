@@ -1,0 +1,16 @@
+node_modules
+dist
+.env
+
+# Secrets — never commit. The master mnemonic derives every forecaster wallet;
+# the funder key holds the ETH used to top them up.
+.master
+.funder.txt
+.secrets.json
+
+# Local logs
+logs
+debug.log
+
+# Local postgres volume (if bind-mounted)
+.pgdata

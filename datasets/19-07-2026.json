@@ -1,0 +1,26 @@
+[
+  {
+    "externalId": "556131",
+    "isNegRisk": true,
+    "startDate": "2026-06-04T17:53:02.599Z",
+    "endDate": "2026-07-31T00:00:00.000Z",
+    "createdAt": "2026-06-04T18:11:05.912Z",
+    "preparedAt": "2026-07-19T15:44:59.859Z",
+    "title": "Which company has best AI model end of July?",
+    "description": "This market will resolve according to the company which owns the model which has the highest arena rank based off the Chatbot Arena LLM Leaderboard (https://lmarena.ai/) when the table under the \"Leaderboard\" tab is checked on July 31, 2026, 12:00 PM ET.\n\nResults from the \"Rank\" section on the Leaderboard tab of https://lmarena.ai/leaderboard/text with the style control off will be used to resolve this market.\n\nModels will be ordered primarily by their leaderboard rank at the market’s check time. If two or more models are tied on rank, they will be ordered by their Arena score, including any underlying, unrounded, granular values reflected in the data below the leaderboard. If a tie remains, alphabetical order of company names as listed in this market group will be used as a final tiebreaker (e.g., if the two models are tied by exact arena score, “Google” would be ranked ahead of “xAI”). This market will resolve based on the company that occupies first place under this ranking system.\n\nThe resolution source for this market is the Chatbot Arena LLM Leaderboard found at https://lmarena.ai/. If this resolution source is unavailable at check time, this market will remain open until the leaderboard comes back online and resolve based on the first check after it becomes available. If it becomes permanently unavailable, this market will resolve based on another resolution source.",
+    "slug": "which-company-has-best-ai-model-end-of-july-299",
+    "tags": ["tech", "ai", "gpt-5pt6", "ai-rankings"],
+    "markets": [
+      {
+        "externalId": "2430327",
+        "startDate": "2026-06-04T17:53:03.848Z",
+        "endDate": "2026-07-31T00:00:00.000Z",
+        "slug": "will-anthropic-have-the-best-ai-model-at-the-end-of-july-2026",
+        "question": "Will Anthropic have the best AI model at the end of July 2026?",
+        "description": "This market will resolve according to the company which owns the model which has the highest arena rank based off the Chatbot Arena LLM Leaderboard (https://lmarena.ai/) when the table under the \"Leaderboard\" tab is checked on July 31, 2026, 12:00 PM ET.\n\nResults from the \"Rank\" section on the Leaderboard tab of https://lmarena.ai/leaderboard/text with the style control off will be used to resolve this market.\n\nModels will be ordered primarily by their leaderboard rank at the market’s check time. If two or more models are tied on rank, they will be ordered by their Arena score, including any underlying, unrounded, granular values reflected in the data below the leaderboard. If a tie remains, alphabetical order of company names as listed in this market group will be used as a final tiebreaker (e.g., if the two models are tied by exact arena score, “Google” would be ranked ahead of “xAI”). This market will resolve based on the company that occupies first place under this ranking system.\n\nThe resolution source for this market is the Chatbot Arena LLM Leaderboard found at https://lmarena.ai/. If this resolution source is unavailable at check time, this market will remain open until the leaderboard comes back online and resolve based on the first check after it becomes available. If it becomes permanently unavailable, this market will resolve based on another resolution source.",
+        "negatedQuestion": "Will Anthropic fail to have the best AI model at the end of July 2026?"
+      }
+    ],
+    "research": "# Deep Research Report — Chatbot Arena leadership, late July 2026\n\n## Source state (as of 2026-07-19)\n- Chatbot Arena (lmarena.ai) text leaderboard, style control OFF. Latest snapshot 2026-07-18.\n- Rank 1: Google `gemini-3.0-pro-exp` — Arena score 1487.\n- Rank 2: OpenAI `gpt-5.6-luna` — Arena score 1483 (4 points behind).\n- Rank 3: xAI `grok-5` — Arena score 1476.\n- Rank 5: Anthropic `claude-opus-4.8` — Arena score 1461 (best Anthropic entry).\n\n## Recent history / trend\n- Over the trailing 6 weeks the top spot has alternated between Google and OpenAI; xAI briefly held rank 1 in mid-June for ~4 days.\n- Anthropic's best model has not held rank 1 on Arena at any point in 2026; its models rank consistently well on coding/agentic evals but trail on the Arena's broad head-to-head vote metric.\n- Arena scores at the top are tightly bunched (top 4 within ~26 points), so a single strong release can flip the ranking.\n\n## Factors\n- No publicly announced Anthropic model release is scheduled before July 31, 2026.\n- Google and OpenAI both have experimental checkpoints rotating on the arena, either of which could extend their lead.\n- Style-control-off ranking tends to favor models with longer, more formatted answers, which has historically not advantaged Anthropic's more concise defaults.\n"
+  }
+]

@@ -1,0 +1,33 @@
+{
+  "name": "noisebench",
+  "version": "0.1.0",
+  "description": "An open benchmark that measures the forecasting noise of LLMs on Polymarket markets, by prompting each model repeatedly on both a question and its logical negation and recording every forecast on-chain.",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "benchmark": "tsx ./scripts/benchmark.ts",
+    "test-inference": "tsx ./scripts/test-inference.ts",
+    "generate-master-mnemonic": "tsx ./scripts/generate-master-mnemonic.ts",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:setup": "tsx ./scripts/setup-db.ts",
+    "format": "prettier --write .",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "ethers": "^6.15.0",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.12.4",
+    "@types/pg": "^8.15.5",
+    "prettier": "^3.6.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3"
+  }
+}

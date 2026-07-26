@@ -1,0 +1,25 @@
+# Local PostgreSQL for noisebench. Bring it up with `npm run db:up`, then apply
+# the schema with `npm run db:setup` (which also waits for the DB to be ready).
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: noisebench-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: noisebench
+      POSTGRES_PASSWORD: noisebench
+      POSTGRES_DB: noisebench
+    # Host port 5433 (not the default 5432) so noisebench can coexist with
+    # another local Postgres — change the host side if 5433 is also taken.
+    ports:
+      - "5433:5432"
+    volumes:
+      - noisebench-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U noisebench -d noisebench"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  noisebench-pgdata:
