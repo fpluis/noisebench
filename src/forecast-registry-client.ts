@@ -10,7 +10,6 @@ import {
   attributeKey,
   toBasisPoints,
 } from "./forecast-registry-abi";
-import { BASE_CHAIN_ID } from "./utils";
 
 // Invoked after a batch confirms on-chain, so the caller can stamp the affected
 // public.forecast rows with the tx. The tx already cost gas, so a failure here
@@ -58,14 +57,27 @@ export class ForecastRegistryClient {
     // pool; ethers' default coalescing trips public nodes' per-batch caps).
     this.providers = this.config.rpcUrls.map(
       (url) =>
-        new ethers.JsonRpcProvider(url, BASE_CHAIN_ID, {
+        new ethers.JsonRpcProvider(url, this.config.chainId, {
           staticNetwork: true,
           batchMaxCount: 1,
         }),
     );
     this.maxRetries = Math.max(3, this.providers.length);
+
+    // `staticNetwork` asserts the chain id rather than querying it, so a URL
+    // serving a different chain would otherwise go unnoticed until a signed
+    // transaction is rejected (or, on mainnet, accepted). Verify once here.
+    const actual = await this.providers[0].getNetwork();
+    if (Number(actual.chainId) !== this.config.chainId) {
+      throw new Error(
+        `RPC endpoint ${this.config.rpcUrls[0]} serves chainId ${actual.chainId}, ` +
+          `but CHAIN_ID is ${this.config.chainId}. Refusing to submit.`,
+      );
+    }
+
     console.log(
-      `ForecastRegistryClient initialized with ${this.providers.length} RPC providers`,
+      `ForecastRegistryClient initialized on chainId ${this.config.chainId} ` +
+        `with ${this.providers.length} RPC provider(s)`,
     );
   }
 
@@ -97,8 +109,41 @@ export class ForecastRegistryClient {
   }
 
   /**
+   * Whether this wallet has already published the given attribute values.
+   *
+   * Attribute claims are the only thing tying a wallet's forecasts to a model,
+   * so "did this actually land?" has to be answered from the chain rather than
+   * from local state — a run that assumed success once will otherwise leave the
+   * wallet permanently anonymous.
+   */
+  async hasDeclaredAttributes(
+    forecasterName: string,
+    attributes: Record<string, string>,
+  ): Promise<boolean> {
+    const address = this.addresses.get(forecasterName);
+    if (!address) throw new Error(`Unknown forecaster ${forecasterName}`);
+
+    const contract = new ethers.Contract(
+      this.config.contractAddress,
+      FORECAST_REGISTRY_ABI as unknown as ethers.InterfaceAbi,
+      this.getCurrentProvider(),
+    );
+    const logs = await contract.queryFilter(
+      contract.filters.AttributeSet(address),
+    );
+    const declared = new Map<string, string>();
+    for (const log of logs) {
+      const args = (log as ethers.EventLog).args;
+      declared.set(String(args.key), String(args.value));
+    }
+    return Object.entries(attributes).every(
+      ([key, value]) => declared.get(attributeKey(key)) === value,
+    );
+  }
+
+  /**
    * Bind this forecaster's wallet to its model on-chain by emitting attribute
-   * claims. Called once, before the forecaster starts forecasting.
+   * claims. The wallet must already be funded — this sends a transaction.
    */
   async setForecasterAttributes(
     forecasterName: string,

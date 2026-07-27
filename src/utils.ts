@@ -11,16 +11,31 @@ import {
 
 // Base mainnet.
 export const BASE_CHAIN_ID = 8453;
+// Base Sepolia testnet — the target for end-to-end rehearsals.
+export const BASE_SEPOLIA_CHAIN_ID = 84532;
 
-// Public Base RPC endpoints appended as rotation fallbacks so on-chain
-// submission survives any single provider rate-limiting or returning 5xx.
-const DEFAULT_BASE_RPC_URLS: string[] = [
-  "https://mainnet.base.org",
-  "https://base.llamarpc.com",
-  "https://base-rpc.publicnode.com",
-  "https://base.meowrpc.com",
-  "https://base.drpc.org",
-];
+// Public RPC endpoints appended as rotation fallbacks so on-chain submission
+// survives any single provider rate-limiting or returning 5xx.
+//
+// Keyed by chain id, and ONLY the entry for the active chain is ever appended.
+// Mixing chains in one rotation is not a cosmetic problem: providers are built
+// with `staticNetwork` (the chain id is asserted, never queried), so a single
+// rotation onto a foreign endpoint either signs for the wrong chain or, far
+// worse, lands a real transaction on mainnet during a testnet run.
+const DEFAULT_RPC_URLS: Record<number, string[]> = {
+  [BASE_CHAIN_ID]: [
+    "https://mainnet.base.org",
+    "https://base.llamarpc.com",
+    "https://base-rpc.publicnode.com",
+    "https://base.meowrpc.com",
+    "https://base.drpc.org",
+  ],
+  [BASE_SEPOLIA_CHAIN_ID]: [
+    "https://sepolia.base.org",
+    "https://base-sepolia-rpc.publicnode.com",
+    "https://base-sepolia.drpc.org",
+  ],
+};
 
 const MASTER_MNEMONIC_PATH = path.join(process.cwd(), ".master");
 const DEFAULT_FUNDER_KEY_PATH = path.join(process.cwd(), ".funder.txt");
@@ -115,11 +130,40 @@ export const forecasterNameFromModel = (slug: string): string =>
 // ForecastRegistry config from env
 // ---------------------------------------------------------------------------
 
+/**
+ * Resolve the target chain from `CHAIN_ID`, defaulting to Base mainnet.
+ *
+ * Writing to mainnet is irreversible and costs real money, so it must be asked
+ * for twice: once by chain id, and once by `ALLOW_MAINNET=true`. Every other
+ * chain (Base Sepolia, a local hardhat/anvil node) needs no such ceremony.
+ */
+export const resolveChainId = (): number => {
+  const raw = process.env.CHAIN_ID;
+  const chainId = raw ? parseInt(raw, 10) : BASE_CHAIN_ID;
+  if (!Number.isInteger(chainId) || chainId <= 0) {
+    throw new Error(`Invalid CHAIN_ID "${raw}" — expected a positive integer`);
+  }
+  if (
+    chainId === BASE_CHAIN_ID &&
+    String(process.env.ALLOW_MAINNET).toLowerCase() !== "true"
+  ) {
+    throw new Error(
+      `Refusing to run against Base mainnet (chainId ${BASE_CHAIN_ID}) without ALLOW_MAINNET=true.\n` +
+        `  - to rehearse on testnet:  CHAIN_ID=${BASE_SEPOLIA_CHAIN_ID}\n` +
+        `  - to run with no chain:    SKIP_ONCHAIN=true\n` +
+        `  - to really write mainnet: ALLOW_MAINNET=true`,
+    );
+  }
+  return chainId;
+};
+
 export const createForecastRegistryConfigFromEnv =
   (): ForecastRegistryConfig => {
     const contractAddress = process.env.FORECAST_REGISTRY_ADDRESS;
+    const chainId = resolveChainId();
 
     const configuredUrls = (
+      process.env.RPC_URLS ||
       process.env.BASE_RPC_URLS ||
       process.env.BASE_RPC_URL ||
       ""
@@ -128,8 +172,11 @@ export const createForecastRegistryConfigFromEnv =
       .map((url) => url.trim())
       .filter((url) => url.length > 0);
 
+    // Only this chain's public endpoints are eligible as fallbacks; an unknown
+    // chain (e.g. a local node on 31337) gets none, so the configured URL is
+    // the only one used rather than silently rotating onto a public network.
     const rpcUrls = Array.from(
-      new Set([...configuredUrls, ...DEFAULT_BASE_RPC_URLS]),
+      new Set([...configuredUrls, ...(DEFAULT_RPC_URLS[chainId] ?? [])]),
     );
 
     if (!contractAddress) {
@@ -137,9 +184,15 @@ export const createForecastRegistryConfigFromEnv =
         "ForecastRegistry configuration incomplete: FORECAST_REGISTRY_ADDRESS is required",
       );
     }
+    if (rpcUrls.length === 0) {
+      throw new Error(
+        `No RPC endpoints for chainId ${chainId}. Set RPC_URLS to a comma-separated list.`,
+      );
+    }
 
     return {
       contractAddress,
+      chainId,
       rpcUrls,
       batchSize: parseInt(process.env.FORECAST_BATCH_SIZE || "50", 10),
       batchTimeoutMs: parseInt(
@@ -206,18 +259,23 @@ export function readFundingPrivateKey(): string {
 /**
  * Send `amountInEth` ETH from the funder wallet to `targetAddress`, retrying on
  * transient/rate-limit errors. Returns the tx hash once confirmed.
+ *
+ * `rpcUrls` is the full rotation list, not a single endpoint: a production run
+ * funds one wallet per model back-to-back from the same funder, which is
+ * exactly the burst that makes a public endpoint start returning 429. Retrying
+ * the same URL cannot clear that, so each attempt moves to the next endpoint.
  */
 export async function fundWallet(
   targetAddress: string,
   amountInEth: string,
-  rpcUrl: string,
+  rpcUrls: string | string[],
+  chainId: number,
   maxRetries = 5,
 ): Promise<string> {
-  const provider = new ethers.JsonRpcProvider(rpcUrl, BASE_CHAIN_ID, {
-    staticNetwork: true,
-    batchMaxCount: 1,
-  });
-  const fundingWallet = new ethers.Wallet(readFundingPrivateKey(), provider);
+  const urls = (Array.isArray(rpcUrls) ? rpcUrls : [rpcUrls]).filter(Boolean);
+  if (urls.length === 0) throw new Error("fundWallet requires an RPC URL");
+
+  const privateKey = readFundingPrivateKey();
   const amountWei = ethers.parseEther(amountInEth);
 
   let lastError: unknown;
@@ -226,6 +284,12 @@ export async function fundWallet(
       if (attempt > 0) {
         await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));
       }
+      const provider = new ethers.JsonRpcProvider(
+        urls[attempt % urls.length],
+        chainId,
+        { staticNetwork: true, batchMaxCount: 1 },
+      );
+      const fundingWallet = new ethers.Wallet(privateKey, provider);
       const tx = await fundingWallet.sendTransaction({
         to: targetAddress,
         value: amountWei,
@@ -235,10 +299,10 @@ export async function fundWallet(
       return tx.hash;
     } catch (error) {
       lastError = error;
-      const isRateLimit = String(error)
+      const isTransient = String(error)
         .toLowerCase()
-        .match(/429|too many requests|rate limit/);
-      if (!isRateLimit) {
+        .match(/429|too many requests|rate limit|timeout|econnreset|502|503/);
+      if (!isTransient) {
         throw new Error(`Failed to fund wallet ${targetAddress}: ${error}`);
       }
     }

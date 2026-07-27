@@ -1,0 +1,29 @@
+{
+  "name": "noisebench-local-rehearsal",
+  "description": "Offline rehearsal at production shape (20 models). Use with NOISEBENCH_FAKE_INFERENCE=true — these slugs are placeholders and must never be run against real inference.",
+  "dataset": "datasets/synthetic-100.json",
+  "models": [
+    "fake/model-01",
+    "fake/model-02",
+    "fake/model-03",
+    "fake/model-04",
+    "fake/model-05",
+    "fake/model-06",
+    "fake/model-07",
+    "fake/model-08",
+    "fake/model-09",
+    "fake/model-10",
+    "fake/model-11",
+    "fake/model-12",
+    "fake/model-13",
+    "fake/model-14",
+    "fake/model-15",
+    "fake/model-16",
+    "fake/model-17",
+    "fake/model-18",
+    "fake/model-19",
+    "fake/model-20"
+  ],
+  "promptIterations": 4,
+  "concurrency": 6
+}

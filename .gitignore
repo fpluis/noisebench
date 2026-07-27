@@ -12,5 +12,9 @@ dist
 logs
 debug.log
 
+# Generated rehearsal datasets and captured probe responses
+datasets/synthetic-*.json
+tests/fixtures/responses
+
 # Local postgres volume (if bind-mounted)
 .pgdata

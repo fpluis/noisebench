@@ -13,6 +13,7 @@ import * as dotenv from "dotenv";
 import { ethers } from "ethers";
 import { Database, taskKey } from "../src/db";
 import { generateForecast } from "../src/llm";
+import { fakeGenerateForecast } from "../src/llm-fake";
 import { ForecastRegistryClient } from "../src/forecast-registry-client";
 import {
   DatasetEvent,
@@ -76,8 +77,22 @@ async function main(): Promise<void> {
   const configPath = (args.config as string) || (args.c as string);
   if (!configPath) throw new Error("Missing required --config <path>");
 
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY is required");
+  // Swap in the offline stand-in so the whole pipeline can be rehearsed at
+  // production volume without spending anything. Loud on purpose: a run whose
+  // forecasts came from a fake must never be mistaken for a real one.
+  const useFakeInference =
+    String(process.env.NOISEBENCH_FAKE_INFERENCE).toLowerCase() === "true";
+  const inference = useFakeInference ? fakeGenerateForecast : generateForecast;
+  if (useFakeInference) {
+    console.log(
+      "⚠️  NOISEBENCH_FAKE_INFERENCE=true — forecasts are SYNTHETIC, not model output.",
+    );
+  }
+
+  const apiKey = process.env.OPENROUTER_API_KEY ?? "";
+  if (!apiKey && !useFakeInference) {
+    throw new Error("OPENROUTER_API_KEY is required");
+  }
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL is required");
 
@@ -126,6 +141,11 @@ async function main(): Promise<void> {
   const researchModel = process.env.RESEARCH_MODEL || "local-research-v1";
   const mnemonic = registry ? loadMasterMnemonic() : null;
 
+  // Forecasters whose on-chain model declaration did not land. Their forecasts
+  // are still valid, but published from an unattributable address — surfaced at
+  // the end of the run rather than buried in the error log.
+  const undeclared: string[] = [];
+
   const forecasters: ForecasterCtx[] = [];
   for (const model of models) {
     const name = forecasterNameFromModel(model.slug);
@@ -139,7 +159,6 @@ async function main(): Promise<void> {
 
     if (registry && mnemonic && registryConfig) {
       let wallet = await db.getWalletByForecasterId(forecasterId);
-      let isNewForecaster = false;
       if (!wallet) {
         const derivationIndex = await db.getNextDerivationIndex();
         const derived = deriveWalletFromMnemonic(mnemonic, derivationIndex);
@@ -148,7 +167,6 @@ async function main(): Promise<void> {
           derived.address,
           derivationIndex,
         );
-        isNewForecaster = true;
       }
       if (wallet.derivationIndex === undefined) {
         throw new Error(`Wallet for ${name} is missing its derivation index`);
@@ -160,35 +178,61 @@ async function main(): Promise<void> {
       const address = registry.addForecaster(name, derived.privateKey);
       ctx.address = address;
 
-      // 2. Record this wallet's model on-chain before it forecasts (new only).
-      if (isNewForecaster) {
-        console.log(
-          `[${name}] new forecaster — recording model attributes on-chain`,
-        );
-        try {
-          await registry.setForecasterAttributes(name, {
-            forecastingModel: model.slug,
-            researchModel,
-          });
-        } catch (error) {
-          logger.logError("Failed to set on-chain attributes", error, {
-            forecaster: name,
-          });
-        }
-      }
-
-      // 3. Top up to THRESHOLD_BALANCE if the wallet is below it.
+      // 2. Top up to THRESHOLD_BALANCE if the wallet is below it.
+      //
+      // This MUST happen before any transaction is sent from the wallet: a
+      // freshly derived wallet holds nothing, so anything sent first — the
+      // attribute claim below included — fails with "insufficient funds".
+      //
+      // Funding happens only here, at startup. A wallet that runs dry mid-run
+      // has its batches rejected as insufficient-funds, which is classified
+      // non-retryable and silently discards them, so the threshold must cover
+      // every batch this forecaster will submit. Size it from the gas measured
+      // on a Sepolia rehearsal, not by guesswork.
       const balance = await registry.getBalance(name);
       const threshold = ethers.parseEther(thresholdEth);
       if (balance < threshold) {
+        // Send the shortfall, not the whole threshold: a wallet sitting just
+        // under the line needs a top-up, not another full threshold's worth.
+        const shortfall = ethers.formatEther(threshold - balance);
         console.log(
-          `[${name}] balance ${ethers.formatEther(balance)} ETH < ${thresholdEth} — funding`,
+          `[${name}] balance ${ethers.formatEther(balance)} ETH < ${thresholdEth} — funding ${shortfall} ETH`,
         );
         try {
-          await fundWallet(address, thresholdEth, registryConfig.rpcUrls[0]);
+          await fundWallet(
+            address,
+            shortfall,
+            registryConfig.rpcUrls,
+            registryConfig.chainId,
+          );
         } catch (error) {
           logger.logError("Failed to fund wallet", error, { forecaster: name });
         }
+      }
+
+      // 3. Declare this wallet's model on-chain before it forecasts.
+      //
+      // Gated on what the chain actually says rather than on "is this a new
+      // forecaster", so a claim that failed on an earlier run is repaired on
+      // the next one. Without the claim the wallet is anonymous and its
+      // forecasts cannot be attributed to a model — which is the entire point
+      // of publishing them.
+      const attributes = {
+        forecastingModel: model.slug,
+        researchModel,
+      };
+      try {
+        if (await registry.hasDeclaredAttributes(name, attributes)) {
+          console.log(`[${name}] model already declared on-chain`);
+        } else {
+          console.log(`[${name}] recording model attributes on-chain`);
+          await registry.setForecasterAttributes(name, attributes);
+        }
+      } catch (error) {
+        undeclared.push(name);
+        logger.logError("Failed to set on-chain attributes", error, {
+          forecaster: name,
+        });
       }
     }
 
@@ -303,7 +347,7 @@ async function main(): Promise<void> {
     let done = 0;
     await runPool(tasks, concurrency, async (task) => {
       const identifier = `m${task.marketId}-${task.isNegated ? "neg" : "base"}-i${task.iteration}`;
-      const result = await generateForecast({
+      const result = await inference({
         apiKey,
         model: f.model.slug,
         providerOrder: f.model.providerOrder,
@@ -371,6 +415,17 @@ async function main(): Promise<void> {
     if (registry) await registry.flushAll();
     await db.markBenchmarkRunEnded(benchmarkRunId, "completed");
     console.log(`\n✅ Benchmark run ${benchmarkRunId} completed.`);
+    if (undeclared.length > 0) {
+      console.warn(
+        `\n⚠️  ${undeclared.length} forecaster(s) never declared their model on-chain: ` +
+          `${undeclared.join(", ")}.\n` +
+          `   Their forecasts are published from an address that cannot be attributed to a model.\n` +
+          `   Re-run to repair the claim, then confirm with: verify-run.ts --run ${benchmarkRunId} --onchain`,
+      );
+    }
+    console.log(
+      `\nNext: npx tsx scripts/verify-run.ts --run ${benchmarkRunId}${registry ? " --onchain" : ""}`,
+    );
   } catch (error) {
     logger.logError("Benchmark run failed", error, {});
     if (registry) await registry.flushAll().catch(() => {});

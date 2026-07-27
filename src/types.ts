@@ -100,6 +100,9 @@ export interface InferenceResult {
 
 export interface ForecastRegistryConfig {
   contractAddress: string;
+  // Target chain. Providers pin this via `staticNetwork`, so every URL in
+  // `rpcUrls` must serve this exact chain.
+  chainId: number;
   // Ordered RPC endpoints; the client rotates on failure.
   rpcUrls: string[];
   batchSize: number; // default 50

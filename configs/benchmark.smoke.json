@@ -1,0 +1,14 @@
+{
+  "name": "noisebench-sepolia-rehearsal",
+  "description": "Base Sepolia end-to-end rehearsal: real inference on two cheap models, real transactions on testnet. Used to measure per-batch gas so THRESHOLD_BALANCE can be set from evidence rather than guesswork.",
+  "dataset": "datasets/26-07-2026.json",
+  "models": [
+    {
+      "slug": "google/gemini-3.5-flash-lite",
+      "provider": "google-vertex/global"
+    },
+    "openai/gpt-5.6-luna"
+  ],
+  "promptIterations": 2,
+  "concurrency": 4
+}

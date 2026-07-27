@@ -1,0 +1,41 @@
+# Throwaway PostgreSQL for the end-to-end suite. Deliberately separate from the
+# development database in docker-compose.yml:
+#
+#   * its own container name and host port (5434), so a test run cannot touch —
+#     or be confused with — the database you keep real runs in;
+#   * data on tmpfs, so it lives in RAM and is gone when the container stops.
+#     A test suite that leaves rows behind is a test suite whose next run means
+#     something different, and it is also considerably faster this way.
+#
+# Managed by `npm run test:e2e`; you should not need to run this by hand.
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: noisebench-postgres-test
+    environment:
+      POSTGRES_USER: noisebench
+      POSTGRES_PASSWORD: noisebench
+      POSTGRES_DB: noisebench_test
+      # Safe here precisely because the data is ephemeral: no fsync means a
+      # much faster 16,000-row run, and durability is worthless for a database
+      # that is destroyed at the end of the suite.
+      POSTGRES_INITDB_ARGS: "--nosync"
+    command:
+      - postgres
+      - -c
+      - fsync=off
+      - -c
+      - synchronous_commit=off
+      - -c
+      - full_page_writes=off
+      - -c
+      - max_connections=200
+    ports:
+      - "${TEST_PG_PORT:-5434}:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U noisebench -d noisebench_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

@@ -35,7 +35,15 @@ export class Database {
   private pool: Pool;
 
   constructor(connectionString: string) {
-    this.pool = new Pool({ connectionString });
+    // A production run drives `models × concurrency` tasks in parallel (20 × 6
+    // = 120), each doing several sequential queries. pg's default pool of 10
+    // has no acquisition timeout, so exhaustion presents as an indefinite hang
+    // with no error — size it up and make starvation fail loudly instead.
+    this.pool = new Pool({
+      connectionString,
+      max: parseInt(process.env.PG_POOL_MAX || "20", 10),
+      connectionTimeoutMillis: 10000,
+    });
   }
 
   async close(): Promise<void> {
@@ -94,6 +102,62 @@ export class Database {
     const id: number = res.rows[0].id;
     this.lookupIds.set(cacheKey, id);
     return id;
+  }
+
+  // -------------------------------------------------------------------------
+  // Provider catalog (slug <-> display name)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Upsert the OpenRouter provider catalog. Matches on slug — the stable
+   * identifier — so a provider that was previously interned by name alone
+   * (from a completion, before the catalog was seeded) acquires its slug
+   * instead of being duplicated.
+   *
+   * Returns how many rows were inserted or updated.
+   */
+  async upsertProviders(
+    providers: Array<{ slug: string; name: string }>,
+  ): Promise<number> {
+    let count = 0;
+    for (const { slug, name } of providers) {
+      // A row may already exist under this name with no slug (interned from a
+      // completion). Claim it rather than inserting a second row for the same
+      // provider, which would split its traces across two ids.
+      const claimed = await this.pool.query(
+        `UPDATE public.llm_provider
+         SET slug = $1
+         WHERE LOWER(name) = LOWER($2) AND slug IS NULL
+         RETURNING id`,
+        [slug, name],
+      );
+      if (claimed.rows.length > 0) {
+        count++;
+        continue;
+      }
+      const res = await this.pool.query(
+        `INSERT INTO public.llm_provider (name, slug)
+         VALUES ($1, $2)
+         ON CONFLICT (name) DO UPDATE SET slug = EXCLUDED.slug
+         RETURNING id`,
+        [name, slug],
+      );
+      if (res.rows.length > 0) count++;
+    }
+    // Names/slugs just changed underneath the memoized ids.
+    this.lookupIds.clear();
+    return count;
+  }
+
+  /**
+   * The provider catalog as {slug, name} pairs. Used to reconcile a pinned
+   * provider slug against the display name a completion reports.
+   */
+  async getProviders(): Promise<Array<{ slug: string; name: string }>> {
+    const res = await this.pool.query(
+      `SELECT slug, name FROM public.llm_provider WHERE slug IS NOT NULL ORDER BY slug`,
+    );
+    return res.rows.map((r) => ({ slug: r.slug, name: r.name }));
   }
 
   // -------------------------------------------------------------------------
@@ -244,8 +308,13 @@ export class Database {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
+      // Addresses are deterministic from the master mnemonic, so this row very
+      // often already exists — most commonly after `db:setup --reset` while
+      // `.master` is kept, which is exactly what a test cycle does. A bare
+      // INSERT would trip `wallet_address_unique` and abort the run.
       const walletResult = await client.query(
         `INSERT INTO public.wallet (address) VALUES ($1)
+         ON CONFLICT (address) DO UPDATE SET address = EXCLUDED.address
          RETURNING id, address, created_at`,
         [address],
       );
@@ -544,15 +613,36 @@ export class Database {
     );
   }
 
+  /**
+   * Mark a forecaster finished, reconciling its counters against the forecast
+   * rows that actually exist.
+   *
+   * `bumpPredictorProgress` counts work done by *this* process, which is the
+   * right thing during a run but over-counts across a --resume: a retried task
+   * updates its existing row rather than adding one, yet still increments. The
+   * final numbers are therefore recomputed from the rows themselves, so the
+   * summary is trustworthy however many times a run was resumed.
+   */
   async markPredictorCompleted(
     benchmarkRunId: number,
     forecasterId: number,
   ): Promise<void> {
     const statusId = await this.statusId("predictor_status", "completed");
     await this.pool.query(
-      `UPDATE public.benchmark_predictor_state
-       SET status_id = $3, completed_at = NOW(), updated_at = NOW()
-       WHERE benchmark_run_id = $1 AND forecaster_id = $2`,
+      `UPDATE public.benchmark_predictor_state s
+       SET status_id = $3,
+           completed_at = NOW(),
+           updated_at = NOW(),
+           completed_tasks = (
+             SELECT COUNT(*) FROM public.forecast f
+             WHERE f.benchmark_run_id = s.benchmark_run_id
+               AND f.forecaster_id = s.forecaster_id),
+           error_count = (
+             SELECT COUNT(*) FROM public.forecast f
+             WHERE f.benchmark_run_id = s.benchmark_run_id
+               AND f.forecaster_id = s.forecaster_id
+               AND f.parsed_odds IS NULL)
+       WHERE s.benchmark_run_id = $1 AND s.forecaster_id = $2`,
       [benchmarkRunId, forecasterId, statusId],
     );
   }
