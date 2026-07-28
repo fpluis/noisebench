@@ -106,6 +106,18 @@ async function waitForDatabase(timeoutMs = 90000): Promise<void> {
   throw new Error(`Test database not reachable on port ${PORT} within timeout`);
 }
 
+/** Whether a dataset file exists and lists at least one pair. */
+function hasPairs(datasetPath: string): boolean {
+  const resolved = path.resolve(process.cwd(), datasetPath);
+  if (!fs.existsSync(resolved)) return false;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(resolved, "utf8"));
+    return Array.isArray(parsed?.pairs) && parsed.pairs.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 /** The id of the most recent benchmark run, so verification can target it. */
 async function latestRunId(): Promise<number> {
   const client = new Client({ connectionString: TEST_DATABASE_URL });
@@ -129,6 +141,7 @@ async function summarize(runId: number): Promise<void> {
     const rows = await client.query(
       `SELECT
          (SELECT COUNT(*) FROM public.forecast   WHERE benchmark_run_id = $1) AS forecasts,
+         (SELECT COUNT(*) FROM public.pairwise_forecast WHERE benchmark_run_id = $1) AS pairwise,
          (SELECT COUNT(*) FROM public.llm_trace) AS traces,
          (SELECT COUNT(*) FROM public.forecaster) AS forecasters,
          (SELECT COUNT(*) FROM public.event)     AS events,
@@ -139,8 +152,9 @@ async function summarize(runId: number): Promise<void> {
     );
     const r = rows.rows[0];
     console.log(
-      `\n  ${r.forecasts} forecasts · ${r.traces} traces · ${r.forecasters} forecasters · ` +
-        `${r.events} events · ${r.markets} markets · ${r.providers} providers · ${r.size} on disk`,
+      `\n  ${r.forecasts} forecasts · ${r.pairwise} pairwise · ${r.traces} traces · ` +
+        `${r.forecasters} forecasters · ${r.events} events · ${r.markets} markets · ` +
+        `${r.providers} providers · ${r.size} on disk`,
     );
   } finally {
     await client.end().catch(() => {});
@@ -211,7 +225,11 @@ async function main(): Promise<void> {
     );
 
     step(`Generate the synthetic dataset (${markets} markets)`);
-    if (fs.existsSync(path.resolve(process.cwd(), datasetPath))) {
+    // Reuse an existing file only if it carries pairs. A dataset left over from
+    // before the pairwise modality no longer loads at all, and one carrying an
+    // empty `pairs` would run a suite that never exercises the pairwise path;
+    // regenerating is cheap, so neither is worth reusing.
+    if (hasPairs(datasetPath)) {
       console.log(`${datasetPath} already exists — reusing it.`);
     } else {
       runScript(

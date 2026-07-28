@@ -1,21 +1,30 @@
 import { ethers } from "ethers";
 import {
+  BatchQueue,
   ForecastRegistryConfig,
   ForecastRecordResult,
   ForecasterBatch,
   PendingForecastRecord,
+  PendingPairwiseForecastRecord,
 } from "./types";
 import {
   FORECAST_REGISTRY_ABI,
   attributeKey,
   toBasisPoints,
+  toPairwiseTuple,
 } from "./forecast-registry-abi";
 
 // Invoked after a batch confirms on-chain, so the caller can stamp the affected
-// public.forecast rows with the tx. The tx already cost gas, so a failure here
-// must never trigger a re-submission — the handler is best-effort.
+// rows with the tx. The tx already cost gas, so a failure here must never
+// trigger a re-submission — these handlers are best-effort.
 export type BatchSubmittedHandler = (
   records: PendingForecastRecord[],
+  transactionHash: string,
+  blockNumber: number | undefined,
+) => Promise<void>;
+
+export type PairwiseBatchSubmittedHandler = (
+  records: PendingPairwiseForecastRecord[],
   transactionHash: string,
   blockNumber: number | undefined,
 ) => Promise<void>;
@@ -40,6 +49,7 @@ export class ForecastRegistryClient {
   private readonly addresses = new Map<string, string>();
 
   private onBatchSubmitted?: BatchSubmittedHandler;
+  private onPairwiseBatchSubmitted?: PairwiseBatchSubmittedHandler;
 
   constructor(config: ForecastRegistryConfig) {
     this.config = config;
@@ -47,6 +57,12 @@ export class ForecastRegistryClient {
 
   setBatchSubmittedHandler(handler: BatchSubmittedHandler): void {
     this.onBatchSubmitted = handler;
+  }
+
+  setPairwiseBatchSubmittedHandler(
+    handler: PairwiseBatchSubmittedHandler,
+  ): void {
+    this.onPairwiseBatchSubmitted = handler;
   }
 
   async initialize(): Promise<void> {
@@ -187,6 +203,22 @@ export class ForecastRegistryClient {
     );
   }
 
+  /** The forecaster's batch, created (and its flush timer started) on demand. */
+  private getOrCreateBatch(forecasterName: string): ForecasterBatch {
+    let batch = this.batches.get(forecasterName);
+    if (!batch) {
+      batch = {
+        forecasterName,
+        forecasts: { records: [] },
+        pairwise: { records: [] },
+        firstRequestTime: new Date(),
+      };
+      this.batches.set(forecasterName, batch);
+      this.scheduleTimer(forecasterName);
+    }
+    return batch;
+  }
+
   /**
    * Queue market forecasts for a forecaster. Flushes immediately once the batch
    * reaches `batchSize`; otherwise a timer flushes it after `batchTimeoutMs`.
@@ -194,16 +226,30 @@ export class ForecastRegistryClient {
   async queueForecasts(records: PendingForecastRecord[]): Promise<void> {
     if (records.length === 0) return;
     const forecasterName = records[0].forecasterName;
+    const batch = this.getOrCreateBatch(forecasterName);
+    batch.forecasts.records.push(...records);
 
-    let batch = this.batches.get(forecasterName);
-    if (!batch) {
-      batch = { forecasterName, records: [], firstRequestTime: new Date() };
-      this.batches.set(forecasterName, batch);
-      this.scheduleTimer(forecasterName);
+    if (batch.forecasts.records.length >= this.config.batchSize) {
+      await this.processBatch(forecasterName).catch((error) =>
+        console.error(`Error processing batch for ${forecasterName}:`, error),
+      );
     }
-    batch.records.push(...records);
+  }
 
-    if (batch.records.length >= this.config.batchSize) {
+  /**
+   * Queue pairwise judgments for a forecaster. Same batching policy as
+   * `queueForecasts`, but a separate queue: the two need different contract
+   * calls and therefore different transactions.
+   */
+  async queuePairwiseForecasts(
+    records: PendingPairwiseForecastRecord[],
+  ): Promise<void> {
+    if (records.length === 0) return;
+    const forecasterName = records[0].forecasterName;
+    const batch = this.getOrCreateBatch(forecasterName);
+    batch.pairwise.records.push(...records);
+
+    if (batch.pairwise.records.length >= this.config.batchSize) {
       await this.processBatch(forecasterName).catch((error) =>
         console.error(`Error processing batch for ${forecasterName}:`, error),
       );
@@ -213,7 +259,7 @@ export class ForecastRegistryClient {
   /** Force-submit a forecaster's remaining records now (e.g. when it finishes). */
   async flush(forecasterName: string): Promise<void> {
     if (this.batches.has(forecasterName)) {
-      await this.processBatch(forecasterName).catch((error) =>
+      await this.processBatch(forecasterName, true).catch((error) =>
         console.error(`Error flushing batch for ${forecasterName}:`, error),
       );
     }
@@ -228,7 +274,9 @@ export class ForecastRegistryClient {
   private scheduleTimer(forecasterName: string): void {
     if (this.timers.has(forecasterName)) return;
     const timer = setTimeout(() => {
-      this.processBatch(forecasterName).catch((error) =>
+      // The timeout exists precisely to get part-filled queues out, so it
+      // forces both regardless of size.
+      this.processBatch(forecasterName, true).catch((error) =>
         console.error(`Error processing batch for ${forecasterName}:`, error),
       );
     }, this.config.batchTimeoutMs);
@@ -243,56 +291,127 @@ export class ForecastRegistryClient {
     }
   }
 
+  /**
+   * Submit this forecaster's queued work.
+   *
+   * The two queues go out as separate transactions, SEQUENTIALLY and under one
+   * `inFlight` guard. They share a wallet and therefore a nonce sequence, so
+   * overlapping them would have both read the same pending nonce and one would
+   * silently replace the other — losing a whole batch with no error anywhere.
+   *
+   * `force` distinguishes the two callers. A size-triggered flush submits only
+   * the queues that are actually full; the timer and `flush()` submit whatever
+   * is there. Without that split, every full batch of direct forecasts would
+   * drag a part-filled pairwise batch along with it — and since direct
+   * forecasts arrive several times more often, the pairwise records would go
+   * out in many small transactions, paying the per-transaction base gas over
+   * and over for work that was not urgent.
+   */
   private async processBatch(
     forecasterName: string,
-  ): Promise<ForecastRecordResult> {
+    force = false,
+  ): Promise<ForecastRecordResult[]> {
     const batch = this.batches.get(forecasterName);
-    if (!batch || batch.records.length === 0) {
-      return { success: false, error: "No batch found or empty batch" };
-    }
+    if (!batch) return [{ success: false, error: "No batch found" }];
     if (batch.inFlight) {
-      return { success: false, error: "Submission already in progress" };
+      return [{ success: false, error: "Submission already in progress" }];
     }
     if (!this.privateKeys.has(forecasterName)) {
-      return { success: false, error: `No wallet for ${forecasterName}` };
+      return [{ success: false, error: `No wallet for ${forecasterName}` }];
     }
+
+    const ready = (queue: { records: unknown[] }): boolean =>
+      queue.records.length > 0 &&
+      (force || queue.records.length >= this.config.batchSize);
 
     this.clearTimer(forecasterName);
     batch.inFlight = true;
-    // Snapshot exactly what we're submitting; records that arrive during the
-    // (potentially long) confirmation stay queued for a fresh batch.
-    const recordCount = batch.records.length;
-    const records = batch.records.slice(0, recordCount);
     try {
-      return await this.submitBatch(
-        forecasterName,
-        batch,
-        recordCount,
-        records,
-      );
+      const results: ForecastRecordResult[] = [];
+      if (ready(batch.forecasts)) {
+        results.push(
+          await this.submitQueue(
+            forecasterName,
+            batch.forecasts,
+            (contract, records, overrides) =>
+              records.length === 1
+                ? contract.recordForecast(
+                    records[0].platformId,
+                    records[0].marketId,
+                    records[0].outcome,
+                    toBasisPoints(records[0].probability),
+                    overrides,
+                  )
+                : contract.recordForecastBatch(
+                    records.map((r) => r.platformId),
+                    records.map((r) => r.marketId),
+                    records.map((r) => r.outcome),
+                    records.map((r) => toBasisPoints(r.probability)),
+                    overrides,
+                  ),
+            (records, hash, block) =>
+              this.onBatchSubmitted?.(records, hash, block),
+          ),
+        );
+      }
+      if (ready(batch.pairwise)) {
+        results.push(
+          await this.submitQueue(
+            forecasterName,
+            batch.pairwise,
+            (contract, records, overrides) =>
+              records.length === 1
+                ? contract.recordPairwiseForecast(
+                    ...toPairwiseTuple(records[0]),
+                    overrides,
+                  )
+                : contract.recordPairwiseForecastBatch(
+                    records.map(toPairwiseTuple),
+                    overrides,
+                  ),
+            (records, hash, block) =>
+              this.onPairwiseBatchSubmitted?.(records, hash, block),
+          ),
+        );
+      }
+      // Retires an empty batch too: `processBatch` cleared its timer on entry,
+      // so leaving the husk in the map would mean the next records queued for
+      // this forecaster never get a flush timer at all.
+      this.retireBatch(forecasterName, batch);
+      return results.length > 0
+        ? results
+        : [{ success: false, error: "Empty batch" }];
     } finally {
       batch.inFlight = false;
     }
   }
 
-  private async submitBatch(
+  private async submitQueue<T extends { forecasterName: string }>(
     forecasterName: string,
-    batch: ForecasterBatch,
-    recordCount: number,
-    records: PendingForecastRecord[],
+    queue: BatchQueue<T>,
+    sendTx: (
+      contract: ethers.Contract,
+      records: T[],
+      overrides: ethers.Overrides,
+    ) => Promise<ethers.ContractTransactionResponse>,
+    notify: (
+      records: T[],
+      transactionHash: string,
+      blockNumber: number | undefined,
+    ) => Promise<void> | undefined,
   ): Promise<ForecastRecordResult> {
     const address = this.addresses.get(forecasterName)!;
     const privateKey = this.privateKeys.get(forecasterName)!;
 
-    const platformIds = records.map((r) => r.platformId);
-    const marketIds = records.map((r) => r.marketId);
-    const outcomes = records.map((r) => r.outcome);
-    const oddsList = records.map((r) => toBasisPoints(r.probability));
+    // Snapshot exactly what we're submitting; records that arrive during the
+    // (potentially long) confirmation stay queued for a fresh batch.
+    const recordCount = queue.records.length;
+    const records = queue.records.slice(0, recordCount);
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       const provider = this.getCurrentProvider();
       try {
-        if (!batch.pendingTxHash) {
+        if (!queue.pendingTxHash) {
           const wallet = new ethers.Wallet(privateKey, provider);
           const contract = new ethers.Contract(
             this.config.contractAddress,
@@ -301,36 +420,21 @@ export class ForecastRegistryClient {
           );
           // Reserve the nonce once so any re-broadcast is a replacement, not a
           // second (duplicate) forecast tx.
-          if (batch.nonce === undefined) {
-            batch.nonce = await provider.getTransactionCount(
+          if (queue.nonce === undefined) {
+            queue.nonce = await provider.getTransactionCount(
               address,
               "pending",
             );
           }
-          const overrides = { nonce: batch.nonce };
-          const tx =
-            records.length === 1
-              ? await contract.recordForecast(
-                  platformIds[0],
-                  marketIds[0],
-                  outcomes[0],
-                  oddsList[0],
-                  overrides,
-                )
-              : await contract.recordForecastBatch(
-                  platformIds,
-                  marketIds,
-                  outcomes,
-                  oddsList,
-                  overrides,
-                );
-          batch.pendingTxHash = tx.hash;
+          const overrides = { nonce: queue.nonce };
+          const tx = await sendTx(contract, records, overrides);
+          queue.pendingTxHash = tx.hash;
         }
 
-        const receipt = await this.waitForReceipt(batch.pendingTxHash!);
+        const receipt = await this.waitForReceipt(queue.pendingTxHash!);
 
         if (receipt && receipt.status === 1) {
-          const transactionHash = receipt.hash ?? batch.pendingTxHash!;
+          const transactionHash = receipt.hash ?? queue.pendingTxHash!;
           const blockNumber =
             receipt.blockNumber !== undefined
               ? Number(receipt.blockNumber)
@@ -340,8 +444,9 @@ export class ForecastRegistryClient {
             records,
             transactionHash,
             blockNumber,
+            notify,
           );
-          this.finishBatch(forecasterName, batch, recordCount, true);
+          this.finishQueue(queue, recordCount);
           return {
             success: true,
             transactionHash,
@@ -355,9 +460,9 @@ export class ForecastRegistryClient {
 
         if (receipt && receipt.status === 0) {
           console.error(
-            `Forecast tx ${batch.pendingTxHash} for ${forecasterName} reverted; dropping batch`,
+            `Forecast tx ${queue.pendingTxHash} for ${forecasterName} reverted; dropping batch`,
           );
-          this.finishBatch(forecasterName, batch, recordCount, true);
+          this.finishQueue(queue, recordCount);
           return { success: false, error: "Transaction reverted on-chain" };
         }
         // Not confirmed within the window — rotate and keep waiting on the hash.
@@ -368,11 +473,11 @@ export class ForecastRegistryClient {
           `Forecast submission error for ${forecasterName} (attempt ${attempt + 1}, kind=${kind}): ${message}`,
         );
         if (kind === "already-submitted") {
-          this.finishBatch(forecasterName, batch, recordCount, true);
+          this.finishQueue(queue, recordCount);
           return { success: false, error: `${message} (already submitted)` };
         }
         if (kind === "non-retryable") {
-          this.finishBatch(forecasterName, batch, recordCount, true);
+          this.finishQueue(queue, recordCount);
           return { success: false, error: `${message} (non-retryable)` };
         }
       }
@@ -390,9 +495,9 @@ export class ForecastRegistryClient {
     }
 
     console.error(
-      `Max attempts reached for ${forecasterName}; giving up on tx ${batch.pendingTxHash ?? "(never broadcast)"}.`,
+      `Max attempts reached for ${forecasterName}; giving up on tx ${queue.pendingTxHash ?? "(never broadcast)"}.`,
     );
-    this.finishBatch(forecasterName, batch, recordCount, true);
+    this.finishQueue(queue, recordCount);
     return { success: false, error: "Max retries exceeded" };
   }
 
@@ -410,15 +515,20 @@ export class ForecastRegistryClient {
     }
   }
 
-  private async recordSubmits(
+  private async recordSubmits<T>(
     forecasterName: string,
-    records: PendingForecastRecord[],
+    records: T[],
     transactionHash: string,
     blockNumber: number | undefined,
+    notify: (
+      records: T[],
+      transactionHash: string,
+      blockNumber: number | undefined,
+    ) => Promise<void> | undefined,
   ): Promise<void> {
-    if (!this.onBatchSubmitted || records.length === 0) return;
+    if (records.length === 0) return;
     try {
-      await this.onBatchSubmitted(records, transactionHash, blockNumber);
+      await notify(records, transactionHash, blockNumber);
     } catch (handlerError) {
       console.error(
         `Batch for ${forecasterName} landed on-chain (tx ${transactionHash}) but persisting the linkage failed:`,
@@ -427,22 +537,27 @@ export class ForecastRegistryClient {
     }
   }
 
-  private finishBatch(
-    forecasterName: string,
-    batch: ForecasterBatch,
-    recordCount: number,
-    allowReschedule: boolean,
-  ): void {
-    batch.records.splice(0, recordCount);
-    batch.nonce = undefined;
-    batch.pendingTxHash = undefined;
+  /** Drop the submitted records and clear the tx state so the queue is reusable. */
+  private finishQueue<T>(queue: BatchQueue<T>, recordCount: number): void {
+    queue.records.splice(0, recordCount);
+    queue.nonce = undefined;
+    queue.pendingTxHash = undefined;
+  }
 
-    if (batch.records.length === 0) {
+  /**
+   * Forget a forecaster's batch once both queues are drained, or re-arm the
+   * flush timer for whatever arrived mid-submission.
+   */
+  private retireBatch(forecasterName: string, batch: ForecasterBatch): void {
+    if (
+      batch.forecasts.records.length === 0 &&
+      batch.pairwise.records.length === 0
+    ) {
       this.batches.delete(forecasterName);
       this.clearTimer(forecasterName);
       return;
     }
-    if (allowReschedule) this.scheduleTimer(forecasterName);
+    this.scheduleTimer(forecasterName);
   }
 
   private classifyError(

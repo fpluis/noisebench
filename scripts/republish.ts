@@ -21,7 +21,11 @@ import { Database } from "../src/db";
 import { Pool } from "pg";
 import { ForecastRegistryClient } from "../src/forecast-registry-client";
 import { FORECAST_REGISTRY_ABI } from "../src/forecast-registry-abi";
-import { PendingForecastRecord, POLYMARKET_PLATFORM_ID } from "../src/types";
+import {
+  PendingForecastRecord,
+  PendingPairwiseForecastRecord,
+  POLYMARKET_PLATFORM_ID,
+} from "../src/types";
 import {
   createForecastRegistryConfigFromEnv,
   deriveWalletFromMnemonic,
@@ -66,12 +70,33 @@ async function main(): Promise<void> {
       [runId],
     );
 
-    if (pending.rows.length === 0) {
+    // The same, for pairwise judgments.
+    const pendingPairwise = await pool.query(
+      `SELECT p.id, fc.name AS forecaster, w.address, wpdi.derivation_index,
+              ma.external_id AS market_a, p.outcome_a,
+              mb.external_id AS market_b, p.outcome_b,
+              p.is_a_likelier
+       FROM public.pairwise_forecast p
+       JOIN public.forecaster fc ON fc.id = p.forecaster_id
+       JOIN public.wallet w      ON w.id = fc.wallet_id
+       JOIN public.wallet_predictor_derivation_index wpdi
+         ON wpdi.wallet_id = w.id AND wpdi.predictor_id = fc.id
+       JOIN public.market ma     ON ma.id = p.market_a_id
+       JOIN public.market mb     ON mb.id = p.market_b_id
+       WHERE p.benchmark_run_id = $1
+         AND p.is_a_likelier IS NOT NULL
+         AND p.transaction_id IS NULL
+       ORDER BY fc.name, p.id`,
+      [runId],
+    );
+
+    if (pending.rows.length === 0 && pendingPairwise.rows.length === 0) {
       console.log(`✅ Run ${runId}: nothing to republish.`);
       return;
     }
     console.log(
-      `Run ${runId}: ${pending.rows.length} forecast(s) with no on-chain transaction.`,
+      `Run ${runId}: ${pending.rows.length} forecast(s) and ` +
+        `${pendingPairwise.rows.length} pairwise judgment(s) with no on-chain transaction.`,
     );
 
     // Group by forecaster, since each publishes from its own wallet.
@@ -81,6 +106,16 @@ async function main(): Promise<void> {
       list.push(row);
       byForecaster.set(row.forecaster, list);
     }
+    const pairwiseByForecaster = new Map<string, typeof pendingPairwise.rows>();
+    for (const row of pendingPairwise.rows) {
+      const list = pairwiseByForecaster.get(row.forecaster) ?? [];
+      list.push(row);
+      pairwiseByForecaster.set(row.forecaster, list);
+    }
+    // A forecaster may have only one kind pending, so iterate the union.
+    const forecasterNames = Array.from(
+      new Set([...byForecaster.keys(), ...pairwiseByForecaster.keys()]),
+    ).sort();
 
     const provider = new ethers.JsonRpcProvider(
       config.rpcUrls[0],
@@ -102,20 +137,34 @@ async function main(): Promise<void> {
         blockNumber,
       );
     });
+    registry.setPairwiseBatchSubmittedHandler(
+      async (records, txHash, blockNumber) => {
+        await db.stampPairwiseForecastsWithTransaction(
+          records.map((r) => r.pairwiseForecastId),
+          txHash,
+          blockNumber,
+        );
+      },
+    );
 
     let alreadyOnChain = 0;
     let toSubmit = 0;
+    let pairwiseAlreadyOnChain = 0;
+    let pairwiseToSubmit = 0;
 
-    for (const [forecaster, rows] of byForecaster) {
+    for (const forecaster of forecasterNames) {
+      const rows = byForecaster.get(forecaster) ?? [];
+      const pairwiseRows = pairwiseByForecaster.get(forecaster) ?? [];
+      const identity = rows[0] ?? pairwiseRows[0];
       const wallet = deriveWalletFromMnemonic(
         mnemonic,
-        rows[0].derivation_index,
+        identity.derivation_index,
       );
       registry.addForecaster(forecaster, wallet.privateKey);
 
       // What this wallet has actually published, as a multiset.
       const logs = await readContract.queryFilter(
-        readContract.filters.ForecastRecorded(rows[0].address),
+        readContract.filters.ForecastRecorded(identity.address),
       );
       const onChain = new Map<string, number>();
       for (const log of logs) {
@@ -163,32 +212,99 @@ async function main(): Promise<void> {
         }
       }
 
+      // The same recovery pass for pairwise judgments. The key is the whole
+      // judgment — both sides, both outcomes, and which one won — because that
+      // is all the event carries; iterations are indistinguishable on-chain.
+      const pwLogs = await readContract.queryFilter(
+        readContract.filters.PairwiseForecastRecorded(identity.address),
+      );
+      const pwOnChain = new Map<string, number>();
+      for (const log of pwLogs) {
+        const a = (log as ethers.EventLog).args;
+        const key = `${a.marketAId}|${a.marketAOutcome}|${a.marketBId}|${a.marketBOutcome}|${a.isALikelier}`;
+        pwOnChain.set(key, (pwOnChain.get(key) ?? 0) + 1);
+      }
+      const pwStamped = await pool.query(
+        `SELECT ma.external_id AS market_a, p.outcome_a,
+                mb.external_id AS market_b, p.outcome_b, p.is_a_likelier
+         FROM public.pairwise_forecast p
+         JOIN public.market ma ON ma.id = p.market_a_id
+         JOIN public.market mb ON mb.id = p.market_b_id
+         WHERE p.benchmark_run_id = $1 AND p.forecaster_id =
+               (SELECT id FROM public.forecaster WHERE name = $2)
+           AND p.transaction_id IS NOT NULL`,
+        [runId, forecaster],
+      );
+      for (const row of pwStamped.rows) {
+        const key = `${row.market_a}|${row.outcome_a}|${row.market_b}|${row.outcome_b}|${row.is_a_likelier}`;
+        const n = pwOnChain.get(key) ?? 0;
+        if (n > 0) pwOnChain.set(key, n - 1);
+      }
+
+      const pwResubmit: PendingPairwiseForecastRecord[] = [];
+      const pwRecovered: number[] = [];
+      for (const row of pairwiseRows) {
+        const key = `${row.market_a}|${row.outcome_a}|${row.market_b}|${row.outcome_b}|${row.is_a_likelier}`;
+        const surplus = pwOnChain.get(key) ?? 0;
+        if (surplus > 0) {
+          pwOnChain.set(key, surplus - 1);
+          pwRecovered.push(row.id);
+        } else {
+          pwResubmit.push({
+            pairwiseForecastId: row.id,
+            forecasterName: forecaster,
+            platformIdA: POLYMARKET_PLATFORM_ID,
+            marketAId: row.market_a,
+            marketAOutcome: row.outcome_a,
+            platformIdB: POLYMARKET_PLATFORM_ID,
+            marketBId: row.market_b,
+            marketBOutcome: row.outcome_b,
+            isALikelier: row.is_a_likelier,
+          });
+        }
+      }
+
       alreadyOnChain += recovered.length;
       toSubmit += resubmit.length;
+      pairwiseAlreadyOnChain += pwRecovered.length;
+      pairwiseToSubmit += pwResubmit.length;
       console.log(
-        `  ${forecaster}: ${recovered.length} already on-chain (needs re-stamping only), ${resubmit.length} to submit`,
+        `  ${forecaster}: ${recovered.length} already on-chain (needs re-stamping only), ${resubmit.length} to submit` +
+          (pairwiseRows.length > 0
+            ? `; pairwise ${pwRecovered.length} already on-chain, ${pwResubmit.length} to submit`
+            : ""),
       );
 
       if (apply) {
-        if (recovered.length > 0) {
+        const recoveredTotal = recovered.length + pwRecovered.length;
+        if (recoveredTotal > 0) {
           // The original tx hash is unknown; record the linkage against the
           // block the log was found in rather than leaving it dangling.
           console.log(
-            `    re-stamping ${recovered.length} recovered forecast(s) is not automatic — ` +
+            `    re-stamping ${recoveredTotal} recovered record(s) is not automatic — ` +
               `they are on-chain but their tx hash was never captured. Leaving as-is.`,
           );
         }
-        if (resubmit.length > 0) {
-          await registry.queueForecasts(resubmit);
+        // Queue both kinds before flushing: one flush then submits them as two
+        // sequential transactions from this wallet, rather than racing them for
+        // the same nonce.
+        if (resubmit.length > 0) await registry.queueForecasts(resubmit);
+        if (pwResubmit.length > 0) {
+          await registry.queuePairwiseForecasts(pwResubmit);
+        }
+        if (resubmit.length > 0 || pwResubmit.length > 0) {
           await registry.flush(forecaster);
         }
       }
     }
 
+    const totalToSubmit = toSubmit + pairwiseToSubmit;
     console.log(
-      `\n${apply ? "Applied" : "Dry run"}: ${alreadyOnChain} already on-chain, ${toSubmit} needing submission.`,
+      `\n${apply ? "Applied" : "Dry run"}: ` +
+        `${alreadyOnChain} forecast(s) and ${pairwiseAlreadyOnChain} pairwise judgment(s) already on-chain; ` +
+        `${toSubmit} and ${pairwiseToSubmit} needing submission.`,
     );
-    if (!apply && toSubmit > 0) {
+    if (!apply && totalToSubmit > 0) {
       console.log("Re-run with --apply to submit them.");
     }
   } finally {

@@ -2,11 +2,15 @@
 
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import fs from "fs";
+import os from "os";
+import path from "path";
 import {
   BASE_CHAIN_ID,
   BASE_SEPOLIA_CHAIN_ID,
   createForecastRegistryConfigFromEnv,
   forecasterNameFromModel,
+  loadBenchmarkConfig,
   normalizeModel,
   parseArgs,
   resolveChainId,
@@ -56,6 +60,37 @@ test("taskKey uniquely identifies one unit of work", () => {
   assert.notEqual(taskKey(1, 2, false, 0), taskKey(1, 2, false, 1));
   assert.notEqual(taskKey(1, 2, false, 0), taskKey(2, 1, false, 0));
   assert.equal(taskKey(1, 2, true, 3), "1:2:1:3");
+});
+
+test("loadBenchmarkConfig defaults both iteration dials", () => {
+  // pairwiseIterations is separate from promptIterations because a pair already
+  // costs four calls per iteration. A config written before the pairwise
+  // modality existed must still load, and must get the documented default
+  // rather than silently running zero pairwise tasks.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "noisebench-cfg-"));
+  const file = path.join(dir, "config.json");
+  fs.writeFileSync(
+    file,
+    JSON.stringify({ name: "legacy", models: ["a/b"] }),
+    "utf8",
+  );
+  const config = loadBenchmarkConfig(file);
+  assert.equal(config.promptIterations, 4);
+  assert.equal(config.pairwiseIterations, 2);
+
+  fs.writeFileSync(
+    file,
+    JSON.stringify({
+      name: "explicit",
+      models: ["a/b"],
+      promptIterations: 6,
+      pairwiseIterations: 3,
+    }),
+    "utf8",
+  );
+  const explicit = loadBenchmarkConfig(file);
+  assert.equal(explicit.promptIterations, 6);
+  assert.equal(explicit.pairwiseIterations, 3);
 });
 
 test("parseArgs handles the three supported flag forms", () => {

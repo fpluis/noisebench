@@ -3,7 +3,7 @@ import {
   DatasetEvent,
   DatasetMarket,
   ForecasterWallet,
-  InferenceResult,
+  InferenceTrace,
   POLYMARKET_PLATFORM_ID,
 } from "./types";
 
@@ -14,6 +14,7 @@ export interface BenchmarkRunRow {
   // Model slugs from `benchmark_run_model`, resolved back to their names.
   models: string[];
   promptIterations: number;
+  pairwiseIterations: number;
   config: unknown;
   status: string;
 }
@@ -25,6 +26,22 @@ export const taskKey = (
   isNegated: boolean,
   iteration: number,
 ): string => `${forecasterId}:${marketId}:${isNegated ? 1 : 0}:${iteration}`;
+
+/**
+ * The same, for one pairwise task. Both market ids are included in dataset
+ * order, so the reversed pair (a legitimately distinct task) gets its own key
+ * rather than colliding with the forward one.
+ */
+export const pairwiseTaskKey = (
+  forecasterId: number,
+  marketAId: number,
+  marketBId: number,
+  isANegated: boolean,
+  isBNegated: boolean,
+  iteration: number,
+): string =>
+  `${forecasterId}:${marketAId}:${marketBId}:` +
+  `${isANegated ? 1 : 0}${isBNegated ? 1 : 0}:${iteration}`;
 
 /**
  * All database access for noisebench. A thin wrapper over a single pg Pool — no
@@ -437,7 +454,7 @@ export class Database {
   async logLLMTrace(input: {
     forecasterId: number;
     identifier: string;
-    result: InferenceResult;
+    result: InferenceTrace;
   }): Promise<number> {
     const { forecasterId, identifier, result } = input;
     const llmModelId = await this.intern("llm_model", result.model);
@@ -488,6 +505,7 @@ export class Database {
     datasetName: string;
     models: string[];
     promptIterations: number;
+    pairwiseIterations: number;
     config: unknown;
   }): Promise<number> {
     const statusId = await this.statusId("benchmark_status", "running");
@@ -501,14 +519,16 @@ export class Database {
       await client.query("BEGIN");
       const res = await client.query(
         `INSERT INTO public.benchmark_run
-           (name, description, dataset_name, prompt_iterations, config, status_id)
-         VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+           (name, description, dataset_name, prompt_iterations,
+            pairwise_iterations, config, status_id)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
          RETURNING id`,
         [
           input.name,
           input.description ?? null,
           input.datasetName,
           input.promptIterations,
+          input.pairwiseIterations,
           JSON.stringify(input.config),
           statusId,
         ],
@@ -533,8 +553,8 @@ export class Database {
 
   async getBenchmarkRun(id: number): Promise<BenchmarkRunRow | null> {
     const res = await this.pool.query(
-      `SELECT r.id, r.name, r.dataset_name, r.prompt_iterations, r.config,
-              s.name AS status,
+      `SELECT r.id, r.name, r.dataset_name, r.prompt_iterations,
+              r.pairwise_iterations, r.config, s.name AS status,
               COALESCE(
                 (SELECT ARRAY_AGG(m.name ORDER BY m.name)
                  FROM public.benchmark_run_model brm
@@ -555,6 +575,7 @@ export class Database {
       datasetName: row.dataset_name,
       models: row.models,
       promptIterations: row.prompt_iterations,
+      pairwiseIterations: row.pairwise_iterations,
       config: row.config,
       status: row.status,
     };
@@ -576,6 +597,19 @@ export class Database {
       `INSERT INTO public.benchmark_run_market (benchmark_run_id, market_id)
        VALUES ($1, $2) ON CONFLICT DO NOTHING`,
       [benchmarkRunId, marketId],
+    );
+  }
+
+  async addBenchmarkRunPair(
+    benchmarkRunId: number,
+    marketAId: number,
+    marketBId: number,
+  ): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO public.benchmark_run_pair
+         (benchmark_run_id, market_a_id, market_b_id)
+       VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+      [benchmarkRunId, marketAId, marketBId],
     );
   }
 
@@ -636,12 +670,21 @@ export class Database {
            completed_tasks = (
              SELECT COUNT(*) FROM public.forecast f
              WHERE f.benchmark_run_id = s.benchmark_run_id
-               AND f.forecaster_id = s.forecaster_id),
+               AND f.forecaster_id = s.forecaster_id)
+             + (
+             SELECT COUNT(*) FROM public.pairwise_forecast p
+             WHERE p.benchmark_run_id = s.benchmark_run_id
+               AND p.forecaster_id = s.forecaster_id),
            error_count = (
              SELECT COUNT(*) FROM public.forecast f
              WHERE f.benchmark_run_id = s.benchmark_run_id
                AND f.forecaster_id = s.forecaster_id
                AND f.parsed_odds IS NULL)
+             + (
+             SELECT COUNT(*) FROM public.pairwise_forecast p
+             WHERE p.benchmark_run_id = s.benchmark_run_id
+               AND p.forecaster_id = s.forecaster_id
+               AND p.is_a_likelier IS NULL)
        WHERE s.benchmark_run_id = $1 AND s.forecaster_id = $2`,
       [benchmarkRunId, forecasterId, statusId],
     );
@@ -666,6 +709,36 @@ export class Database {
           row.forecaster_id,
           row.market_id,
           row.is_negated,
+          row.prompt_iteration,
+        ),
+      );
+    }
+    return set;
+  }
+
+  /**
+   * The same, for pairwise tasks. A row whose judgment is null was a refusal or
+   * an unparseable answer and is deliberately omitted, so --resume retries it.
+   */
+  async getCompletedPairwiseTaskKeys(
+    benchmarkRunId: number,
+  ): Promise<Set<string>> {
+    const res = await this.pool.query(
+      `SELECT forecaster_id, market_a_id, market_b_id, is_a_negated,
+              is_b_negated, prompt_iteration
+       FROM public.pairwise_forecast
+       WHERE benchmark_run_id = $1 AND is_a_likelier IS NOT NULL`,
+      [benchmarkRunId],
+    );
+    const set = new Set<string>();
+    for (const row of res.rows) {
+      set.add(
+        pairwiseTaskKey(
+          row.forecaster_id,
+          row.market_a_id,
+          row.market_b_id,
+          row.is_a_negated,
+          row.is_b_negated,
           row.prompt_iteration,
         ),
       );
@@ -716,6 +789,51 @@ export class Database {
     return res.rows[0].id;
   }
 
+  /** Insert (or update, on re-run) one pairwise forecast row and return its id. */
+  async upsertPairwiseForecast(input: {
+    benchmarkRunId: number;
+    forecasterId: number;
+    marketAId: number;
+    marketBId: number;
+    llmTraceId: number | null;
+    isANegated: boolean;
+    isBNegated: boolean;
+    promptIteration: number;
+    isALikelier: boolean | null;
+    outcomeA: string;
+    outcomeB: string;
+  }): Promise<number> {
+    const res = await this.pool.query(
+      `INSERT INTO public.pairwise_forecast
+         (benchmark_run_id, forecaster_id, market_a_id, market_b_id,
+          llm_trace_id, is_a_negated, is_b_negated, prompt_iteration,
+          is_a_likelier, outcome_a, outcome_b)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+       ON CONFLICT (benchmark_run_id, forecaster_id, market_a_id, market_b_id,
+                    is_a_negated, is_b_negated, prompt_iteration)
+       DO UPDATE SET
+         llm_trace_id = EXCLUDED.llm_trace_id,
+         is_a_likelier = EXCLUDED.is_a_likelier,
+         outcome_a = EXCLUDED.outcome_a,
+         outcome_b = EXCLUDED.outcome_b
+       RETURNING id`,
+      [
+        input.benchmarkRunId,
+        input.forecasterId,
+        input.marketAId,
+        input.marketBId,
+        input.llmTraceId,
+        input.isANegated,
+        input.isBNegated,
+        input.promptIteration,
+        input.isALikelier,
+        input.outcomeA,
+        input.outcomeB,
+      ],
+    );
+    return res.rows[0].id;
+  }
+
   private async upsertTransaction(
     hash: string,
     blockNumber: number | undefined,
@@ -754,6 +872,27 @@ export class Database {
        SET transaction_id = $2, published_at = $3
        WHERE id = ANY($1::int[])`,
       [forecastIds, transactionId, publishedAt],
+    );
+  }
+
+  /** The same, for pairwise rows. */
+  async stampPairwiseForecastsWithTransaction(
+    pairwiseForecastIds: number[],
+    transactionHash: string,
+    blockNumber: number | undefined,
+  ): Promise<void> {
+    if (pairwiseForecastIds.length === 0) return;
+    const publishedAt = new Date();
+    const transactionId = await this.upsertTransaction(
+      transactionHash,
+      blockNumber,
+      publishedAt,
+    );
+    await this.pool.query(
+      `UPDATE public.pairwise_forecast
+       SET transaction_id = $2, published_at = $3
+       WHERE id = ANY($1::int[])`,
+      [pairwiseForecastIds, transactionId, publishedAt],
     );
   }
 }

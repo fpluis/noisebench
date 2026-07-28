@@ -10,7 +10,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseForecastProbability } from "../src/utils";
+import { parseForecastProbability, parsePairwiseChoice } from "../src/utils";
 
 test("parses the documented output format", () => {
   assert.equal(parseForecastProbability("Probability: 72.5%"), 0.725);
@@ -97,4 +97,72 @@ test("SHARP EDGE: the plural 'Probabilities:' also matches", () => {
 
 test("scientific notation is not accepted", () => {
   assert.equal(parseForecastProbability("Probability: 1e2%"), null);
+});
+
+// ---------------------------------------------------------------------------
+// parsePairwiseChoice — the same point, for the ranking modality. A misparse
+// here does not merely lose a data point: it publishes a judgment about the
+// wrong side of the comparison to an append-only log.
+// ---------------------------------------------------------------------------
+
+test("parses the documented pairwise output format", () => {
+  assert.equal(parsePairwiseChoice("More likely: A"), "A");
+  assert.equal(parsePairwiseChoice("More likely: B"), "B");
+});
+
+test("tolerates the formatting models actually emit", () => {
+  assert.equal(parsePairwiseChoice("**More likely:** A"), "A");
+  assert.equal(parsePairwiseChoice("more likely = b"), "B");
+  assert.equal(parsePairwiseChoice("More likely:  Market  B"), "B");
+  assert.equal(parsePairwiseChoice("MORE LIKELY: A"), "A");
+  assert.equal(parsePairwiseChoice("More   likely:\nB"), "B");
+});
+
+test("takes the LAST occurrence — the final answer, not the working", () => {
+  const reasoning = [
+    "On base rates alone A is more likely: A has happened twice before.",
+    "But the scheduled announcement changes things.",
+    "More likely: B",
+  ].join("\n");
+  assert.equal(parsePairwiseChoice(reasoning), "B");
+});
+
+test("a refusal to rank is not a choice", () => {
+  // The registry has no encoding for a tie, so a model that declines must
+  // produce no data point rather than an arbitrary side. This is the case the
+  // whole null path exists for.
+  assert.equal(
+    parsePairwiseChoice(
+      "These two outcomes are equally likely; I cannot rank them.",
+    ),
+    null,
+  );
+  assert.equal(parsePairwiseChoice("More likely: neither"), null);
+  assert.equal(parsePairwiseChoice("It depends on your assumptions."), null);
+  assert.equal(parsePairwiseChoice(""), null);
+  assert.equal(parsePairwiseChoice(null), null);
+  assert.equal(parsePairwiseChoice(undefined), null);
+});
+
+test("a probability instead of a choice is unparseable", () => {
+  // The pairwise prompt asks for a rank, not a number. A model that answers
+  // with odds has not done the task, and must burn its retries rather than
+  // have a choice inferred from a number the modality does not collect.
+  assert.equal(parsePairwiseChoice("Probability: 72%"), null);
+});
+
+test("SHARP EDGE: the letter must stand alone", () => {
+  // `\b` after the letter means a word starting with A or B does not match, so
+  // prose like "more likely, Anthropic wins" cannot hijack the answer — but it
+  // also means a model answering "More likely: Alpha" parses as nothing.
+  assert.equal(parsePairwiseChoice("More likely: Alpha"), null);
+  assert.equal(parsePairwiseChoice("More likely: A."), "A");
+  assert.equal(parsePairwiseChoice("More likely: B)"), "B");
+});
+
+test("SHARP EDGE: prose using the keyword loosely can be read as an answer", () => {
+  // The separator is tight (`\s*[:=]?\s*`), so " is " or " than " cannot match
+  // — but a bare "more likely A" can, and being the last occurrence it wins.
+  assert.equal(parsePairwiseChoice("Outcome B is more likely than A"), null);
+  assert.equal(parsePairwiseChoice("I judge this more likely A"), "A");
 });

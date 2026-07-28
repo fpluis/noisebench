@@ -1,7 +1,7 @@
 // Generate a production-shaped dataset for offline rehearsals.
 //
 //   npx tsx scripts/gen-synthetic-dataset.ts --events 25 --markets-per-event 4
-//   npx tsx scripts/gen-synthetic-dataset.ts --markets 100 --research-kb 6
+//   npx tsx scripts/gen-synthetic-dataset.ts --markets 100 --research-kb 6 --pairs 25
 //
 // The point is not realistic *content* — it is realistic **shape and stress**:
 // the same market count, the same order-of-magnitude research blobs, and text
@@ -12,7 +12,12 @@
 
 import fs from "fs";
 import path from "path";
-import { Dataset, DatasetEvent, DatasetMarket } from "../src/types";
+import {
+  Dataset,
+  DatasetEvent,
+  DatasetMarket,
+  DatasetPair,
+} from "../src/types";
 import { parseArgs } from "../src/utils";
 
 // Text designed to break naive persistence: multi-byte characters, quotes that
@@ -100,6 +105,38 @@ const buildEvent = (
   research: buildResearch(eventIndex, researchKb),
 });
 
+/**
+ * Pick `count` pairs of market slugs to rank against each other.
+ *
+ * Deliberately biased towards CROSS-event pairs — markets are walked with a
+ * stride that is coprime with the market count, so consecutive picks rarely
+ * land in the same event. Cross-event pairs are both the interesting case and
+ * the expensive one: the two sides carry different research blobs, so the
+ * prompt is roughly twice the size of a same-event pair and it is what the
+ * token budget has to survive.
+ */
+const buildPairs = (events: DatasetEvent[], count: number): DatasetPair[] => {
+  const slugs = events.flatMap((event) => event.markets.map((m) => m.slug));
+  if (slugs.length < 2 || count <= 0) return [];
+
+  // A stride larger than one event's markets, kept coprime with the total so
+  // the walk visits every market before repeating.
+  let stride = slugs.length > 5 ? 5 : 2;
+  while (stride > 1 && slugs.length % stride === 0) stride--;
+
+  const pairs: DatasetPair[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; pairs.length < count && i < slugs.length * 2; i++) {
+    const a = slugs[i % slugs.length];
+    const b = slugs[(i * stride + stride) % slugs.length];
+    const key = `${a} ${b}`;
+    if (a === b || seen.has(key)) continue;
+    seen.add(key);
+    pairs.push([a, b]);
+  }
+  return pairs;
+};
+
 function main(): void {
   const args = parseArgs(process.argv.slice(2));
 
@@ -115,12 +152,21 @@ function main(): void {
     ? Math.ceil(totalMarkets / marketsPerEvent)
     : parseInt((args.events as string) || "25", 10);
   const researchKb = parseInt((args["research-kb"] as string) || "6", 10);
+  // Default to a quarter as many pairs as markets: enough that the pairwise
+  // path is a meaningful share of the run without dominating it.
+  const pairCount = args.pairs
+    ? parseInt(args.pairs as string, 10)
+    : Math.ceil((events * marketsPerEvent) / 4);
 
-  const dataset: Dataset = Array.from({ length: events }, (_, e) =>
+  const eventList = Array.from({ length: events }, (_, e) =>
     buildEvent(e, marketsPerEvent, researchKb),
   );
+  const dataset: Dataset = {
+    events: eventList,
+    pairs: buildPairs(eventList, pairCount),
+  };
 
-  const marketCount = dataset.reduce((sum, e) => sum + e.markets.length, 0);
+  const marketCount = eventList.reduce((sum, e) => sum + e.markets.length, 0);
   const outPath = path.resolve(
     process.cwd(),
     (args.out as string) || `datasets/synthetic-${marketCount}.json`,
@@ -132,10 +178,14 @@ function main(): void {
   const bytes = fs.statSync(outPath).size;
   console.log(`Wrote ${outPath}`);
   console.log(
-    `  ${events} event(s), ${marketCount} market(s), ${(bytes / 1024 / 1024).toFixed(2)} MB`,
+    `  ${events} event(s), ${marketCount} market(s), ${dataset.pairs.length} pair(s), ` +
+      `${(bytes / 1024 / 1024).toFixed(2)} MB`,
   );
   console.log(
-    `  At 4 iterations x 2 phrasings: ${marketCount * 8} task(s) per model.`,
+    `  At 4 iterations x 2 phrasings: ${marketCount * 8} direct task(s) per model.`,
+  );
+  console.log(
+    `  At 2 iterations x 4 combinations: ${dataset.pairs.length * 8} pairwise task(s) per model.`,
   );
 }
 

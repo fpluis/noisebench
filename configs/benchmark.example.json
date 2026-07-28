@@ -1,7 +1,7 @@
 {
   "name": "noisebench-test",
   "description": "Test noise benchmark: a single event, one model, 4 iterations per phrasing.",
-  "dataset": "datasets/26-07-2026.json",
+  "dataset": "datasets/28-07-26.json",
   "models": [
     {
       "slug": "google/gemini-3.5-flash-lite",
@@ -9,5 +9,6 @@
     }
   ],
   "promptIterations": 4,
+  "pairwiseIterations": 2,
   "concurrency": 6
 }

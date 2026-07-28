@@ -10,6 +10,12 @@ the negation) ≈ 1`) and would return the same answer every time. Real models
 don't — they drift between repetitions and contradict themselves between a
 question and its negation. That gap is the noise this benchmark quantifies.
 
+The same question is asked a second way, without any numbers involved: given two
+markets, **which outcome is more likely?** Ranking two markets needs no
+probability from either, so it isolates whether a model's ordering is stable
+under rephrasing — a coherent forecaster that ranks A above B must rank "not A"
+below "not B".
+
 Every forecast is:
 
 - **produced** through [OpenRouter](https://openrouter.ai) with pinned,
@@ -22,24 +28,64 @@ Every forecast is:
 
 ## How it works
 
-The benchmark runs over a **dataset** of `M` events, each with `N` markets. For
-every combination of
+The benchmark runs two modalities over one dataset.
+
+### 1. Direct — how likely is this market?
+
+For every combination of
 
 ```
 { event, market } × model × { base, negated } × iteration (T = 4)
 ```
 
 it calls the model once, parses the probability off the end of the plain-text
-answer (`Probability: X%`), and writes one `forecast` row. The unit of work is a
-single market — there is no cross-market/event aggregation.
+answer (`Probability: X%`), and writes one `forecast` row.
+
+### 2. Pairwise — which of these two markets is likelier?
+
+The dataset also lists **pairs** of markets to rank against each other. For every
+combination of
+
+```
+{ market A, market B } × model × { 4 phrasing combinations } × iteration (T = 2)
+```
+
+it asks only which of the two outcomes is more likely — **no probability for
+either** — parses `More likely: A` / `More likely: B`, and writes one
+`pairwise_forecast` row.
+
+The four phrasing combinations are the two questions and their negations:
+`(A, B)`, `(¬A, B)`, `(A, ¬B)`, `(¬A, ¬B)`. They exist because flipping **both**
+sides must invert the answer for any coherent forecaster:
+
+```
+P(A) > P(B)   iff   1 - P(A) < 1 - P(B)
+```
+
+That identity holds whatever the model believes, so the rate at which it is
+violated is a **noise** measurement and needs no ground truth — exactly like
+`|Yes + No − 1|` on the direct side. The four combinations therefore form two
+couples that must disagree: `(A,B)` against `(¬A,¬B)`, and `(¬A,B)` against
+`(A,¬B)`.
+
+Pairs may span events, and a market is never paired with itself. Listing the
+**reversed** pair `[B, A]` is allowed and is genuinely different work: all four
+combinations present market A first, so a reversed pair is the only way to probe
+position bias.
 
 ### Prompt structure
 
 - **System prompt** — the generic task framing, resolution conventions, and the
-  required `Probability: X%` output format. See `SYSTEM_PROMPT` in
-  [`src/llm.ts`](src/llm.ts).
-- **User prompt** — the specifics of the one market being forecast (title,
-  question or negated question, rules, dates, and the event's research context).
+  required output format. `SYSTEM_PROMPT` for the direct modality,
+  `PAIRWISE_SYSTEM_PROMPT` for the ranking one. See [`src/llm.ts`](src/llm.ts).
+- **User prompt** — the specifics of what is being forecast: one market (title,
+  question or negated question, rules, dates, research context), or both sides
+  of a pair with the same treatment each. A pair whose markets share an event
+  carries that event's research once rather than twice.
+
+The pairwise prompt explicitly refuses a tie: the registry has no encoding for
+"equally likely" — a coin-flip judgment is noise, not data — so a model that
+declines to choose produces no data point at all.
 
 ### Sampling parameters (pinned for reproducibility)
 
@@ -68,9 +114,23 @@ same market:
 
 Because negated-Yes is logically the market's "No", a coherent model's `Yes` and
 `No` odds for a market sum to ~`10000` on-chain — the deviation is the noise,
-visible directly in the event log. Each forecaster wallet also records its model
-on-chain once via `setAttribute("forecastingModel", <slug>)` /
-`setAttribute("researchModel", "local-research-v1")` before it starts.
+visible directly in the event log.
+
+Pairwise judgments go through `recordPairwiseForecast(platformIdA, marketAId,
+marketAOutcome, platformIdB, marketBId, marketBOutcome, isALikelier)` (batched
+with `recordPairwiseForecastBatch`). They carry **no odds at all** — only which
+side won — and each side's phrasing maps to that market's outcome by the same
+rule as above, so a side asked negated is published as its market's `"No"`.
+
+The batch call takes a struct array rather than parallel arrays: with seven
+columns, parallel arrays would let a caller pair market A of one judgment with
+market B of the next and never notice.
+
+Each forecaster wallet also records its model on-chain once via
+`setAttribute("forecastingModel", <slug>)` /
+`setAttribute("researchModel", "local-research-v1")` before it starts. Both
+modalities publish from that same wallet, as two separate transactions issued
+sequentially so they cannot race for the same nonce.
 
 ## Stack
 
@@ -122,22 +182,29 @@ chain, only `OPENROUTER_API_KEY`:
 
 ```bash
 npm run test-inference -- \
-  --dataset datasets/19-07-2026.json \
+  --dataset datasets/28-07-26.json \
   --config configs/benchmark.example.json \
   [--event <event-slug>] [--model <openrouter-slug>] [--negated]
+
+# the pairwise prompt, for one pair in one phrasing combination
+npm run test-inference -- \
+  --dataset <path> --config <path> --pairwise \
+  [--pair <index>] [--combination <00|10|01|11>]
 ```
 
 `--event` defaults to the first event, `--model` to the first configured model,
-and the first market of the event is used.
+and the first market of the event is used. In `--pairwise` mode, `--pair`
+indexes the dataset's `pairs` array and `--combination` selects which phrasing
+each side is asked in (A then B, `1` = negated).
 
 ### Run the benchmark
 
 ```bash
 # Fresh run
-npm run benchmark -- --config configs/benchmark.example.json --dataset datasets/19-07-2026.json
+npm run benchmark -- --config configs/benchmark.example.json --dataset datasets/28-07-26.json
 
 # Local dry-run without touching the chain — set SKIP_ONCHAIN=true in .env
-npm run benchmark -- --config configs/benchmark.example.json --dataset datasets/19-07-2026.json
+npm run benchmark -- --config configs/benchmark.example.json --dataset datasets/28-07-26.json
 
 # Resume an interrupted run (skips tasks already completed successfully)
 npm run benchmark -- --config configs/benchmark.example.json --resume <benchmarkRunId>
@@ -177,11 +244,15 @@ database.
 1. Start a throwaway PostgreSQL          8. Re-verify after resume
 2. Apply migrations + seed providers
 3. Unit tests                            → 16,000 forecasts
-4. Generate the synthetic dataset        → 20 models x 100 markets x 2 x 4
-5. Benchmark run (fake, no chain)        → ~10 seconds
+4. Generate the synthetic dataset        →   4,000 pairwise judgments
+5. Benchmark run (fake, no chain)        → 20 models, ~10 seconds
 6. Verify run
 7. Resume run
 ```
+
+The generated dataset carries pairs, and a leftover dataset file without them is
+regenerated rather than reused — otherwise the suite would either fail to load
+it or report a pass for a pairwise path it never ran.
 
 It is **isolated by construction**: its own Compose project, its own container,
 port 5434 rather than the development database's 5433, and data on `tmpfs` so it
@@ -195,8 +266,9 @@ npm run test:e2e -- --keep         # leave the database up to inspect it
 ```
 
 **What it proves:** migrations apply from nothing; the dataset ingests; and
-16,000 forecasts survive the whole orchestration — every DB mapping, 120-way
-concurrency, progress bookkeeping, and the resume path — at production volume.
+16,000 forecasts plus 4,000 pairwise judgments survive the whole orchestration —
+every DB mapping, 120-way concurrency, progress bookkeeping, and the resume path
+— at production volume.
 
 **What it does not prove:** anything on-chain. Submission is skipped entirely.
 
@@ -211,11 +283,17 @@ npm run benchmark -- --config configs/benchmark.smoke.json --dataset <small data
 npx tsx scripts/verify-run.ts --run <id> --onchain
 ```
 
-Check **C** is the one to watch: it reports usable forecasts that never reached
-the chain. Two things to confirm on that run, because neither can be observed
-offline: the gas a full `recordForecastBatch` actually costs, which is what
-`THRESHOLD_BALANCE` must cover for every batch a wallet will submit, and that
-each wallet declared its model (check **E3**).
+Checks **C** and **C2** are the ones to watch: they report usable forecasts and
+pairwise judgments that never reached the chain. Three things to confirm on that
+run, because none can be observed offline: the gas a full `recordForecastBatch`
+**and** a full `recordPairwiseForecastBatch` actually cost — together they are
+what `THRESHOLD_BALANCE` must cover for every batch a wallet will submit, and a
+pairwise batch carries two market ids and two outcome strings per item, so it is
+the more expensive of the two — and that each wallet declared its model
+(check **E3**).
+
+The dataset used for that run must list `pairs`, or the pairwise path is never
+exercised on-chain and **A2**/**C2** report `SKIP`.
 
 ### Before spending on a full cycle
 
@@ -240,18 +318,31 @@ required format, or a model reporting no cost.
 | [`scripts/gen-synthetic-dataset.ts`](scripts/gen-synthetic-dataset.ts) | Production-shaped dataset with hostile text, for offline rehearsals.                               |
 | [`src/llm-fake.ts`](src/llm-fake.ts)                                   | Deterministic offline stand-in for inference (`NOISEBENCH_FAKE_INFERENCE=true`).                   |
 
-`verify-run.ts` is the check that matters. Structural checks confirm the
-plumbing; check **F** confirms the _meaning_ — for every
-`{forecaster, market, iteration}` it asserts both phrasings exist and reports
-`mean |Yes + No − 1|`. That number **is** the noise metric, and if the
-base/negated → Yes/No mapping ever inverts it jumps from ~0.1 to ~1.0 while
-every structural check still passes.
+`verify-run.ts` is the check that matters. Structural checks (**A**/**A2**,
+**B**/**B2**, **C**/**C2**, **D**) confirm the plumbing; **F** and **G** confirm
+the _meaning_, one per modality:
+
+- **F** — for every `{forecaster, market, iteration}`, both phrasings exist and
+  `mean |Yes + No − 1|` is reported. That number **is** the direct noise metric,
+  and if the base/negated → Yes/No mapping ever inverts it jumps from ~0.1 to
+  ~1.0 while every structural check still passes.
+- **G** — for every `{forecaster, pair, iteration}`, the two combination couples
+  disagree. The violation rate **is** the pairwise noise metric. The two couples
+  are scored **separately** and either alone fails the check: the realistic bug
+  wrecks one couple and leaves the other intact, so an averaged verdict would
+  report ~50% and call a catastrophic run healthy.
 
 The fake is deliberately hostile: it injects unparseable responses, hard
 failures, null costs, 100 KB reasoning blobs and non-ASCII text at fixed rates,
-so a rehearsal exercises the failure paths rather than only the happy one. It is
-also deterministic, which is what makes the resume leg meaningful — the same
-tasks fail again, and the row count must not move.
+so a rehearsal exercises the failure paths rather than only the happy one. On
+the pairwise side it also injects declared ties (which must yield no data point
+at all) and, at a fixed rate, judgments that contradict its own beliefs — so
+check **G** has real violations to find. A fake that were perfectly coherent
+would make **G** report 0.00%, which passes just as happily whether the check
+measures anything or nothing.
+
+It is also deterministic, which is what makes the resume leg meaningful — the
+same tasks fail again, and the row count must not move.
 
 ### Safety rails
 
@@ -267,7 +358,31 @@ tasks fail again, and the row count must not move.
 ## Dataset format
 
 A dataset is a single JSON file under `datasets/`, named by date
-(`datasets/DD-MM-YYYY.json`), containing an array of events:
+(`datasets/DD-MM-YY.json`), containing the events to forecast and the pairs of
+markets to rank against each other:
+
+```jsonc
+{
+  "events": [/* … see below … */],
+  // Pairs of MARKET SLUGS. May span events; a market is never paired with
+  // itself. Listing [B, A] as well is allowed and probes position bias.
+  "pairs": [
+    [
+      "will-china-invade-taiwan-by-september-30-2026",
+      "will-anthropic-ipo-by-september-15-2026-415",
+    ],
+  ],
+}
+```
+
+Both keys are required. A dataset that runs no comparisons says so with
+`"pairs": []` — inferring that from a missing key would make an authoring slip
+indistinguishable from a deliberate direct-only run. Every pair is resolved
+before the run writes anything: an unknown slug, an ambiguous one, a
+self-comparison or a duplicated pair fails the run immediately rather than
+surfacing later as a reverted transaction or a short run.
+
+Each event looks like:
 
 ```jsonc
 [
@@ -296,7 +411,7 @@ A dataset is a single JSON file under `datasets/`, named by date
 ]
 ```
 
-See [`datasets/19-07-2026.json`](datasets/19-07-2026.json) for a complete example.
+See [`datasets/28-07-26.json`](datasets/28-07-26.json) for a complete example.
 
 ## Benchmark config
 
@@ -304,39 +419,49 @@ A JSON file (see [`configs/benchmark.example.json`](configs/benchmark.example.js
 
 ```jsonc
 {
-  "name": "noisebench-19-07-2026",
+  "name": "noisebench-28-07-26",
   "description": "…",
-  "dataset": "datasets/19-07-2026.json", // optional; --dataset on the CLI wins
+  "dataset": "datasets/28-07-26.json", // optional; --dataset on the CLI wins
   "models": [
     { "slug": "openai/gpt-5.6-luna", "provider": "openai" }, // pin the provider
     "anthropic/claude-opus-4.8", // or a bare slug
   ],
   "promptIterations": 4, // repetitions per model per phrasing
+  "pairwiseIterations": 2, // repetitions per model per phrasing combination
   "concurrency": 6, // max concurrent inference calls per forecaster
 }
 ```
 
+`pairwiseIterations` is a separate dial from `promptIterations` because a pair
+already costs four calls per iteration. It defaults to `2`; a config written
+before the pairwise modality existed picks up that default rather than silently
+running no pairwise tasks. Both modalities share the one `concurrency` budget
+per forecaster.
+
 ## Database schema
 
-One migration ([`migrations/01_init.sql`](migrations/01_init.sql)):
+Three migrations ([`migrations/`](migrations/); `npm run db:setup` applies any
+that are pending, tracked in `schema_migration`):
 
-| Table                                                              | Purpose                                                                                    |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| `llm_model` / `llm_provider`                                       | Interned model slugs and providers (`slug` + display `name`), referenced by id everywhere. |
-| `schema_migration`                                                 | Which migrations have been applied, so a new one reaches an existing database.             |
-| `forecaster`                                                       | One LLM model; links to its wallet and to its `llm_model`.                                 |
-| `feature_key` / `feature_value` / `feature` / `forecaster_feature` | Generic key/value tags on forecasters (model, provider, …).                                |
-| `wallet` / `wallet_predictor_derivation_index`                     | Derived on-chain identities and their BIP-44 indices.                                      |
-| `transaction`                                                      | Interned on-chain tx hashes referenced by forecasts.                                       |
-| `llm_trace`                                                        | One row per inference call: prompts, response, reasoning, tokens, cost, timing, errors.    |
-| `event` / `market`                                                 | Trimmed Polymarket event/market surface.                                                   |
-| `forecast`                                                         | The atomic data point: one row per `{run, forecaster, market, isNegated, iteration}`.      |
-| `benchmark_run`                                                    | Run metadata (config, dataset, status, start/end).                                         |
-| `benchmark_run_model`                                              | Which models a run benchmarks.                                                             |
-| `benchmark_run_market`                                             | Which markets are in scope for a run.                                                      |
-| `event_research`                                                   | The research context a run fed to the model for an event (`{run, event}` → blob).          |
-| `benchmark_predictor_state`                                        | Per-forecaster progress within a run.                                                      |
-| `benchmark_status` / `predictor_status`                            | Seeded lifecycle states for runs and per-forecaster progress.                              |
+| Table                                                              | Purpose                                                                                         |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `llm_model` / `llm_provider`                                       | Interned model slugs and providers (`slug` + display `name`), referenced by id everywhere.      |
+| `schema_migration`                                                 | Which migrations have been applied, so a new one reaches an existing database.                  |
+| `forecaster`                                                       | One LLM model; links to its wallet and to its `llm_model`.                                      |
+| `feature_key` / `feature_value` / `feature` / `forecaster_feature` | Generic key/value tags on forecasters (model, provider, …).                                     |
+| `wallet` / `wallet_predictor_derivation_index`                     | Derived on-chain identities and their BIP-44 indices.                                           |
+| `transaction`                                                      | Interned on-chain tx hashes referenced by forecasts.                                            |
+| `llm_trace`                                                        | One row per inference call: prompts, response, reasoning, tokens, cost, timing, errors.         |
+| `event` / `market`                                                 | Trimmed Polymarket event/market surface.                                                        |
+| `forecast`                                                         | The atomic data point: one row per `{run, forecaster, market, isNegated, iteration}`.           |
+| `pairwise_forecast`                                                | The pairwise data point: one row per `{run, forecaster, ordered pair, combination, iteration}`. |
+| `benchmark_run`                                                    | Run metadata (config, dataset, status, start/end).                                              |
+| `benchmark_run_model`                                              | Which models a run benchmarks.                                                                  |
+| `benchmark_run_market`                                             | Which markets are in scope for a run.                                                           |
+| `benchmark_run_pair`                                               | Which ordered market pairs are in scope for a run.                                              |
+| `event_research`                                                   | The research context a run fed to the model for an event (`{run, event}` → blob).               |
+| `benchmark_predictor_state`                                        | Per-forecaster progress within a run.                                                           |
+| `benchmark_status` / `predictor_status`                            | Seeded lifecycle states for runs and per-forecaster progress.                                   |
 
 Research is deliberately **not** a column on `event`: it comes from the run's
 dataset, so the same event benchmarked from a later dataset carries different
@@ -370,8 +495,11 @@ completed work; tasks that previously failed to parse are retried.
 
 ```
 configs/                 benchmark config files
-datasets/                dated dataset files (DD-MM-YYYY.json)
-migrations/01_init.sql   the schema
+datasets/                dated dataset files (DD-MM-YY.json)
+migrations/
+  01_init.sql            the schema
+  02_provider_slug.sql   provider slug <-> display name
+  03_pairwise.sql        pairwise rank forecasts
 scripts/
   benchmark.ts           main entry point (fresh run / --resume)
   test-inference.ts      single-market inference smoke test

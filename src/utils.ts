@@ -4,9 +4,14 @@ import { ethers } from "ethers";
 import {
   BenchmarkConfig,
   Dataset,
+  DatasetEvent,
+  DatasetMarket,
   ForecastRegistryConfig,
   ModelConfigEntry,
   NormalizedModel,
+  PairwiseChoice,
+  PairwiseCombination,
+  ResolvedPair,
 } from "./types";
 
 // Base mainnet.
@@ -77,6 +82,62 @@ export const parseForecastProbability = (
   return probability;
 };
 
+/**
+ * Extract the ranking choice from a pairwise model response. Per the pairwise
+ * system prompt, the answer ends with `More likely: A` or `More likely: B`. As
+ * with the probability parser we take the LAST occurrence (the final answer,
+ * not the working), tolerate whitespace, an optional `**bold**` and an optional
+ * "Market" before the letter, and return null when there is no usable choice.
+ *
+ * A model that refuses to choose — "they are equally likely" — parses as null
+ * and is never recorded. That is deliberate: the registry has no encoding for a
+ * tie, because a coin-flip judgment is noise rather than data.
+ */
+export const parsePairwiseChoice = (
+  content: string | null | undefined,
+): PairwiseChoice | null => {
+  if (!content) return null;
+  // Match "More likely: A", "**More likely:** Market B", "more likely = a".
+  const regex =
+    /more\s+likely\s*[:=]?\s*\*{0,2}\s*(?:market\s+)?\*{0,2}\s*([AB])\b/gi;
+  let match: RegExpExecArray | null;
+  let last: string | null = null;
+  while ((match = regex.exec(content)) !== null) {
+    last = match[1];
+  }
+  if (last === null) return null;
+  return last.toUpperCase() as PairwiseChoice;
+};
+
+// ---------------------------------------------------------------------------
+// Outcome naming
+// ---------------------------------------------------------------------------
+
+/**
+ * The market outcome a phrasing corresponds to, as recorded on-chain.
+ *
+ * The negated question asks whether the market FAILS to resolve Yes, so a "Yes"
+ * answer to it is the market's "No". Both the direct and the pairwise path map
+ * phrasing to outcome through here, so the two can never drift apart.
+ */
+export const outcomeForPhrasing = (isNegated: boolean): string =>
+  isNegated ? "No" : "Yes";
+
+/**
+ * The combination whose answer must be the exact opposite of this one.
+ *
+ * Flipping both sides of a comparison inverts it for any coherent forecaster:
+ * `P(A) > P(B)` iff `1 - P(A) < 1 - P(B)`. This holds whatever the model
+ * believes, which is what makes it a usable noise probe rather than an
+ * accuracy judgment.
+ */
+export const complementaryCombination = (
+  combination: PairwiseCombination,
+): PairwiseCombination => ({
+  isANegated: !combination.isANegated,
+  isBNegated: !combination.isBNegated,
+});
+
 // ---------------------------------------------------------------------------
 // Config loading + normalization
 // ---------------------------------------------------------------------------
@@ -89,12 +150,113 @@ export const loadJsonFile = <T>(filePath: string): T => {
   return JSON.parse(fs.readFileSync(resolved, "utf8")) as T;
 };
 
+/**
+ * Load a dataset: a JSON object `{ events, pairs }`.
+ *
+ * Both keys are required, `pairs` included. A dataset that runs no comparisons
+ * says so with an empty array — inferring that from a missing key would make an
+ * authoring slip indistinguishable from a deliberate direct-only run, and the
+ * two differ by every pairwise row the run was supposed to produce.
+ */
 export const loadDataset = (filePath: string): Dataset => {
-  const dataset = loadJsonFile<Dataset>(filePath);
-  if (!Array.isArray(dataset)) {
-    throw new Error(`Dataset ${filePath} must be a JSON array of events`);
+  const raw = loadJsonFile<unknown>(filePath);
+
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error(
+      `Dataset ${filePath} must be a JSON object { events, pairs }`,
+    );
   }
-  return dataset;
+
+  const { events, pairs } = raw as Partial<Dataset>;
+  if (!Array.isArray(events)) {
+    throw new Error(`Dataset ${filePath} must have an "events" array`);
+  }
+  if (!Array.isArray(pairs)) {
+    throw new Error(
+      `Dataset ${filePath} must have a "pairs" array (use [] to run no comparisons)`,
+    );
+  }
+  for (const [index, pair] of pairs.entries()) {
+    if (
+      !Array.isArray(pair) ||
+      pair.length !== 2 ||
+      pair.some((slug) => typeof slug !== "string" || slug.length === 0)
+    ) {
+      throw new Error(
+        `Dataset ${filePath}: pairs[${index}] must be a [slugA, slugB] tuple of two non-empty strings`,
+      );
+    }
+  }
+
+  return { events, pairs };
+};
+
+/**
+ * Resolve each `[slugA, slugB]` pair to the markets it names, along with the
+ * events that carry their rules and research.
+ *
+ * Every failure here is a dataset authoring bug that would otherwise surface as
+ * a reverted transaction or a silently short run, so all of them are fatal:
+ *
+ *   - a slug naming no market, or naming more than one (slugs are the only
+ *     handle a pair has, so an ambiguous one has no correct resolution);
+ *   - a market paired with itself, which the contract rejects outright with
+ *     `IdenticalMarkets`;
+ *   - the same pair listed twice, which would collide on the run's unique key
+ *     and quietly produce fewer rows than the run planned for.
+ *
+ * The REVERSED pair is allowed and distinct: the four phrasing combinations
+ * always present the same market first, so listing `[B, A]` as well is the only
+ * way to probe position bias.
+ */
+export const resolvePairs = (dataset: Dataset): ResolvedPair[] => {
+  const bySlug = new Map<
+    string,
+    { event: DatasetEvent; market: DatasetMarket }
+  >();
+  const ambiguous = new Set<string>();
+  for (const event of dataset.events) {
+    for (const market of event.markets) {
+      if (bySlug.has(market.slug)) ambiguous.add(market.slug);
+      bySlug.set(market.slug, { event, market });
+    }
+  }
+
+  const seen = new Set<string>();
+  return dataset.pairs.map(([slugA, slugB], index) => {
+    const where = `pairs[${index}] (${slugA}, ${slugB})`;
+    for (const slug of [slugA, slugB]) {
+      if (!bySlug.has(slug)) {
+        throw new Error(
+          `${where}: no market in this dataset has slug "${slug}"`,
+        );
+      }
+      if (ambiguous.has(slug)) {
+        throw new Error(
+          `${where}: slug "${slug}" is used by more than one market, so the pair is ambiguous`,
+        );
+      }
+    }
+    if (slugA === slugB) {
+      throw new Error(
+        `${where}: a market cannot be compared against itself — the contract reverts with IdenticalMarkets`,
+      );
+    }
+    const key = `${slugA} ${slugB}`;
+    if (seen.has(key)) {
+      throw new Error(`${where}: duplicate pair, already listed earlier`);
+    }
+    seen.add(key);
+
+    const a = bySlug.get(slugA)!;
+    const b = bySlug.get(slugB)!;
+    return {
+      eventA: a.event,
+      marketA: a.market,
+      eventB: b.event,
+      marketB: b.market,
+    };
+  });
 };
 
 export const loadBenchmarkConfig = (filePath: string): BenchmarkConfig => {
@@ -108,6 +270,7 @@ export const loadBenchmarkConfig = (filePath: string): BenchmarkConfig => {
     throw new Error(`Benchmark config ${filePath} must have a "name"`);
   }
   config.promptIterations = config.promptIterations ?? 4;
+  config.pairwiseIterations = config.pairwiseIterations ?? 2;
   return config;
 };
 

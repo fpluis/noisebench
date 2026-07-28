@@ -31,7 +31,49 @@ export interface DatasetEvent {
   research?: string;
 }
 
-export type Dataset = DatasetEvent[];
+// Two market slugs to be ranked against each other. Slugs, not external ids,
+// because they are what a human writing a dataset can actually read.
+export type DatasetPair = [string, string];
+
+export interface Dataset {
+  events: DatasetEvent[];
+  pairs: DatasetPair[];
+}
+
+// A dataset pair with both slugs resolved to the market they name and the event
+// that carries their rules and research context. The two markets may belong to
+// different events — comparing across events is the interesting case.
+export interface ResolvedPair {
+  eventA: DatasetEvent;
+  marketA: DatasetMarket;
+  eventB: DatasetEvent;
+  marketB: DatasetMarket;
+}
+
+/**
+ * Which phrasing each side of a pair was presented in.
+ *
+ * Every pair is asked in all four combinations. Flipping BOTH sides must invert
+ * the answer for any coherent forecaster — if A's "Yes" beats B's "Yes", then
+ * A's "No" must lose to B's "No" — so the four combinations form two
+ * complementary couples, {00, 11} and {10, 01}. The rate at which a model fails
+ * that identity is the pairwise noise metric, exactly as |Yes + No - 1| is the
+ * direct one.
+ */
+export interface PairwiseCombination {
+  isANegated: boolean;
+  isBNegated: boolean;
+}
+
+export const PAIRWISE_COMBINATIONS: readonly PairwiseCombination[] = [
+  { isANegated: false, isBNegated: false },
+  { isANegated: true, isBNegated: false },
+  { isANegated: false, isBNegated: true },
+  { isANegated: true, isBNegated: true },
+];
+
+// Which side of a pair the model judged more likely.
+export type PairwiseChoice = "A" | "B";
 
 // ---------------------------------------------------------------------------
 // Benchmark configuration (configs/*.json)
@@ -51,6 +93,10 @@ export interface BenchmarkConfig {
   models: ModelConfigEntry[];
   // Number of times each prompt is repeated per model per modality. Default 4.
   promptIterations: number;
+  // Repetitions of each of a pair's four phrasing combinations. Separate from
+  // `promptIterations` because a pair already costs 4 calls per iteration, so
+  // the two dials are set independently. Default 2.
+  pairwiseIterations: number;
   // Max concurrent inference calls per forecaster. Default 6.
   concurrency?: number;
 }
@@ -70,8 +116,10 @@ export interface InferenceError {
   message: string;
 }
 
-// Everything captured from a single forecast inference (across its retries).
-export interface InferenceResult {
+// Everything captured from a single inference call (across its retries), minus
+// whatever was parsed out of it. Both forecast modalities produce one of these,
+// and `llm_trace` stores exactly this much.
+export interface InferenceTrace {
   model: string;
   provider?: string;
   systemPrompt: string;
@@ -80,8 +128,6 @@ export interface InferenceResult {
   rawResponse: string | null;
   reasoning: string | null;
   finishReason: string | null;
-  // Probability of a "Yes" resolution, in [0, 1]. Null when unparseable.
-  parsedOdds: number | null;
   // Cost in nano-USD (round(usd * 1e9)); null when the provider returns none.
   cost: number | null;
   tokensIn: number | null;
@@ -92,6 +138,19 @@ export interface InferenceResult {
   attempts: number;
   errors: InferenceError[];
   usage: Record<string, unknown> | null;
+}
+
+// A direct-probability inference.
+export interface InferenceResult extends InferenceTrace {
+  // Probability of a "Yes" resolution, in [0, 1]. Null when unparseable.
+  parsedOdds: number | null;
+}
+
+// A pairwise rank inference: which of the two presented outcomes is likelier.
+// Null when the model gave no usable choice — including when it declared the
+// two equally likely, which the registry deliberately cannot represent.
+export interface PairwiseInferenceResult extends InferenceTrace {
+  choice: PairwiseChoice | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -121,13 +180,49 @@ export interface PendingForecastRecord {
   probability: number;
 }
 
-export interface ForecasterBatch {
+/**
+ * One pairwise judgment queued for on-chain submission. The two sides carry
+ * independent platform ids because the contract allows cross-venue comparisons;
+ * this benchmark only produces Polymarket-vs-Polymarket pairs today.
+ *
+ * `marketAOutcome`/`marketBOutcome` are the phrasing mapped onto the market's
+ * own outcomes: a side asked in its negated phrasing is that market's "No".
+ */
+export interface PendingPairwiseForecastRecord {
+  pairwiseForecastId: number;
   forecasterName: string;
-  records: PendingForecastRecord[];
-  firstRequestTime: Date;
-  inFlight?: boolean;
+  platformIdA: number;
+  marketAId: string;
+  marketAOutcome: string;
+  platformIdB: number;
+  marketBId: string;
+  marketBOutcome: string;
+  isALikelier: boolean;
+}
+
+/**
+ * One kind of queued work for a forecaster's wallet, with the nonce and tx hash
+ * of its in-flight submission.
+ *
+ * Direct and pairwise forecasts need different contract calls, so they cannot
+ * share a transaction — but they DO share a wallet, and therefore a nonce
+ * sequence. They are kept as two queues under one batch (rather than two
+ * independent batches) so that a single `inFlight` guard serializes them: two
+ * concurrent submissions from one wallet would both read the same pending
+ * nonce and one would silently replace the other.
+ */
+export interface BatchQueue<T> {
+  records: T[];
   nonce?: number;
   pendingTxHash?: string;
+}
+
+export interface ForecasterBatch {
+  forecasterName: string;
+  forecasts: BatchQueue<PendingForecastRecord>;
+  pairwise: BatchQueue<PendingPairwiseForecastRecord>;
+  firstRequestTime: Date;
+  inFlight?: boolean;
 }
 
 export interface ForecastRecordResult {

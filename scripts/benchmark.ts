@@ -3,24 +3,38 @@
 //   npm run benchmark -- --config <config.json> --dataset <dataset.json>
 //   npm run benchmark -- --config <config.json> --resume <benchmarkRunId>
 //
-// For every event in the dataset, for every market, for every model, for both
-// the base and negated phrasing, for each of `promptIterations` repetitions, we
-// call the model, persist the trace + forecast, and record the forecast on-chain
-// (unless SKIP_ONCHAIN=true). --resume continues an existing run, skipping tasks
-// whose forecast was already produced successfully.
+// Two modalities run over the same dataset:
+//
+//   * DIRECT — for every event, market, model, both the base and negated
+//     phrasing, and each of `promptIterations` repetitions, ask for a
+//     probability;
+//   * PAIRWISE — for every listed pair of markets, model, all four phrasing
+//     combinations, and each of `pairwiseIterations` repetitions, ask only
+//     which of the two is likelier.
+//
+// Each call persists its trace and its result, and records it on-chain (unless
+// SKIP_ONCHAIN=true). --resume continues an existing run, skipping tasks in
+// either modality whose result was already produced successfully.
 
 import * as dotenv from "dotenv";
 import { ethers } from "ethers";
-import { Database, taskKey } from "../src/db";
-import { generateForecast } from "../src/llm";
-import { fakeGenerateForecast } from "../src/llm-fake";
+import { Database, pairwiseTaskKey, taskKey } from "../src/db";
+import { generateForecast, generatePairwiseForecast } from "../src/llm";
+import {
+  fakeGenerateForecast,
+  fakeGeneratePairwiseForecast,
+} from "../src/llm-fake";
 import { ForecastRegistryClient } from "../src/forecast-registry-client";
 import {
   DatasetEvent,
   DatasetMarket,
   NormalizedModel,
+  PairwiseCombination,
+  PAIRWISE_COMBINATIONS,
   PendingForecastRecord,
+  PendingPairwiseForecastRecord,
   POLYMARKET_PLATFORM_ID,
+  ResolvedPair,
 } from "../src/types";
 import {
   createForecastRegistryConfigFromEnv,
@@ -31,7 +45,9 @@ import {
   loadDataset,
   loadMasterMnemonic,
   normalizeModel,
+  outcomeForPhrasing,
   parseArgs,
+  resolvePairs,
 } from "../src/utils";
 import { logger } from "../src/logger";
 
@@ -52,6 +68,20 @@ interface Task {
   isNegated: boolean;
   iteration: number;
 }
+
+interface PairwiseTask {
+  pair: ResolvedPair;
+  marketAId: number;
+  marketBId: number;
+  combination: PairwiseCombination;
+  iteration: number;
+}
+
+// Both modalities go into ONE queue per forecaster, so `concurrency` remains a
+// cap on that forecaster's in-flight calls rather than becoming two independent
+// caps that together double the load on the provider.
+type AnyTask =
+  ({ kind: "direct" } & Task) | ({ kind: "pairwise" } & PairwiseTask);
 
 // Run `worker` over `items` with at most `concurrency` in flight.
 async function runPool<T>(
@@ -83,6 +113,9 @@ async function main(): Promise<void> {
   const useFakeInference =
     String(process.env.NOISEBENCH_FAKE_INFERENCE).toLowerCase() === "true";
   const inference = useFakeInference ? fakeGenerateForecast : generateForecast;
+  const pairwiseInference = useFakeInference
+    ? fakeGeneratePairwiseForecast
+    : generatePairwiseForecast;
   if (useFakeInference) {
     console.log(
       "⚠️  NOISEBENCH_FAKE_INFERENCE=true — forecasts are SYNTHETIC, not model output.",
@@ -108,8 +141,13 @@ async function main(): Promise<void> {
     );
   }
   const dataset = loadDataset(datasetPath);
+  // Resolved before anything is written: an unresolvable slug or a self-pair is
+  // a dataset bug, and finding it after a run has started means discovering it
+  // as a reverted transaction instead of as an error message.
+  const pairs = resolvePairs(dataset);
   const models = config.models.map(normalizeModel);
   const promptIterations = config.promptIterations ?? 4;
+  const pairwiseIterations = config.pairwiseIterations ?? 2;
   const concurrency = config.concurrency ?? 6;
 
   const db = new Database(databaseUrl);
@@ -130,6 +168,15 @@ async function main(): Promise<void> {
       const forecastIds = records.map((r) => r.forecastId);
       await db.stampForecastsWithTransaction(forecastIds, txHash, blockNumber);
     });
+    registry.setPairwiseBatchSubmittedHandler(
+      async (records, txHash, blockNumber) => {
+        await db.stampPairwiseForecastsWithTransaction(
+          records.map((r) => r.pairwiseForecastId),
+          txHash,
+          blockNumber,
+        );
+      },
+    );
   } else {
     console.log("SKIP_ONCHAIN=true — forecasts will be saved to the DB only.");
   }
@@ -250,7 +297,7 @@ async function main(): Promise<void> {
     eventId: number;
     marketId: number;
   }> = [];
-  for (const event of dataset) {
+  for (const event of dataset.events) {
     const eventId = await db.upsertEvent(event);
     eventRows.push({ event, eventId });
     for (const market of event.markets) {
@@ -259,15 +306,29 @@ async function main(): Promise<void> {
     }
   }
 
+  // Pairs reference markets that were just upserted, so their ids come from the
+  // same map rather than from a second round of queries.
+  const marketIdBySlug = new Map(
+    marketRows.map((row) => [row.market.slug, row.marketId]),
+  );
+  const pairRows = pairs.map((pair) => ({
+    pair,
+    marketAId: marketIdBySlug.get(pair.marketA.slug)!,
+    marketBId: marketIdBySlug.get(pair.marketB.slug)!,
+  }));
+
   let benchmarkRunId: number;
   let completed: Set<string>;
+  let completedPairwise: Set<string>;
   if (resumeRunId !== null) {
     const run = await db.getBenchmarkRun(resumeRunId);
     if (!run) throw new Error(`Benchmark run ${resumeRunId} not found`);
     benchmarkRunId = run.id;
     completed = await db.getCompletedTaskKeys(benchmarkRunId);
+    completedPairwise = await db.getCompletedPairwiseTaskKeys(benchmarkRunId);
     console.log(
-      `Resuming benchmark run ${benchmarkRunId} — ${completed.size} tasks already complete`,
+      `Resuming benchmark run ${benchmarkRunId} — ${completed.size} direct and ` +
+        `${completedPairwise.size} pairwise task(s) already complete`,
     );
   } else {
     benchmarkRunId = await db.createBenchmarkRun({
@@ -276,12 +337,21 @@ async function main(): Promise<void> {
       datasetName: datasetPath,
       models: models.map((m) => m.slug),
       promptIterations,
+      pairwiseIterations,
       config,
     });
     for (const row of marketRows) {
       await db.addBenchmarkRunMarket(benchmarkRunId, row.marketId);
     }
+    for (const row of pairRows) {
+      await db.addBenchmarkRunPair(
+        benchmarkRunId,
+        row.marketAId,
+        row.marketBId,
+      );
+    }
     completed = new Set<string>();
+    completedPairwise = new Set<string>();
     console.log(`Created benchmark run ${benchmarkRunId}`);
   }
 
@@ -300,7 +370,11 @@ async function main(): Promise<void> {
   // ---------------------------------------------------------------------------
   // 5. Build each forecaster's task list and run them in parallel.
   // ---------------------------------------------------------------------------
-  const totalTasksPerForecaster = marketRows.length * 2 * promptIterations;
+  const directTasksPerForecaster = marketRows.length * 2 * promptIterations;
+  const pairwiseTasksPerForecaster =
+    pairRows.length * PAIRWISE_COMBINATIONS.length * pairwiseIterations;
+  const totalTasksPerForecaster =
+    directTasksPerForecaster + pairwiseTasksPerForecaster;
   for (const f of forecasters) {
     await db.upsertBenchmarkPredictorState(
       benchmarkRunId,
@@ -310,11 +384,13 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `Running ${forecasters.length} forecaster(s) × ${marketRows.length} market(s) × 2 modalities × ${promptIterations} iteration(s)`,
+    `Running ${forecasters.length} forecaster(s):\n` +
+      `  direct   ${marketRows.length} market(s) × 2 phrasings × ${promptIterations} iteration(s) = ${directTasksPerForecaster} task(s) each\n` +
+      `  pairwise ${pairRows.length} pair(s) × ${PAIRWISE_COMBINATIONS.length} combinations × ${pairwiseIterations} iteration(s) = ${pairwiseTasksPerForecaster} task(s) each`,
   );
 
   const runForecaster = async (f: ForecasterCtx): Promise<void> => {
-    const tasks: Task[] = [];
+    const tasks: AnyTask[] = [];
     for (const row of marketRows) {
       for (const isNegated of [false, true]) {
         for (let iteration = 0; iteration < promptIterations; iteration++) {
@@ -326,11 +402,35 @@ async function main(): Promise<void> {
           );
           if (completed.has(key)) continue;
           tasks.push({
+            kind: "direct",
             event: row.event,
             market: row.market,
             eventId: row.eventId,
             marketId: row.marketId,
             isNegated,
+            iteration,
+          });
+        }
+      }
+    }
+    for (const row of pairRows) {
+      for (const combination of PAIRWISE_COMBINATIONS) {
+        for (let iteration = 0; iteration < pairwiseIterations; iteration++) {
+          const key = pairwiseTaskKey(
+            f.forecasterId,
+            row.marketAId,
+            row.marketBId,
+            combination.isANegated,
+            combination.isBNegated,
+            iteration,
+          );
+          if (completedPairwise.has(key)) continue;
+          tasks.push({
+            kind: "pairwise",
+            pair: row.pair,
+            marketAId: row.marketAId,
+            marketBId: row.marketBId,
+            combination,
             iteration,
           });
         }
@@ -345,58 +445,12 @@ async function main(): Promise<void> {
     console.log(`[${f.name}] ${tasks.length} task(s) to run`);
 
     let done = 0;
-    await runPool(tasks, concurrency, async (task) => {
-      const identifier = `m${task.marketId}-${task.isNegated ? "neg" : "base"}-i${task.iteration}`;
-      const result = await inference({
-        apiKey,
-        model: f.model.slug,
-        providerOrder: f.model.providerOrder,
-        event: task.event,
-        market: task.market,
-        isNegated: task.isNegated,
-        identifier,
-      });
-
-      const traceId = await db.logLLMTrace({
-        forecasterId: f.forecasterId,
-        identifier,
-        result,
-      });
-
-      const outcome = task.isNegated ? "No" : "Yes";
-      const forecastId = await db.upsertForecast({
-        benchmarkRunId,
-        forecasterId: f.forecasterId,
-        eventId: task.eventId,
-        marketId: task.marketId,
-        llmTraceId: traceId,
-        isNegated: task.isNegated,
-        promptIteration: task.iteration,
-        parsedOdds: result.parsedOdds,
-        outcome,
-      });
-
-      const failed = result.parsedOdds === null;
-      await db.bumpPredictorProgress(
-        benchmarkRunId,
-        f.forecasterId,
-        1,
-        failed ? 1 : 0,
-      );
-
-      // Only record a usable forecast on-chain.
-      if (registry && !failed) {
-        const record: PendingForecastRecord = {
-          forecastId,
-          forecasterName: f.name,
-          platformId: POLYMARKET_PLATFORM_ID,
-          marketId: task.market.externalId,
-          outcome,
-          probability: result.parsedOdds!,
-        };
-        await registry.queueForecasts([record]);
+    await runPool(tasks, concurrency, async (item) => {
+      if (item.kind === "pairwise") {
+        await runPairwiseTask(f, item);
+      } else {
+        await runDirectTask(f, item);
       }
-
       done++;
       if (done % 25 === 0 || done === tasks.length) {
         console.log(`[${f.name}] ${done}/${tasks.length} done`);
@@ -408,6 +462,125 @@ async function main(): Promise<void> {
     if (registry) await registry.flush(f.name);
     await db.markPredictorCompleted(benchmarkRunId, f.forecasterId);
     console.log(`[${f.name}] complete`);
+  };
+
+  const runDirectTask = async (f: ForecasterCtx, task: Task): Promise<void> => {
+    const identifier = `m${task.marketId}-${task.isNegated ? "neg" : "base"}-i${task.iteration}`;
+    const result = await inference({
+      apiKey,
+      model: f.model.slug,
+      providerOrder: f.model.providerOrder,
+      event: task.event,
+      market: task.market,
+      isNegated: task.isNegated,
+      identifier,
+    });
+
+    const traceId = await db.logLLMTrace({
+      forecasterId: f.forecasterId,
+      identifier,
+      result,
+    });
+
+    const outcome = outcomeForPhrasing(task.isNegated);
+    const forecastId = await db.upsertForecast({
+      benchmarkRunId,
+      forecasterId: f.forecasterId,
+      eventId: task.eventId,
+      marketId: task.marketId,
+      llmTraceId: traceId,
+      isNegated: task.isNegated,
+      promptIteration: task.iteration,
+      parsedOdds: result.parsedOdds,
+      outcome,
+    });
+
+    const failed = result.parsedOdds === null;
+    await db.bumpPredictorProgress(
+      benchmarkRunId,
+      f.forecasterId,
+      1,
+      failed ? 1 : 0,
+    );
+
+    // Only record a usable forecast on-chain.
+    if (registry && !failed) {
+      const record: PendingForecastRecord = {
+        forecastId,
+        forecasterName: f.name,
+        platformId: POLYMARKET_PLATFORM_ID,
+        marketId: task.market.externalId,
+        outcome,
+        probability: result.parsedOdds!,
+      };
+      await registry.queueForecasts([record]);
+    }
+  };
+
+  const runPairwiseTask = async (
+    f: ForecasterCtx,
+    task: PairwiseTask,
+  ): Promise<void> => {
+    const { combination, pair } = task;
+    const combo = `${combination.isANegated ? "neg" : "base"}-${combination.isBNegated ? "neg" : "base"}`;
+    const identifier = `p${task.marketAId}v${task.marketBId}-${combo}-i${task.iteration}`;
+
+    const result = await pairwiseInference({
+      apiKey,
+      model: f.model.slug,
+      providerOrder: f.model.providerOrder,
+      pair,
+      combination,
+      identifier,
+    });
+
+    const traceId = await db.logLLMTrace({
+      forecasterId: f.forecasterId,
+      identifier,
+      result,
+    });
+
+    // A side asked in its negated phrasing is asking about that market's "No",
+    // exactly as on the direct path.
+    const outcomeA = outcomeForPhrasing(combination.isANegated);
+    const outcomeB = outcomeForPhrasing(combination.isBNegated);
+    const isALikelier = result.choice === null ? null : result.choice === "A";
+
+    const pairwiseForecastId = await db.upsertPairwiseForecast({
+      benchmarkRunId,
+      forecasterId: f.forecasterId,
+      marketAId: task.marketAId,
+      marketBId: task.marketBId,
+      llmTraceId: traceId,
+      isANegated: combination.isANegated,
+      isBNegated: combination.isBNegated,
+      promptIteration: task.iteration,
+      isALikelier,
+      outcomeA,
+      outcomeB,
+    });
+
+    await db.bumpPredictorProgress(
+      benchmarkRunId,
+      f.forecasterId,
+      1,
+      isALikelier === null ? 1 : 0,
+    );
+
+    if (registry && isALikelier !== null) {
+      const record: PendingPairwiseForecastRecord = {
+        pairwiseForecastId,
+        forecasterName: f.name,
+        platformIdA: POLYMARKET_PLATFORM_ID,
+        marketAId: pair.marketA.externalId,
+        marketAOutcome: outcomeA,
+        platformIdB: POLYMARKET_PLATFORM_ID,
+        marketBId: pair.marketB.externalId,
+        marketBOutcome: outcomeB,
+        isALikelier,
+      };
+      await registry.queuePairwiseForecasts([record]);
+    }
   };
 
   try {

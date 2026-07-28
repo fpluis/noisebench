@@ -1,0 +1,86 @@
+{
+  "events": [
+    {
+      "externalId": "149565",
+      "isNegRisk": true,
+      "startDate": "2026-01-07T21:27:45.212Z",
+      "endDate": "2026-09-20T00:00:00.000Z",
+      "createdAt": "2026-05-25T12:07:31.733Z",
+      "title": "Russia Parliamentary Election Winner",
+      "description": "Parliamentary elections are to be scheduled to be held in Russia in September 2026.\n\nThis market will resolve according to the political party that wins the greatest number of seats in the next Russian State Duma election.\n\nIf the results are not known definitively by September 30, 2027, 11:59 PM ET, this market will resolve to \"Other\".\n\nIn the event of a tie between multiple parties for the most seats won, this market will resolve in favor of the party that received a greater number of valid votes. In the event that results in a tie, this market will resolve in favor of the party whose listed abbreviation appears first in alphabetical order.\n\nThis market's resolution will be based solely on the number of seats won by the named party in the State Duma of the Federal Assembly of the Russian Federation.\n\nThis market will resolve based on the results of this election as indicated by a consensus of credible reporting. If there is ambiguity, this market will resolve based solely on the official results reported by Russian government sources such as the Central Election Commission of the Russian Federation.\n\nNote: If a listed party contests the election as part of a jointly listed coalition with one or more parties not listed in this market, the market corresponding to the listed party will represent the coalition and will count all seats won by the coalition collectively. If two or more listed parties contest the election as a jointly listed coalition, with or without additional parties not listed in this market, the market corresponding to the party within that coalition that won the most seats in the previous election will represent the coalition and will count all seats won by the coalition collectively. If such a coalition dissolves, each market will again represent its respective party individually.\n",
+      "slug": "russia-parliamentary-election-winner",
+      "tags": [
+        "world",
+        "politics",
+        "global-elections",
+        "world-elections",
+        "elections",
+        "putin",
+        "russia",
+        "main-election",
+        "russia-election"
+      ],
+      "markets": [
+        {
+          "externalId": "1129894",
+          "startDate": "2026-01-07T21:27:45.212Z",
+          "endDate": "2026-09-30T00:00:00.000Z",
+          "preparedAt": "2026-07-27T17:42:42.463Z",
+          "slug": "will-united-russia-er-win-the-most-seats-in-the-next-russian-parliamentary-election",
+          "question": "Will United Russia (ER) win the most seats in the next Russian parliamentary election?",
+          "description": "Parliamentary elections are to be scheduled to be held in Russia in September 2026.\n\nThis market will resolve according to the political party that wins the greatest number of seats in the next Russian State Duma election.\n\nIf the results are not known definitively by September 30, 2027, 11:59 PM ET, this market will resolve to \"Other\".\n\nIn the event of a tie between multiple parties for the most seats won, this market will resolve in favor of the party that received a greater number of valid votes. In the event that results in a tie, this market will resolve in favor of the party whose listed abbreviation appears first in alphabetical order.\n\nThis market's resolution will be based solely on the number of seats won by the named party in the State Duma of the Federal Assembly of the Russian Federation.\n\nThis market will resolve based on the results of this election as indicated by a consensus of credible reporting. If there is ambiguity, this market will resolve based solely on the official results reported by Russian government sources such as the Central Election Commission of the Russian Federation.\n\nNote: If a listed party contests the election as part of a jointly listed coalition with one or more parties not listed in this market, the market corresponding to the listed party will represent the coalition and will count all seats won by the coalition collectively. If two or more listed parties contest the election as a jointly listed coalition, with or without additional parties not listed in this market, the market corresponding to the party within that coalition that won the most seats in the previous election will represent the coalition and will count all seats won by the coalition collectively. If such a coalition dissolves, each market will again represent its respective party individually.",
+          "negatedQuestion": "Will United Russia (ER) fail to win the most seats in the next Russian parliamentary election?",
+          "midpoint": 0.964,
+          "spread": 0.008,
+          "yesLiquidity": 64050.63596,
+          "noLiquidity": 425.90847000000014,
+          "orderbookSnapshotAt": "2026-07-27T17:41:34.989Z"
+        }
+      ],
+      "research": "# Deep Research Report\n\n## Resolution Mechanics\n\nThe market resolves to 'Yes' if United Russia (ER) wins the most seats in the September 2026 State Duma election, and 'No' otherwise. Resolution is based solely on the official seat count reported by the Central Election Commission (CEC) of the Russian Federation. If final results are not determined by 11:59 PM ET on September 30, 2027, the market resolves to 'Other'. The Duma has 450 total seats (225 proportional party-list + 225 single-member districts); a governing majority requires 226 seats. As of July 27, 2026, the election process is in the candidate registration phase following the confirmation of 11 party lists; no outcome data exists as the election is scheduled for September 18–20, 2026.\n\n## Source History & Current Reading\n\nThe 2021 election baseline saw United Russia win 324 seats (initial allocation), 72% of the chamber, with CPRF at 57, A Just Russia – For Truth at 27, LDPR at 21, and New People at 13; two minor parties and five independents took the remaining 8 seats. As of July 2026, the CEC has formally finished registration for the five parliamentary parties: United Russia (390 federal list candidates), CPRF (329), New People (297), A Just Russia (260), and LDPR (246). In total, 1,522 candidates are registered on federal lists competing for 225 proportional seats, with 1,682 candidates competing for 225 single-member district seats.\n\n## Recent Developments (dated)\n\n- **23 July 2026**: CEC completes the registration of federal lists for all five parliamentary parties, confirming total candidacy of 1,522 individuals for proportional seats.\n- **21 July 2026**: CEC formally registers United Russia's federal list of 390 candidates, confirming their standalone participation status.\n- **18 July 2026**: CEC chair Ella Pamfilova announces the conclusion of the 'certification' (zaverenie) stage for party lists from all 11 political parties; registration begins thereafter.\n- **14 July 2026**: Anti-war politician Boris Nadezhdin is named a 'foreign agent' and detained amid his attempt to launch a campaign for a State Duma seat, signaling continued suppression of non-systemic actors.\n- **17 June 2026**: CEC adopts Resolution No. 9/89-9, formally scheduling the election across three days (18–20 September 2026) and including the annexed territories of DPR, LPR, Zaporizhzhia, and Kherson.\n\n## Key Factors\n\n### 1. Institutional Control and Regulatory Barriers _(raises)_\n\nThe electoral framework, characterized by a mixed-member system with distinct lists and registration requirements, continues to favor the incumbent party. The CEC-managed registration process has successfully confined the active political field for the 2026 election to 11 verified parties, effectively screening out or repressing non-systemic, non-parliamentary opposition. By limiting ballot access and maintaining established administrative procedures, the regime has ensured that no consolidated alternative can challenge United Russia's plurality of seats, preserving the structural advantage the party held in 2021.\n\n### 2. Systemic Opposition Fragmentation _(raises)_\n\nThe systemic opposition parties—CPRF, LDPR, New People, and A Just Russia—operate within a managed-competition model that prevents them from forming a unified coalition against United Russia. Polling from mid-July 2026 shows these parties consistently occupy a fragmented 9% to 12% support band, mirroring their standing in the previous election cycle. This multi-party division prevents the translation of any localized protest sentiment into a concentrated seat-winning campaign, ensuring that despite declining aggregate support, United Russia faces no singular competitor capable of capturing a majority or a large plural share of the 225 proportional seats.\n\n### 3. Public Approval and Socio-economic Drag _(lowers)_\n\nRecent VCIOM and FOM polling data from July 2026 indicate a decline in approval for regime institutions, including a 15 percentage-point drop in Vladimir Putin's 'works well' rating since early 2026 and a tightening of United Russia's support band to the low-30s. While this socio-economic dissatisfaction currently manifests as indecision (11-12% 'don't know') rather than movement toward open opposition, it creates a headwind for the ruling party. Although it is insufficient to overturn their lead, the trend suggests a softer landing for the party compared to the 2021 results, potentially narrowing their seat count in the 450-member Duma.\n\n## Base Rates & Reference Class\n\nIn every State Duma election since 2011, United Russia has secured the most seats, consistently achieving a numerical majority (e.g., 343 in 2016, 324 in 2021). The largest opposition parties have never collectively or individually reached the seat count required to pose a credible risk to United Russia's plurality status due to the mixed-system design.\n\n## Bottom Line\n\nUnited Russia’s position as the leading parliamentary party is reinforced by an institutional system designed to filter out challengers and fragment the systemic opposition. The primary uncertainty lies not in the outcome of 'who wins the most seats', but the scale of the margin by which they do so; the current data points to a potential erosion of their 2021 supermajority status due to socio-economic pressure, but this does not currently deviate from the trajectory of their maintaining the largest share of the 450 seats.\n"
+    },
+    {
+      "externalId": "677008",
+      "isNegRisk": true,
+      "startDate": "2026-07-07T14:58:37.996Z",
+      "endDate": "2027-06-30T23:59:00.000Z",
+      "createdAt": "2026-07-07T15:51:45.584Z",
+      "title": "Clacton by-election Winner",
+      "description": "A by-election for the United Kingdom parliamentary constituency of Clacton is expected to be held soon following the announced resignation of incumbent Nigel Farage.\n\nThis market will resolve according to the candidate who wins the Clacton parliamentary by-election.\n\nIf the election results are not known definitively by June 30, 2027, 11:59 PM ET, this market will resolve to \"Other\".\n\nThe resolution source for this market will be a consensus of credible reporting. In case of ambiguity, this market will resolve solely based on official election results as published by Tendring District Council (https://www.tendringdc.gov.uk/) and the UK Parliament (https://www.parliament.uk/).",
+      "slug": "clacton-by-election-winner-20260707143521303",
+      "tags": [
+        "politics",
+        "global-elections",
+        "elections",
+        "uk",
+        "united-kingdom",
+        "main-election",
+        "clacton"
+      ],
+      "markets": [
+        {
+          "externalId": "2832140",
+          "startDate": "2026-07-07T15:12:07.305Z",
+          "endDate": "2027-06-30T23:59:00.000Z",
+          "preparedAt": "2026-07-27T17:43:45.023Z",
+          "slug": "will-nigel-farage-win-the-clacton-by-election-20260707144027825",
+          "question": "Will Nigel Farage win the Clacton by-election?",
+          "description": "A by-election for the United Kingdom parliamentary constituency of Clacton is expected to be held soon following the announced resignation of incumbent Nigel Farage.\n\nThis market will resolve according to the candidate who wins the Clacton parliamentary by-election.\n\nIf the election results are not known definitively by June 30, 2027, 11:59 PM ET, this market will resolve to \"Other\".\n\nThe resolution source for this market will be a consensus of credible reporting. In case of ambiguity, this market will resolve solely based on official election results as published by Tendring District Council (https://www.tendringdc.gov.uk/) and the UK Parliament (https://www.parliament.uk/).",
+          "negatedQuestion": "Will Nigel Farage fail to win the Clacton by-election?",
+          "midpoint": 0.9585,
+          "spread": 0.001,
+          "yesLiquidity": 79437.62624,
+          "noLiquidity": 4410.3672499999975,
+          "orderbookSnapshotAt": "2026-07-27T17:41:49.424Z"
+        }
+      ],
+      "research": "# Deep Research Report\n\n## Resolution Mechanics\n\nThe market resolves based on the official determination of the candidate who wins the Clacton parliamentary by-election. The resolution source is the consensus of credible reporting, with definitive results from the Tendring District Council (https://www.tendringdc.gov.uk/). The metric is the candidate with the most votes in the election scheduled for August 13, 2026. If results are not known by the June 30, 2027 deadline, the market resolves to 'Other'.\n\n## Source History & Current Reading\n\nAs of July 27, 2026, the by-election is confirmed for August 13, 2026. Nominations closed on July 17, 2026. The Statement of Persons Nominated lists 34 candidates, including Nigel Farage (Reform UK). Official turnout for the 2024 general election in this seat was 58.7%, with Nigel Farage securing 46.2% of the vote (21,225 votes) and a majority of 18.3 percentage points.\n\n## Recent Developments (dated)\n\n- **July 27, 2026**: Tendring District Council confirms a record 34 candidates are standing in the by-election.\n- **July 17, 2026**: Nominations for the by-election official close at 4pm.\n- **July 13, 2026**: Notice of election officially issued.\n- **July 9, 2026**: House of Commons approves the moving of the writ for the Clacton by-election.\n- **July 7, 2026**: Nigel Farage resigns as Member of Parliament for Clacton and announces his intent to stand in the resulting by-election.\n\n## Key Factors\n\n### 1. Absence of Mainstream Opposition _(raises)_\n\nThe Conservative, Labour, Liberal Democrat, and Green parties have all explicitly opted not to field candidates, labeling the poll a 'fake by-election' or 'vanity project'. This clears the ballot of organized political competition that would typically challenge the Reform UK incumbent, removing the traditional structural hurdles for a candidate of Farage's orientation.\n\n### 2. Fragmentation of Challenger Field _(raises)_\n\nThe ballot features a record-breaking 34 candidates, the vast majority being independents or minor party representatives, including satirical candidates like Count Binface and the Monster Raving Loony Party. This fragmentation prevents the consolidation of protest votes against Farage, as minor parties are unlikely to coordinate on a single alternative representative.\n\n### 3. Established Electoral Baseline _(raises)_\n\nNigel Farage won the seat decisively in the July 2024 General Election with 46.2% of the vote share and an 18.3-point margin under current constituency boundaries. This local electoral performance serves as a powerful baseline, indicating strong regional support that historically aligns with his policy platform.\n\n## Base Rates & Reference Class\n\nSince 2010, Clacton has hosted six parliamentary contests (general elections and by-elections), with a right-populist party winning in three of them (50%). Historically, when a right-populist candidate won this seat, they secured an average vote share of approximately 50.1% (ranging from 44.4% to 59.7%).\n\n## Bottom Line\n\nThe outcome is driven by the unique absence of mainstream party opposition in a constituency that has previously demonstrated strong support for the incumbent's party. While there is broad national negative sentiment regarding the nature of the by-election, the lack of a credible, consolidated local challenger makes an institutional upset statistically unlikely. The primary uncertainty involves the degree to which voter turnout might be depressed or whether a single, non-mainstream candidate can capture enough protest momentum to erode the incumbent's margin.\n"
+    }
+  ],
+  "pairs": [
+    [
+      "will-united-russia-er-win-the-most-seats-in-the-next-russian-parliamentary-election",
+      "will-nigel-farage-win-the-clacton-by-election-20260707144027825"
+    ]
+  ]
+}

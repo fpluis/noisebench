@@ -2,7 +2,7 @@
 // a full production cycle.
 //
 //   npx tsx scripts/probe-models.ts --config configs/benchmark.production.json \
-//       --dataset datasets/26-07-2026.json [--markets 100] [--iterations 4]
+//       --dataset datasets/28-07-26.json [--markets 100] [--iterations 4]
 //
 // Costs roughly $1 for 20 models and catches the failure modes that are
 // invisible until they have already been paid for 800 times per model:
@@ -169,7 +169,7 @@ async function main(): Promise<void> {
   if (!datasetPath) throw new Error("Missing dataset: pass --dataset <path>");
 
   const dataset = loadDataset(datasetPath);
-  const event = dataset[0];
+  const event = dataset.events[0];
   const market = event?.markets?.[0];
   if (!event || !market) throw new Error("Dataset has no usable event/market");
 
@@ -206,7 +206,7 @@ async function main(): Promise<void> {
   );
   const marketCount = args.markets
     ? parseInt(args.markets as string, 10)
-    : dataset.reduce((sum, e) => sum + e.markets.length, 0);
+    : dataset.events.reduce((sum, e) => sum + e.markets.length, 0);
 
   console.log(
     `Probing ${models.length} model(s) x 2 phrasings on "${market.question}"\n`,
