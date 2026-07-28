@@ -177,13 +177,30 @@ ETH, a wallet is topped up from the funder before the run.
 
 ### Smoke-test the inference path
 
-Runs one market through one model and prints everything captured — no DB, no
-chain, only `OPENROUTER_API_KEY`:
+No DB, no chain, nothing stored — only `OPENROUTER_API_KEY`.
+
+`--all` runs a whole dataset through **one** model: every market in both
+phrasings, every pair in all four phrasing combinations. It then reports both
+coherence metrics for that model alone, which is the cheapest way to judge a
+model before committing to a full run:
 
 ```bash
 npm run test-inference -- \
   --dataset datasets/28-07-26.json \
   --config configs/benchmark.example.json \
+  --model <openrouter-slug> --all [--verbose]
+```
+
+That costs `markets x 2 + pairs x 4` calls — it prints the plan before spending
+anything, and exits non-zero if any call produced no usable answer. `--verbose`
+adds a one-line excerpt of each raw response.
+
+Without `--all` it makes a single call and prints everything captured — prompts,
+reasoning, raw response, tokens, cost, timing:
+
+```bash
+npm run test-inference -- \
+  --dataset <path> --config <path> \
   [--event <event-slug>] [--model <openrouter-slug>] [--negated]
 
 # the pairwise prompt, for one pair in one phrasing combination
