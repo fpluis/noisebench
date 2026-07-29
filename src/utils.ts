@@ -45,6 +45,10 @@ const DEFAULT_RPC_URLS: Record<number, string[]> = {
 const MASTER_MNEMONIC_PATH = path.join(process.cwd(), ".master");
 const DEFAULT_FUNDER_KEY_PATH = path.join(process.cwd(), ".funder.txt");
 
+// How long to wait for a funding transfer to confirm before rotating endpoint.
+// Matches the registry client's own confirmation window.
+const FUND_CONFIRM_TIMEOUT_MS = 90000;
+
 export const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -259,6 +263,261 @@ export const resolvePairs = (dataset: Dataset): ResolvedPair[] => {
   });
 };
 
+// How much of a dataset to actually run. Both dials are caps: unset means "all".
+export interface DatasetSliceOptions {
+  maxMarkets?: number;
+  maxPairs?: number;
+}
+
+/**
+ * Take a deterministic sub-dataset, so a run can be rehearsed at a fraction of
+ * its size and then widened without redoing the rehearsal.
+ *
+ * Slicing the REAL dataset file is what makes that widening work. Markets are
+ * upserted on `(external_id, platform_id)` and resume keys off the resulting
+ * market id, so a slice of the same file produces byte-identical ids to the
+ * full run — every row the slice wrote is a row the full run would have
+ * written, and `--resume` skips exactly those. A separately authored small
+ * dataset gives no such guarantee: one edited external id silently turns a
+ * resumed run into a partly duplicated one.
+ *
+ * Pairs are selected first and their markets are mandatory, because a pair
+ * whose markets were dropped is unresolvable — `--max-markets` only decides how
+ * many *further* markets come along.
+ */
+export const sliceDataset = (
+  dataset: Dataset,
+  { maxMarkets, maxPairs }: DatasetSliceOptions,
+): Dataset => {
+  if (maxMarkets === undefined && maxPairs === undefined) return dataset;
+
+  const pairs =
+    maxPairs === undefined
+      ? dataset.pairs
+      : dataset.pairs.slice(0, Math.max(0, maxPairs));
+
+  // Dataset order is the order markets are upserted, and therefore the order
+  // their ids are assigned in. Preserve it everywhere.
+  const ordered: DatasetMarket[] = [];
+  for (const event of dataset.events) ordered.push(...event.markets);
+
+  const required = new Set<string>();
+  for (const [slugA, slugB] of pairs) {
+    required.add(slugA);
+    required.add(slugB);
+  }
+
+  const limit =
+    maxMarkets === undefined ? ordered.length : Math.max(0, maxMarkets);
+  const keep = new Set<string>();
+  for (const market of ordered) {
+    if (required.has(market.slug)) keep.add(market.slug);
+  }
+  if (keep.size > limit) {
+    throw new Error(
+      `--max-markets ${limit} is too small: the first ${pairs.length} pair(s) reference ` +
+        `${keep.size} distinct market(s), and dropping one would leave a pair unresolvable. ` +
+        `Raise --max-markets to ${keep.size} or lower --max-pairs.`,
+    );
+  }
+  for (const market of ordered) {
+    if (keep.size >= limit) break;
+    keep.add(market.slug);
+  }
+
+  const events = dataset.events
+    .map((event) => ({
+      ...event,
+      markets: event.markets.filter((market) => keep.has(market.slug)),
+    }))
+    .filter((event) => event.markets.length > 0);
+
+  return { events, pairs };
+};
+
+export interface DatasetValidation {
+  events: number;
+  markets: number;
+  pairs: number;
+  warnings: string[];
+}
+
+/**
+ * Check a dataset for the authoring mistakes that produce WRONG data rather
+ * than missing data, and report every one of them at once.
+ *
+ * The load-bearing check is `negatedQuestion`. When it is absent the inference
+ * path silently falls back to the base question, but the row is still written
+ * with `is_negated = true` and `outcome = 'No'` — and published on-chain as
+ * that market's "No" at the probability the model gave for its "Yes". Nothing
+ * downstream can tell: every structural check passes, and it surfaces only as
+ * a coherence mean near 1.0, which is indistinguishable from a global
+ * inversion bug. It has to be caught here, before anything is written.
+ *
+ * Errors accumulate rather than throwing at the first one: a dataset is
+ * authored in one pass, so it should be fixable in one pass.
+ */
+export const validateDataset = (
+  dataset: Dataset,
+  label = "dataset",
+): DatasetValidation => {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  const eventExternalIds = new Map<string, number>();
+  const eventSlugs = new Map<string, number>();
+  const marketExternalIds = new Map<string, string>();
+  const marketSlugs = new Map<string, string>();
+  let marketCount = 0;
+
+  const nonEmpty = (value: unknown): value is string =>
+    typeof value === "string" && value.trim().length > 0;
+
+  const checkDate = (value: unknown, where: string, field: string): void => {
+    if (value === undefined || value === null) return;
+    if (typeof value !== "string" || Number.isNaN(Date.parse(value))) {
+      errors.push(
+        `${where}: ${field} is not a parseable date (${String(value)})`,
+      );
+    }
+  };
+
+  if (dataset.events.length === 0) {
+    errors.push("dataset has no events");
+  }
+
+  dataset.events.forEach((event, eventIndex) => {
+    const where = `events[${eventIndex}]${event.slug ? ` (${event.slug})` : ""}`;
+
+    if (!nonEmpty(event.externalId))
+      errors.push(`${where}: externalId is required`);
+    if (!nonEmpty(event.slug)) errors.push(`${where}: slug is required`);
+    if (!nonEmpty(event.title)) errors.push(`${where}: title is required`);
+    checkDate(event.startDate, where, "startDate");
+    checkDate(event.endDate, where, "endDate");
+
+    // The upsert conflict key. A duplicate silently merges two events into one
+    // row, taking the second one's markets with it.
+    if (nonEmpty(event.externalId)) {
+      const seen = eventExternalIds.get(event.externalId);
+      if (seen !== undefined) {
+        errors.push(
+          `${where}: externalId "${event.externalId}" already used by events[${seen}] — ` +
+            `the two would upsert into a single row`,
+        );
+      } else {
+        eventExternalIds.set(event.externalId, eventIndex);
+      }
+    }
+    if (nonEmpty(event.slug)) {
+      const seen = eventSlugs.get(event.slug);
+      if (seen !== undefined) {
+        warnings.push(
+          `${where}: slug "${event.slug}" is also used by events[${seen}]`,
+        );
+      } else {
+        eventSlugs.set(event.slug, eventIndex);
+      }
+    }
+
+    if (!nonEmpty(event.research)) {
+      warnings.push(
+        `${where}: no research blob — the model gets no context for this event`,
+      );
+    }
+    if (!Array.isArray(event.markets) || event.markets.length === 0) {
+      errors.push(`${where}: must list at least one market`);
+      return;
+    }
+
+    event.markets.forEach((market, marketIndex) => {
+      marketCount++;
+      const at = `${where}.markets[${marketIndex}]${market.slug ? ` (${market.slug})` : ""}`;
+
+      if (!nonEmpty(market.externalId))
+        errors.push(`${at}: externalId is required`);
+      if (!nonEmpty(market.slug)) errors.push(`${at}: slug is required`);
+      if (!nonEmpty(market.question))
+        errors.push(`${at}: question is required`);
+      checkDate(market.startDate, at, "startDate");
+      checkDate(market.endDate, at, "endDate");
+
+      // The whole negated modality depends on this one field.
+      if (!nonEmpty(market.negatedQuestion)) {
+        errors.push(
+          `${at}: negatedQuestion is required — without it the negated phrasing asks the ` +
+            `BASE question but is still recorded, and published on-chain, as this market's "No"`,
+        );
+      } else if (
+        nonEmpty(market.question) &&
+        market.negatedQuestion.trim() === market.question.trim()
+      ) {
+        errors.push(
+          `${at}: negatedQuestion is identical to question — the negated phrasing would ` +
+            `record a "Yes" answer as this market's "No"`,
+        );
+      }
+
+      if (nonEmpty(market.externalId)) {
+        const seen = marketExternalIds.get(market.externalId);
+        if (seen !== undefined) {
+          errors.push(
+            `${at}: externalId "${market.externalId}" already used at ${seen} — ` +
+              `the two would upsert into a single row`,
+          );
+        } else {
+          marketExternalIds.set(market.externalId, at);
+        }
+      }
+      // Pairs are resolved by slug, so an ambiguous one has no correct answer.
+      if (nonEmpty(market.slug)) {
+        const seen = marketSlugs.get(market.slug);
+        if (seen !== undefined) {
+          errors.push(
+            `${at}: slug "${market.slug}" already used at ${seen} — pairs resolve by slug, ` +
+              `so this one is ambiguous`,
+          );
+        } else {
+          marketSlugs.set(market.slug, at);
+        }
+      }
+
+      if (
+        market.description !== undefined &&
+        market.description.trim().length < 20
+      ) {
+        warnings.push(
+          `${at}: description is very short — resolution rules may be missing`,
+        );
+      }
+    });
+  });
+
+  // Only worth attempting once slugs are known to be sane; otherwise every pair
+  // reports a failure caused by a market error already listed above.
+  if (errors.length === 0) {
+    try {
+      resolvePairs(dataset);
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(
+      `${label} failed validation with ${errors.length} error(s):\n` +
+        errors.map((e) => `  - ${e}`).join("\n"),
+    );
+  }
+
+  return {
+    events: dataset.events.length,
+    markets: marketCount,
+    pairs: dataset.pairs.length,
+    warnings,
+  };
+};
+
 export const loadBenchmarkConfig = (filePath: string): BenchmarkConfig => {
   const config = loadJsonFile<BenchmarkConfig>(filePath);
   if (!config.models || config.models.length === 0) {
@@ -434,6 +693,7 @@ export async function fundWallet(
   rpcUrls: string | string[],
   chainId: number,
   maxRetries = 5,
+  confirmTimeoutMs = FUND_CONFIRM_TIMEOUT_MS,
 ): Promise<string> {
   const urls = (Array.isArray(rpcUrls) ? rpcUrls : [rpcUrls]).filter(Boolean);
   if (urls.length === 0) throw new Error("fundWallet requires an RPC URL");
@@ -441,6 +701,12 @@ export async function fundWallet(
   const privateKey = readFundingPrivateKey();
   const amountWei = ethers.parseEther(amountInEth);
 
+  // Funding runs in the startup loop, before any forecast is made, so an
+  // unbounded wait here stalls the entire benchmark with no error to look at.
+  // The hash is kept across attempts so a confirmation timeout resumes waiting
+  // on the SAME transaction instead of sending a second one — otherwise a slow
+  // block turns into two funding transfers out of the funder wallet.
+  let pendingHash: string | undefined;
   let lastError: unknown;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
@@ -452,19 +718,36 @@ export async function fundWallet(
         chainId,
         { staticNetwork: true, batchMaxCount: 1 },
       );
-      const fundingWallet = new ethers.Wallet(privateKey, provider);
-      const tx = await fundingWallet.sendTransaction({
-        to: targetAddress,
-        value: amountWei,
-      });
-      const receipt = await tx.wait();
-      if (!receipt) throw new Error("Transaction receipt not found");
-      return tx.hash;
+      if (!pendingHash) {
+        const fundingWallet = new ethers.Wallet(privateKey, provider);
+        const tx = await fundingWallet.sendTransaction({
+          to: targetAddress,
+          value: amountWei,
+        });
+        pendingHash = tx.hash;
+      }
+      const receipt = await provider.waitForTransaction(
+        pendingHash,
+        1,
+        confirmTimeoutMs,
+      );
+      if (!receipt) {
+        // Not mined inside the window. Rotate and keep waiting on the hash.
+        throw new Error(
+          `funding tx ${pendingHash} not confirmed within ${confirmTimeoutMs}ms`,
+        );
+      }
+      if (receipt.status === 0) {
+        throw new Error(`Funding transaction ${pendingHash} reverted`);
+      }
+      return pendingHash;
     } catch (error) {
       lastError = error;
       const isTransient = String(error)
         .toLowerCase()
-        .match(/429|too many requests|rate limit|timeout|econnreset|502|503/);
+        .match(
+          /429|too many requests|rate limit|timeout|not confirmed|econnreset|502|503/,
+        );
       if (!isTransient) {
         throw new Error(`Failed to fund wallet ${targetAddress}: ${error}`);
       }

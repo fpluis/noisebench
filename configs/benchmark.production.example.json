@@ -1,0 +1,19 @@
+{
+  "name": "noisebench-production",
+  "description": "Base mainnet production cycle. Copy to benchmark.production.json and replace `models` with the real list. Dials are sized for a slice-then-widen run finishing inside a day; see the notes below.",
+  "dataset": "datasets/REPLACE-ME.json",
+  "models": [
+    {
+      "slug": "REPLACE-ME/model-a",
+      "provider": "REPLACE-ME"
+    },
+    "REPLACE-ME/model-b"
+  ],
+  "promptIterations": 4,
+  "pairwiseIterations": 2,
+  "concurrency": 12,
+  "modelConcurrency": 4,
+  "taskMaxRetries": 2,
+  "taskFailureAbortRate": 0.2,
+  "retryPasses": 1
+}

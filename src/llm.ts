@@ -32,6 +32,26 @@ const DEFAULT_VERBOSITY: "low" | "medium" | "high" = "medium";
 const DEFAULT_MAX_TOKENS = 8000;
 const DEFAULT_MAX_RETRIES = 3; // 3 retries => up to 4 attempts total.
 
+/**
+ * Hard ceiling on a single inference call.
+ *
+ * Without one, a connection that stalls after the headers blocks its worker for
+ * undici's 300s default — and because workers are a fixed pool, one stalled
+ * call permanently removes a slot from that model's concurrency. Capping models
+ * makes it worse, not better: a stuck call then holds a share of the whole run's
+ * throughput. A timeout is a retryable attempt like any other.
+ */
+const DEFAULT_REQUEST_TIMEOUT_MS = 180000;
+
+const requestTimeoutMs = (): number => {
+  const raw = process.env.OPENROUTER_TIMEOUT_MS;
+  if (!raw) return DEFAULT_REQUEST_TIMEOUT_MS;
+  const parsed = parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0
+    ? parsed
+    : DEFAULT_REQUEST_TIMEOUT_MS;
+};
+
 // The system prompt carries the generic task framing, output format and rules.
 export const SYSTEM_PROMPT = `You are a forecasting expert with the goal of providing the most accurate forecast for a single market.
 
@@ -177,6 +197,16 @@ export interface GenerateForecastOptions {
 
 const normalizeError = (error: unknown): InferenceError => {
   const e = error as any;
+  // A request timeout rejects with a DOMException whose legacy numeric `code`
+  // (23) says nothing useful. Its name does, and "this attempt timed out" is a
+  // distinction worth keeping in the trace: it is the difference between a
+  // provider refusing and a provider never answering.
+  if (e?.name === "TimeoutError" || e?.name === "AbortError") {
+    return {
+      code: e.name,
+      message: String(e.message ?? e.name).slice(0, 2000),
+    };
+  }
   const code = e?.error?.code ?? e?.code ?? e?.status ?? "unknown";
   const message =
     e?.error?.message ??
@@ -286,6 +316,7 @@ async function runInference<T>(
   const maxAttempts = maxRetries + 1;
   const initialDelay = 1000;
   const maxDelay = 30000;
+  const timeoutMs = requestTimeoutMs();
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     result.attempts = attempt + 1;
@@ -295,6 +326,7 @@ async function runInference<T>(
         method: "POST",
         headers,
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs),
       });
 
       if (!res.ok) {

@@ -32,6 +32,7 @@ import {
   loadMasterMnemonic,
   parseArgs,
 } from "../src/utils";
+import { findDeploymentBlock, queryLogsChunked } from "../src/chain-logs";
 
 dotenv.config();
 
@@ -128,6 +129,18 @@ async function main(): Promise<void> {
       provider,
     );
 
+    // Bounded log range, shared by every wallet's scan — an unbounded
+    // queryFilter is rejected by public endpoints with -32062, and the refusal
+    // reads exactly like "this forecast never landed on-chain", which would
+    // make this script re-submit forecasts that are already published.
+    const fromBlock = await findDeploymentBlock(
+      provider,
+      config.contractAddress,
+      config.chainId,
+    );
+    const toBlock = await provider.getBlockNumber();
+    console.log(`Scanning blocks ${fromBlock}..${toBlock} for existing logs.`);
+
     const registry = new ForecastRegistryClient(config);
     await registry.initialize();
     registry.setBatchSubmittedHandler(async (records, txHash, blockNumber) => {
@@ -135,6 +148,7 @@ async function main(): Promise<void> {
         records.map((r) => r.forecastId),
         txHash,
         blockNumber,
+        config.chainId,
       );
     });
     registry.setPairwiseBatchSubmittedHandler(
@@ -143,9 +157,45 @@ async function main(): Promise<void> {
           records.map((r) => r.pairwiseForecastId),
           txHash,
           blockNumber,
+          config.chainId,
         );
       },
     );
+
+    // A row recovered from the chain, with the transaction that actually
+    // carried it. Keeping the log's own hash is what makes re-stamping
+    // possible: the linkage was lost, but the chain never stopped knowing it.
+    interface Recovered {
+      id: number;
+      hash: string;
+      block: number | undefined;
+    }
+    type LogRef = { hash: string; block: number | undefined };
+
+    // Stamp recovered rows against the transactions the chain says carried
+    // them, grouped so each distinct transaction is written once.
+    const stampRecovered = async (
+      recovered: Recovered[],
+      stamp: (
+        ids: number[],
+        hash: string,
+        block: number | undefined,
+        chainId: number,
+      ) => Promise<void>,
+    ): Promise<void> => {
+      const byTx = new Map<
+        string,
+        { block: number | undefined; ids: number[] }
+      >();
+      for (const r of recovered) {
+        const entry = byTx.get(r.hash) ?? { block: r.block, ids: [] };
+        entry.ids.push(r.id);
+        byTx.set(r.hash, entry);
+      }
+      for (const [hash, entry] of byTx) {
+        await stamp(entry.ids, hash, entry.block, config.chainId);
+      }
+    };
 
     let alreadyOnChain = 0;
     let toSubmit = 0;
@@ -163,14 +213,22 @@ async function main(): Promise<void> {
       registry.addForecaster(forecaster, wallet.privateKey);
 
       // What this wallet has actually published, as a multiset.
-      const logs = await readContract.queryFilter(
+      const logs = await queryLogsChunked(
+        readContract,
         readContract.filters.ForecastRecorded(identity.address),
+        fromBlock,
+        toBlock,
       );
-      const onChain = new Map<string, number>();
+      // Keyed to a LIST of the transactions that carried each value, not a
+      // count, so a row matched here can be stamped with the exact transaction
+      // the chain recorded it in.
+      const onChain = new Map<string, LogRef[]>();
       for (const log of logs) {
         const a = (log as ethers.EventLog).args;
         const key = `${a.marketId}|${a.outcome}|${Number(a.odds)}`;
-        onChain.set(key, (onChain.get(key) ?? 0) + 1);
+        const list = onChain.get(key) ?? [];
+        list.push({ hash: log.transactionHash, block: log.blockNumber });
+        onChain.set(key, list);
       }
       // Rows already correctly stamped consume matching log entries, so we only
       // credit surplus ones to the unstamped rows below.
@@ -186,20 +244,22 @@ async function main(): Promise<void> {
       );
       for (const row of stamped.rows) {
         const key = `${row.market_id}|${row.outcome}|${row.odds}`;
-        const n = onChain.get(key) ?? 0;
-        if (n > 0) onChain.set(key, n - 1);
+        onChain.get(key)?.shift();
       }
 
       const resubmit: PendingForecastRecord[] = [];
-      const recovered: number[] = [];
+      const recovered: Recovered[] = [];
       for (const row of rows) {
         const odds = Math.round(row.parsed_odds * 10000);
         const key = `${row.market_id}|${row.outcome}|${odds}`;
-        const surplus = onChain.get(key) ?? 0;
-        if (surplus > 0) {
+        const surplus = onChain.get(key)?.shift();
+        if (surplus) {
           // It landed after all — only the DB linkage was lost.
-          onChain.set(key, surplus - 1);
-          recovered.push(row.id);
+          recovered.push({
+            id: row.id,
+            hash: surplus.hash,
+            block: surplus.block,
+          });
         } else {
           resubmit.push({
             forecastId: row.id,
@@ -215,14 +275,19 @@ async function main(): Promise<void> {
       // The same recovery pass for pairwise judgments. The key is the whole
       // judgment — both sides, both outcomes, and which one won — because that
       // is all the event carries; iterations are indistinguishable on-chain.
-      const pwLogs = await readContract.queryFilter(
+      const pwLogs = await queryLogsChunked(
+        readContract,
         readContract.filters.PairwiseForecastRecorded(identity.address),
+        fromBlock,
+        toBlock,
       );
-      const pwOnChain = new Map<string, number>();
+      const pwOnChain = new Map<string, LogRef[]>();
       for (const log of pwLogs) {
         const a = (log as ethers.EventLog).args;
         const key = `${a.marketAId}|${a.marketAOutcome}|${a.marketBId}|${a.marketBOutcome}|${a.isALikelier}`;
-        pwOnChain.set(key, (pwOnChain.get(key) ?? 0) + 1);
+        const list = pwOnChain.get(key) ?? [];
+        list.push({ hash: log.transactionHash, block: log.blockNumber });
+        pwOnChain.set(key, list);
       }
       const pwStamped = await pool.query(
         `SELECT ma.external_id AS market_a, p.outcome_a,
@@ -237,18 +302,20 @@ async function main(): Promise<void> {
       );
       for (const row of pwStamped.rows) {
         const key = `${row.market_a}|${row.outcome_a}|${row.market_b}|${row.outcome_b}|${row.is_a_likelier}`;
-        const n = pwOnChain.get(key) ?? 0;
-        if (n > 0) pwOnChain.set(key, n - 1);
+        pwOnChain.get(key)?.shift();
       }
 
       const pwResubmit: PendingPairwiseForecastRecord[] = [];
-      const pwRecovered: number[] = [];
+      const pwRecovered: Recovered[] = [];
       for (const row of pairwiseRows) {
         const key = `${row.market_a}|${row.outcome_a}|${row.market_b}|${row.outcome_b}|${row.is_a_likelier}`;
-        const surplus = pwOnChain.get(key) ?? 0;
-        if (surplus > 0) {
-          pwOnChain.set(key, surplus - 1);
-          pwRecovered.push(row.id);
+        const surplus = pwOnChain.get(key)?.shift();
+        if (surplus) {
+          pwRecovered.push({
+            id: row.id,
+            hash: surplus.hash,
+            block: surplus.block,
+          });
         } else {
           pwResubmit.push({
             pairwiseForecastId: row.id,
@@ -278,11 +345,17 @@ async function main(): Promise<void> {
       if (apply) {
         const recoveredTotal = recovered.length + pwRecovered.length;
         if (recoveredTotal > 0) {
-          // The original tx hash is unknown; record the linkage against the
-          // block the log was found in rather than leaving it dangling.
-          console.log(
-            `    re-stamping ${recoveredTotal} recovered record(s) is not automatic — ` +
-              `they are on-chain but their tx hash was never captured. Leaving as-is.`,
+          // Re-stamp against the transaction the LOG names. The linkage was
+          // lost when the DB write failed after the batch confirmed, but the
+          // hash was never lost — it is in the event we just read. Without this
+          // the rows stay unstamped forever and the silent-drop detector keeps
+          // reporting a run that is, in fact, fully published.
+          console.log(`    re-stamping ${recoveredTotal} recovered record(s)`);
+          await stampRecovered(recovered, (ids, hash, block, chainId) =>
+            db.stampForecastsWithTransaction(ids, hash, block, chainId),
+          );
+          await stampRecovered(pwRecovered, (ids, hash, block, chainId) =>
+            db.stampPairwiseForecastsWithTransaction(ids, hash, block, chainId),
           );
         }
         // Queue both kinds before flushing: one flush then submits them as two

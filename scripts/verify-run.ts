@@ -14,9 +14,27 @@ import * as dotenv from "dotenv";
 import { ethers } from "ethers";
 import { Pool } from "pg";
 import { FORECAST_REGISTRY_ABI } from "../src/forecast-registry-abi";
-import { createForecastRegistryConfigFromEnv, parseArgs } from "../src/utils";
+import {
+  BASE_CHAIN_ID,
+  createForecastRegistryConfigFromEnv,
+  parseArgs,
+} from "../src/utils";
+import { findDeploymentBlock, queryLogsChunked } from "../src/chain-logs";
 
 dotenv.config();
+
+/**
+ * The chain this run's rows are expected to name.
+ *
+ * Deliberately NOT `resolveChainId()`: that refuses mainnet without
+ * ALLOW_MAINNET=true, which is the right guard for something about to spend
+ * money and the wrong one for something only reading back what was already
+ * spent. Verification must never be harder to run than the run it verifies.
+ */
+const resolveExpectedChainId = (): number => {
+  const parsed = parseInt(process.env.CHAIN_ID || "", 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : BASE_CHAIN_ID;
+};
 
 type Status = "PASS" | "FAIL" | "WARN" | "SKIP";
 
@@ -429,6 +447,131 @@ async function main(): Promise<void> {
     });
 
     // -----------------------------------------------------------------------
+    // H. Chain provenance — are these rows from the chain we think they are?
+    //    Dev, testnet and mainnet runs share one database, and a transaction
+    //    hash says nothing about which chain it landed on. Without this, a
+    //    rehearsal and a published production run are indistinguishable at the
+    //    row level, and E1-E4 would happily reconcile a run against whichever
+    //    chain the environment happens to point at right now.
+    // -----------------------------------------------------------------------
+    const expectedChainId = skipOnchain ? null : resolveExpectedChainId();
+    const chainRes = await pool.query(
+      `SELECT t.chain_id, COUNT(*)::int AS n
+       FROM public.transaction t
+       WHERE t.id IN (
+         SELECT transaction_id FROM public.forecast
+           WHERE benchmark_run_id = $1 AND transaction_id IS NOT NULL
+         UNION
+         SELECT transaction_id FROM public.pairwise_forecast
+           WHERE benchmark_run_id = $1 AND transaction_id IS NOT NULL
+       )
+       GROUP BY t.chain_id`,
+      [runId],
+    );
+    const chainRows = chainRes.rows;
+    const foreign = chainRows.filter(
+      (r) => r.chain_id !== null && r.chain_id !== expectedChainId,
+    );
+    // Rows written before chain_id existed carry NULL. That is unknown
+    // provenance, not proven-wrong provenance, so it warns rather than fails.
+    const unknownChain = chainRows
+      .filter((r) => r.chain_id === null)
+      .reduce((n, r) => n + r.n, 0);
+    record({
+      id: "H",
+      title: "Chain provenance",
+      status: skipOnchain
+        ? "SKIP"
+        : chainRows.length === 0
+          ? "WARN"
+          : foreign.length > 0
+            ? "FAIL"
+            : unknownChain > 0
+              ? "WARN"
+              : "PASS",
+      detail: skipOnchain
+        ? "SKIP_ONCHAIN=true — nothing was expected on-chain"
+        : chainRows.length === 0
+          ? "this run has no on-chain transactions yet"
+          : `expected chainId ${expectedChainId}; ` +
+            chainRows
+              .map((r) => `${r.n} tx on ${r.chain_id ?? "unrecorded"}`)
+              .join(", ") +
+            (foreign.length > 0
+              ? " — this run's rows were published to MORE THAN ONE chain"
+              : unknownChain > 0
+                ? " (unrecorded = written before chain_id was tracked)"
+                : ""),
+      samples: foreign.map(
+        (r) =>
+          `${r.n} transaction(s) on chainId ${r.chain_id}, expected ${expectedChainId}`,
+      ),
+    });
+
+    // -----------------------------------------------------------------------
+    // I. Clamp rate — how much of this run is a parser artifact?
+    //    An out-of-range percentage is clamped into (0, 1) rather than
+    //    rejected, so "Probability: 150%" is stored as a maximally confident
+    //    0.9999 and counts as a successful forecast. That is a deliberate,
+    //    tested decision; this makes its blast radius a number instead of an
+    //    assumption.
+    // -----------------------------------------------------------------------
+    const clampRes = await pool.query(
+      `SELECT COUNT(*) FILTER (WHERE parsed_odds = 0.0001)::int AS low,
+              COUNT(*) FILTER (WHERE parsed_odds = 0.9999)::int AS high,
+              COUNT(parsed_odds)::int AS parsed
+       FROM public.forecast WHERE benchmark_run_id = $1`,
+      [runId],
+    );
+    const clamp = clampRes.rows[0];
+    const clamped = clamp.low + clamp.high;
+    const clampRate = clamp.parsed > 0 ? clamped / clamp.parsed : 0;
+    record({
+      id: "I",
+      title: "Parser clamp rate",
+      status: clamp.parsed === 0 ? "SKIP" : clampRate > 0.05 ? "WARN" : "PASS",
+      detail:
+        clamp.parsed === 0
+          ? "no parsed forecasts to inspect"
+          : `${clamped}/${clamp.parsed} forecast(s) sit exactly on a clamp bound ` +
+            `(${(clampRate * 100).toFixed(2)}%) — ${clamp.low} at 0.0001, ${clamp.high} at 0.9999` +
+            (clampRate > 0.05
+              ? ". A large share means models are emitting out-of-range or malformed " +
+                "percentages that are being recorded as confident forecasts."
+              : ""),
+    });
+
+    // -----------------------------------------------------------------------
+    // J. Orphan traces — inference that was paid for and then lost.
+    //    A resume that re-runs a task re-points the forecast at its new trace,
+    //    legitimately orphaning the old one, so this is informational. A count
+    //    far above the number of retried tasks means traces are being written
+    //    without the forecast that should accompany them.
+    // -----------------------------------------------------------------------
+    const orphanTraceRes = await pool.query(
+      `SELECT COUNT(*)::int AS n
+       FROM public.llm_trace t
+       WHERE t.forecaster_id IN (
+               SELECT DISTINCT forecaster_id FROM public.forecast WHERE benchmark_run_id = $1)
+         AND NOT EXISTS (SELECT 1 FROM public.forecast f WHERE f.llm_trace_id = t.id)
+         AND NOT EXISTS (SELECT 1 FROM public.pairwise_forecast p WHERE p.llm_trace_id = t.id)`,
+      [runId],
+    );
+    const orphanTraces = orphanTraceRes.rows[0].n;
+    record({
+      id: "J",
+      title: "Orphan traces",
+      status: orphanTraces === 0 ? "PASS" : "WARN",
+      detail:
+        orphanTraces === 0
+          ? "every trace for this run's forecasters is attached to a forecast"
+          : `${orphanTraces} trace(s) with no forecast pointing at them. Expected after a ` +
+            `resume (a retried task re-points its forecast and orphans the old trace); ` +
+            `a count far above the number of retried tasks means traces are being written ` +
+            `without their forecast. Note this counts across ALL runs for these forecasters.`,
+    });
+
+    // -----------------------------------------------------------------------
     // E. Chain <-> DB bijection.
     // -----------------------------------------------------------------------
     if (!checkOnchain) {
@@ -469,6 +612,46 @@ async function verifyOnchain(pool: Pool, runId: number): Promise<void> {
     FORECAST_REGISTRY_ABI as unknown as ethers.InterfaceAbi,
     provider,
   );
+
+  // Resolved once and shared by every wallet's scan. An unbounded queryFilter
+  // asks a public endpoint to walk all of Base from genesis, which it refuses
+  // with -32062 "Block range is too large" — and the refusal surfaces as an
+  // opaque error that reads like "this wallet declared nothing".
+  const fromBlock = await findDeploymentBlock(
+    provider,
+    config.contractAddress,
+    config.chainId,
+  );
+  const toBlock = await provider.getBlockNumber();
+  console.log(
+    `  scanning blocks ${fromBlock}..${toBlock} (${toBlock - fromBlock} blocks)`,
+  );
+
+  // Scanned ONCE for every wallet, then filtered in memory. A scan per wallet
+  // per event type is 3 x (number of forecasters) passes over the same range —
+  // for 20 forecasters that is 60 scans and >12,000 requests against endpoints
+  // that rate-limit, which makes the verifier itself a source of flakiness.
+  const [allForecastLogs, allPairwiseLogs, allAttrLogs] = await Promise.all([
+    queryLogsChunked(contract, contract.filters.ForecastRecorded(), fromBlock, toBlock),
+    queryLogsChunked(contract, contract.filters.PairwiseForecastRecorded(), fromBlock, toBlock),
+    queryLogsChunked(contract, contract.filters.AttributeSet(), fromBlock, toBlock),
+  ]);
+  console.log(
+    `  on-chain: ${allForecastLogs.length} forecast, ${allPairwiseLogs.length} pairwise, ` +
+      `${allAttrLogs.length} attribute event(s)\n`,
+  );
+
+  const bySubmitter = (
+    logs: (ethers.Log | ethers.EventLog)[],
+    field: "submitter" | "who",
+    address: string,
+  ): ethers.EventLog[] => {
+    const target = address.toLowerCase();
+    return logs.filter((log) => {
+      const args = (log as ethers.EventLog).args;
+      return args && String(args[field]).toLowerCase() === target;
+    }) as ethers.EventLog[];
+  };
 
   const walletRes = await pool.query(
     `SELECT DISTINCT fc.name, w.address, m.name AS model
@@ -524,9 +707,7 @@ async function verifyOnchain(pool: Pool, runId: number): Promise<void> {
     }
     comparedTotal += dbRes.rows.length;
 
-    const logs = await contract.queryFilter(
-      contract.filters.ForecastRecorded(wallet.address),
-    );
+    const logs = bySubmitter(allForecastLogs, "submitter", wallet.address);
     onChainTotal += logs.length;
 
     const chainCounts = new Map<string, number>();
@@ -586,9 +767,7 @@ async function verifyOnchain(pool: Pool, runId: number): Promise<void> {
     }
     pairwiseComparedTotal += pwDbRes.rows.length;
 
-    const pwLogs = await contract.queryFilter(
-      contract.filters.PairwiseForecastRecorded(wallet.address),
-    );
+    const pwLogs = bySubmitter(allPairwiseLogs, "submitter", wallet.address);
     pairwiseOnChainTotal += pwLogs.length;
 
     const pwChainCounts = new Map<string, number>();
@@ -611,9 +790,7 @@ async function verifyOnchain(pool: Pool, runId: number): Promise<void> {
 
     // The wallet must have declared its model on-chain, or the published log is
     // anonymous — nobody can tell which model produced these forecasts.
-    const attrLogs = await contract.queryFilter(
-      contract.filters.AttributeSet(wallet.address),
-    );
+    const attrLogs = bySubmitter(allAttrLogs, "who", wallet.address);
     const declared = attrLogs.some(
       (log) => (log as ethers.EventLog).args.value === wallet.model,
     );

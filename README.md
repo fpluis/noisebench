@@ -230,6 +230,71 @@ npm run benchmark -- --config configs/benchmark.example.json --resume <benchmark
 Set options in `.env` rather than as command-line prefixes: `VAR=value cmd` is
 bash-only, and does nothing on PowerShell.
 
+### Slice first, then widen
+
+A production cycle is expensive and, once published, permanent — so start it
+small and grow it in place rather than committing to the whole thing up front:
+
+```bash
+# 1. rehearse the entire pipeline on 2 markets and 1 pair, across every model
+npm run benchmark -- --config configs/benchmark.production.json \
+  --dataset datasets/<real>.json \
+  --max-markets 2 --max-pairs 1 --prompt-iterations 1 --pairwise-iterations 1
+npx tsx scripts/verify-run.ts --run <R> --onchain    # every check must be green
+
+# 2. widen THE SAME RUN to everything, keeping what the slice produced
+npm run benchmark -- --config configs/benchmark.production.json \
+  --dataset datasets/<real>.json --resume <R>
+npx tsx scripts/verify-run.ts --run <R> --onchain
+```
+
+The second invocation does **not** redo the first. Markets are upserted on their
+external id and resume keys off the resulting market id, so slicing the _same
+dataset file_ yields identical ids and the completed-task sets skip exactly the
+work already paid for. `test:e2e` asserts this directly: it slices, widens, and
+fails if a single completed row was rewritten.
+
+Slice the real dataset with the flags rather than hand-authoring a smaller file.
+A separate file gives no guarantee that its ids match, and one edited external id
+silently turns the widened run into a partly duplicated one.
+
+`--max-pairs` is applied first and the markets it names are mandatory, so
+`--max-markets 2 --max-pairs 1` yields exactly the two markets of the first pair.
+Asking for fewer markets than the selected pairs need is an error, not a silently
+dropped pair.
+
+Scope and reliability flags, all overriding the config file:
+
+| Flag                      | Effect                                         |
+| ------------------------- | ---------------------------------------------- |
+| `--max-markets N`         | Cap markets (pairs' markets are kept first)    |
+| `--max-pairs N`           | Cap pairs, taken from the top of the list      |
+| `--prompt-iterations N`   | Override `promptIterations`                    |
+| `--pairwise-iterations N` | Override `pairwiseIterations`                  |
+| `--model-concurrency N`   | Max models running at once (default: all)      |
+| `--retry-passes N`        | Extra sweeps over unfinished tasks (default 1) |
+
+**Sizing `--model-concurrency`.** In-flight inference is
+`modelConcurrency × concurrency`, so capping models without raising `concurrency`
+cuts throughput proportionally — 20 models × 6 is 120 in flight, 4 × 6 is 24. For
+a run that must finish in a day, raise `concurrency` to compensate, and raise
+`PG_POOL_MAX` with it: it must exceed `modelConcurrency × concurrency`, or tasks
+start failing on the pool's 10s acquisition timeout rather than on anything real.
+The benchmark warns at startup when the numbers do not add up.
+
+### When something fails
+
+A task that throws after inference is retried (`taskMaxRetries`, default 2) if it
+looks transient, then logged and left for a later pass. A model failing more than
+`taskFailureAbortRate` (default 20%) of its tasks is abandoned so it cannot burn
+the budget; its rows so far are kept and `--resume` picks it up once the cause is
+fixed. A database _integrity_ violation is different: it means a row contradicting
+its own schema constraints reached the insert, so it stops the run immediately
+rather than being retried across every model.
+
+The run exits non-zero if any model was abandoned or any batch never reached the
+chain, and prints what to do about each.
+
 On startup the benchmark: initializes a forecaster per model, derives its wallet,
 funds it if it is below `THRESHOLD_BALANCE`, then declares its model on-chain if
 the chain does not already show that claim, upserts the
@@ -446,6 +511,10 @@ A JSON file (see [`configs/benchmark.example.json`](configs/benchmark.example.js
   "promptIterations": 4, // repetitions per model per phrasing
   "pairwiseIterations": 2, // repetitions per model per phrasing combination
   "concurrency": 6, // max concurrent inference calls per forecaster
+  "modelConcurrency": 4, // max models running at once (default: all)
+  "taskMaxRetries": 2, // retries for a task that threw after inference
+  "taskFailureAbortRate": 0.2, // give up on a model failing more than this share
+  "retryPasses": 1, // extra sweeps over unfinished tasks before ending
 }
 ```
 
@@ -455,9 +524,18 @@ before the pairwise modality existed picks up that default rather than silently
 running no pairwise tasks. Both modalities share the one `concurrency` budget
 per forecaster.
 
+`modelConcurrency` bounds how many models run at once; unset means all of them,
+which is the historical behaviour. See
+[Slice first, then widen](#slice-first-then-widen) for how it interacts with
+`concurrency` and `PG_POOL_MAX` — the three have to be set together.
+
+[`configs/benchmark.production.example.json`](configs/benchmark.production.example.json)
+is a starting point for a real cycle: copy it to `benchmark.production.json` and
+replace the model list and dataset.
+
 ## Database schema
 
-Three migrations ([`migrations/`](migrations/); `npm run db:setup` applies any
+Four migrations ([`migrations/`](migrations/); `npm run db:setup` applies any
 that are pending, tracked in `schema_migration`):
 
 | Table                                                              | Purpose                                                                                         |
@@ -483,6 +561,26 @@ that are pending, tracked in `schema_migration`):
 Research is deliberately **not** a column on `event`: it comes from the run's
 dataset, so the same event benchmarked from a later dataset carries different
 (fresher) context. It lives on `event_research`, keyed by `{benchmark_run, event}`.
+
+### Integrity constraints
+
+Migration `04_integrity.sql` makes the corruptions that matter most
+unrepresentable rather than merely detectable:
+
+- **Negation/outcome consistency** on `forecast` and `pairwise_forecast`. A
+  negated phrasing IS that market's "No", and the row now cannot say otherwise.
+  Previously an inverted branch anywhere upstream would publish every forecast on
+  the wrong side of every market while passing every structural check — visible
+  only as a coherence metric near 1.0, long after the money was spent.
+- **`llm_trace_id IS NOT NULL`**, safe now that the trace and the forecast are
+  written in one transaction. A forecast with no trace is a number nobody can
+  account for.
+- **`transaction.chain_id`**, because dev and mainnet rows share one database and
+  a tx hash alone says nothing about which chain it landed on.
+
+Checks are added `NOT VALID` and validated separately, so the migration cannot be
+blocked by legacy rows: new writes are governed either way, and a row that
+violates one produces a warning naming the constraint and the query to re-run.
 
 ### The provider catalog
 

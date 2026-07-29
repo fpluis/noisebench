@@ -1,4 +1,4 @@
-import { Pool } from "pg";
+import { Pool, PoolClient } from "pg";
 import {
   DatasetEvent,
   DatasetMarket,
@@ -42,6 +42,40 @@ export const pairwiseTaskKey = (
 ): string =>
   `${forecasterId}:${marketAId}:${marketBId}:` +
   `${isANegated ? 1 : 0}${isBNegated ? 1 : 0}:${iteration}`;
+
+// Shared by the standalone upserts and the transactional trace+forecast writes,
+// so the two paths can never drift into writing different columns.
+//
+// The conflict clause deliberately leaves `transaction_id` and `published_at`
+// alone: a row that already went on-chain keeps pointing at the transaction
+// that recorded it, whatever a later resume does to the rest of the row.
+const FORECAST_UPSERT_SQL = `
+  INSERT INTO public.forecast
+    (benchmark_run_id, forecaster_id, event_id, market_id, llm_trace_id,
+     is_negated, prompt_iteration, parsed_odds, outcome)
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+  ON CONFLICT (benchmark_run_id, forecaster_id, market_id, is_negated, prompt_iteration)
+  DO UPDATE SET
+    llm_trace_id = EXCLUDED.llm_trace_id,
+    parsed_odds = EXCLUDED.parsed_odds,
+    outcome = EXCLUDED.outcome,
+    event_id = EXCLUDED.event_id
+  RETURNING id`;
+
+const PAIRWISE_FORECAST_UPSERT_SQL = `
+  INSERT INTO public.pairwise_forecast
+    (benchmark_run_id, forecaster_id, market_a_id, market_b_id,
+     llm_trace_id, is_a_negated, is_b_negated, prompt_iteration,
+     is_a_likelier, outcome_a, outcome_b)
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+  ON CONFLICT (benchmark_run_id, forecaster_id, market_a_id, market_b_id,
+               is_a_negated, is_b_negated, prompt_iteration)
+  DO UPDATE SET
+    llm_trace_id = EXCLUDED.llm_trace_id,
+    is_a_likelier = EXCLUDED.is_a_likelier,
+    outcome_a = EXCLUDED.outcome_a,
+    outcome_b = EXCLUDED.outcome_b
+  RETURNING id`;
 
 /**
  * All database access for noisebench. A thin wrapper over a single pg Pool — no
@@ -451,43 +485,80 @@ export class Database {
   // LLM traces
   // -------------------------------------------------------------------------
 
+  /**
+   * Insert one trace row on a caller-supplied client, so it can share a
+   * transaction with the forecast it produced.
+   *
+   * The `intern` lookups deliberately stay OUTSIDE the caller's transaction:
+   * they are memoized, append-only, and shared by every forecaster, so holding
+   * them inside would serialize unrelated writers on a row that is almost
+   * always already cached.
+   */
+  private async insertTrace(
+    client: PoolClient,
+    input: {
+      forecasterId: number;
+      identifier: string;
+      result: InferenceTrace;
+      llmModelId: number;
+      llmProviderId: number | null;
+    },
+  ): Promise<number> {
+    const { forecasterId, identifier, result, llmModelId, llmProviderId } =
+      input;
+    const res = await client.query(
+      `INSERT INTO public.llm_trace
+        (forecaster_id, llm_model_id, llm_provider_id, identifier, system_prompt,
+         prompt, response, reasoning, finish_reason, cost, tokens_in, tokens_out,
+         reasoning_tokens, time_ms, attempts, errors, usage)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17::jsonb)
+      RETURNING id`,
+      [
+        forecasterId,
+        llmModelId,
+        llmProviderId,
+        identifier,
+        result.systemPrompt,
+        result.userPrompt,
+        result.rawResponse,
+        result.reasoning,
+        result.finishReason,
+        result.cost,
+        result.tokensIn,
+        result.tokensOut,
+        result.reasoningTokens,
+        result.timeMs,
+        result.attempts,
+        JSON.stringify(result.errors ?? []),
+        result.usage ? JSON.stringify(result.usage) : null,
+      ],
+    );
+    return res.rows[0].id;
+  }
+
+  private async internTraceIds(
+    result: InferenceTrace,
+  ): Promise<{ llmModelId: number; llmProviderId: number | null }> {
+    return {
+      llmModelId: await this.intern("llm_model", result.model),
+      llmProviderId: result.provider
+        ? await this.intern("llm_provider", result.provider)
+        : null,
+    };
+  }
+
   async logLLMTrace(input: {
     forecasterId: number;
     identifier: string;
     result: InferenceTrace;
   }): Promise<number> {
-    const { forecasterId, identifier, result } = input;
-    const llmModelId = await this.intern("llm_model", result.model);
-    const llmProviderId = result.provider
-      ? await this.intern("llm_provider", result.provider)
-      : null;
-    const query = `
-      INSERT INTO public.llm_trace
-        (forecaster_id, llm_model_id, llm_provider_id, identifier, system_prompt,
-         prompt, response, reasoning, finish_reason, cost, tokens_in, tokens_out,
-         reasoning_tokens, time_ms, attempts, errors, usage)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17::jsonb)
-      RETURNING id`;
-    const res = await this.pool.query(query, [
-      forecasterId,
-      llmModelId,
-      llmProviderId,
-      identifier,
-      result.systemPrompt,
-      result.userPrompt,
-      result.rawResponse,
-      result.reasoning,
-      result.finishReason,
-      result.cost,
-      result.tokensIn,
-      result.tokensOut,
-      result.reasoningTokens,
-      result.timeMs,
-      result.attempts,
-      JSON.stringify(result.errors ?? []),
-      result.usage ? JSON.stringify(result.usage) : null,
-    ]);
-    return res.rows[0].id;
+    const ids = await this.internTraceIds(input.result);
+    const client = await this.pool.connect();
+    try {
+      return await this.insertTrace(client, { ...input, ...ids });
+    } finally {
+      client.release();
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -579,6 +650,89 @@ export class Database {
       config: row.config,
       status: row.status,
     };
+  }
+
+  /**
+   * Re-open an existing run and widen its recorded plan to the scope being run
+   * now. Returns the values as they were, so the caller can report the change.
+   *
+   * A resume reuses the run id but re-reads the dataset and the iteration dials
+   * from the command line, so the run row would otherwise still describe the
+   * scope of whichever invocation created it. That is not cosmetic: the
+   * verifier computes `expected = models × markets × 2 × iterations` from these
+   * columns and from `benchmark_run_market`, so a run started as a 2-market
+   * rehearsal and widened to 100 markets would be reported as catastrophically
+   * over-producing while actually being perfectly healthy.
+   *
+   * Widen only, never shrink. Resuming at a NARROWER scope must leave the plan
+   * wide, because the rows from the wider pass still exist — reporting the run
+   * as incomplete is correct, and quietly lowering the bar until it passes is
+   * the one behaviour that would make the check worthless.
+   */
+  async widenBenchmarkRun(
+    id: number,
+    input: {
+      promptIterations: number;
+      pairwiseIterations: number;
+      datasetName: string;
+      models: string[];
+      config: unknown;
+    },
+  ): Promise<{ promptIterations: number; pairwiseIterations: number }> {
+    const statusId = await this.statusId("benchmark_status", "running");
+    const modelIds: number[] = [];
+    for (const slug of input.models) {
+      modelIds.push(await this.intern("llm_model", slug));
+    }
+
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const before = await client.query(
+        `SELECT prompt_iterations, pairwise_iterations
+         FROM public.benchmark_run WHERE id = $1 FOR UPDATE`,
+        [id],
+      );
+      if (before.rows.length === 0) {
+        throw new Error(`Benchmark run ${id} not found`);
+      }
+      await client.query(
+        `UPDATE public.benchmark_run SET
+           prompt_iterations = GREATEST(prompt_iterations, $2),
+           pairwise_iterations = GREATEST(pairwise_iterations, $3),
+           dataset_name = $4,
+           config = $5::jsonb,
+           status_id = $6,
+           ended_at = NULL
+         WHERE id = $1`,
+        [
+          id,
+          input.promptIterations,
+          input.pairwiseIterations,
+          input.datasetName,
+          JSON.stringify(input.config),
+          statusId,
+        ],
+      );
+      // A resume may add models the original pass never ran.
+      for (const modelId of modelIds) {
+        await client.query(
+          `INSERT INTO public.benchmark_run_model (benchmark_run_id, llm_model_id)
+           VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [id, modelId],
+        );
+      }
+      await client.query("COMMIT");
+      return {
+        promptIterations: before.rows[0].prompt_iterations,
+        pairwiseIterations: before.rows[0].pairwise_iterations,
+      };
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async markBenchmarkRunEnded(id: number, status: string): Promise<void> {
@@ -691,6 +845,33 @@ export class Database {
   }
 
   /**
+   * Mark a forecaster as abandoned, reconciling its counters the same way
+   * `markPredictorCompleted` does so the summary reflects rows that exist
+   * rather than work this process happened to attempt.
+   */
+  async markPredictorFailed(
+    benchmarkRunId: number,
+    forecasterId: number,
+  ): Promise<void> {
+    const statusId = await this.statusId("predictor_status", "failed");
+    await this.pool.query(
+      `UPDATE public.benchmark_predictor_state s
+       SET status_id = $3,
+           updated_at = NOW(),
+           completed_tasks = (
+             SELECT COUNT(*) FROM public.forecast f
+             WHERE f.benchmark_run_id = s.benchmark_run_id
+               AND f.forecaster_id = s.forecaster_id)
+             + (
+             SELECT COUNT(*) FROM public.pairwise_forecast p
+             WHERE p.benchmark_run_id = s.benchmark_run_id
+               AND p.forecaster_id = s.forecaster_id)
+       WHERE s.benchmark_run_id = $1 AND s.forecaster_id = $2`,
+      [benchmarkRunId, forecasterId, statusId],
+    );
+  }
+
+  /**
    * Task keys already completed (parsed successfully) for a run, so --resume can
    * skip them. Tasks that exist but failed to parse (null odds) are intentionally
    * omitted so they get retried.
@@ -762,31 +943,118 @@ export class Database {
     parsedOdds: number | null;
     outcome: string;
   }): Promise<number> {
-    const res = await this.pool.query(
-      `INSERT INTO public.forecast
-         (benchmark_run_id, forecaster_id, event_id, market_id, llm_trace_id,
-          is_negated, prompt_iteration, parsed_odds, outcome)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-       ON CONFLICT (benchmark_run_id, forecaster_id, market_id, is_negated, prompt_iteration)
-       DO UPDATE SET
-         llm_trace_id = EXCLUDED.llm_trace_id,
-         parsed_odds = EXCLUDED.parsed_odds,
-         outcome = EXCLUDED.outcome,
-         event_id = EXCLUDED.event_id
-       RETURNING id`,
-      [
+    const res = await this.pool.query(FORECAST_UPSERT_SQL, [
+      input.benchmarkRunId,
+      input.forecasterId,
+      input.eventId,
+      input.marketId,
+      input.llmTraceId,
+      input.isNegated,
+      input.promptIteration,
+      input.parsedOdds,
+      input.outcome,
+    ]);
+    return res.rows[0].id;
+  }
+
+  /**
+   * Write the trace and the forecast it produced as ONE transaction.
+   *
+   * Written separately, a failure between the two statements left a paid-for
+   * trace with no forecast pointing at it: the answer is in the database, but
+   * no query returns it, `--resume` cannot see it, and the task is silently
+   * re-run at full cost. Neither half is useful without the other, so neither
+   * half should be able to land alone.
+   */
+  async recordForecastWithTrace(input: {
+    benchmarkRunId: number;
+    forecasterId: number;
+    eventId: number;
+    marketId: number;
+    identifier: string;
+    result: InferenceTrace;
+    isNegated: boolean;
+    promptIteration: number;
+    parsedOdds: number | null;
+    outcome: string;
+  }): Promise<{ forecastId: number; traceId: number }> {
+    const ids = await this.internTraceIds(input.result);
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const traceId = await this.insertTrace(client, {
+        forecasterId: input.forecasterId,
+        identifier: input.identifier,
+        result: input.result,
+        ...ids,
+      });
+      const res = await client.query(FORECAST_UPSERT_SQL, [
         input.benchmarkRunId,
         input.forecasterId,
         input.eventId,
         input.marketId,
-        input.llmTraceId,
+        traceId,
         input.isNegated,
         input.promptIteration,
         input.parsedOdds,
         input.outcome,
-      ],
-    );
-    return res.rows[0].id;
+      ]);
+      await client.query("COMMIT");
+      return { forecastId: res.rows[0].id, traceId };
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /** The same, for a pairwise judgment. */
+  async recordPairwiseForecastWithTrace(input: {
+    benchmarkRunId: number;
+    forecasterId: number;
+    marketAId: number;
+    marketBId: number;
+    identifier: string;
+    result: InferenceTrace;
+    isANegated: boolean;
+    isBNegated: boolean;
+    promptIteration: number;
+    isALikelier: boolean | null;
+    outcomeA: string;
+    outcomeB: string;
+  }): Promise<{ pairwiseForecastId: number; traceId: number }> {
+    const ids = await this.internTraceIds(input.result);
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const traceId = await this.insertTrace(client, {
+        forecasterId: input.forecasterId,
+        identifier: input.identifier,
+        result: input.result,
+        ...ids,
+      });
+      const res = await client.query(PAIRWISE_FORECAST_UPSERT_SQL, [
+        input.benchmarkRunId,
+        input.forecasterId,
+        input.marketAId,
+        input.marketBId,
+        traceId,
+        input.isANegated,
+        input.isBNegated,
+        input.promptIteration,
+        input.isALikelier,
+        input.outcomeA,
+        input.outcomeB,
+      ]);
+      await client.query("COMMIT");
+      return { pairwiseForecastId: res.rows[0].id, traceId };
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   /** Insert (or update, on re-run) one pairwise forecast row and return its id. */
@@ -803,50 +1071,43 @@ export class Database {
     outcomeA: string;
     outcomeB: string;
   }): Promise<number> {
-    const res = await this.pool.query(
-      `INSERT INTO public.pairwise_forecast
-         (benchmark_run_id, forecaster_id, market_a_id, market_b_id,
-          llm_trace_id, is_a_negated, is_b_negated, prompt_iteration,
-          is_a_likelier, outcome_a, outcome_b)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-       ON CONFLICT (benchmark_run_id, forecaster_id, market_a_id, market_b_id,
-                    is_a_negated, is_b_negated, prompt_iteration)
-       DO UPDATE SET
-         llm_trace_id = EXCLUDED.llm_trace_id,
-         is_a_likelier = EXCLUDED.is_a_likelier,
-         outcome_a = EXCLUDED.outcome_a,
-         outcome_b = EXCLUDED.outcome_b
-       RETURNING id`,
-      [
-        input.benchmarkRunId,
-        input.forecasterId,
-        input.marketAId,
-        input.marketBId,
-        input.llmTraceId,
-        input.isANegated,
-        input.isBNegated,
-        input.promptIteration,
-        input.isALikelier,
-        input.outcomeA,
-        input.outcomeB,
-      ],
-    );
+    const res = await this.pool.query(PAIRWISE_FORECAST_UPSERT_SQL, [
+      input.benchmarkRunId,
+      input.forecasterId,
+      input.marketAId,
+      input.marketBId,
+      input.llmTraceId,
+      input.isANegated,
+      input.isBNegated,
+      input.promptIteration,
+      input.isALikelier,
+      input.outcomeA,
+      input.outcomeB,
+    ]);
     return res.rows[0].id;
   }
 
+  /**
+   * `chainId` is recorded because dev, testnet and mainnet runs all share one
+   * database and a transaction hash alone says nothing about which chain it
+   * landed on. Without it, a rehearsal row and a published mainnet row are
+   * indistinguishable at the row level.
+   */
   private async upsertTransaction(
     hash: string,
     blockNumber: number | undefined,
     publishedAt: Date,
+    chainId: number | null,
   ): Promise<number> {
     const res = await this.pool.query(
-      `INSERT INTO public.transaction (hash, block_number, published_at)
-       VALUES ($1, $2, $3)
+      `INSERT INTO public.transaction (hash, block_number, published_at, chain_id)
+       VALUES ($1, $2, $3, $4)
        ON CONFLICT (hash) DO UPDATE SET
          block_number = COALESCE(EXCLUDED.block_number, public.transaction.block_number),
-         published_at = COALESCE(EXCLUDED.published_at, public.transaction.published_at)
+         published_at = COALESCE(EXCLUDED.published_at, public.transaction.published_at),
+         chain_id = COALESCE(EXCLUDED.chain_id, public.transaction.chain_id)
        RETURNING id`,
-      [hash, blockNumber ?? null, publishedAt],
+      [hash, blockNumber ?? null, publishedAt, chainId],
     );
     return res.rows[0].id;
   }
@@ -859,6 +1120,7 @@ export class Database {
     forecastIds: number[],
     transactionHash: string,
     blockNumber: number | undefined,
+    chainId: number | null = null,
   ): Promise<void> {
     if (forecastIds.length === 0) return;
     const publishedAt = new Date();
@@ -866,6 +1128,7 @@ export class Database {
       transactionHash,
       blockNumber,
       publishedAt,
+      chainId,
     );
     await this.pool.query(
       `UPDATE public.forecast
@@ -880,6 +1143,7 @@ export class Database {
     pairwiseForecastIds: number[],
     transactionHash: string,
     blockNumber: number | undefined,
+    chainId: number | null = null,
   ): Promise<void> {
     if (pairwiseForecastIds.length === 0) return;
     const publishedAt = new Date();
@@ -887,6 +1151,7 @@ export class Database {
       transactionHash,
       blockNumber,
       publishedAt,
+      chainId,
     );
     await this.pool.query(
       `UPDATE public.pairwise_forecast

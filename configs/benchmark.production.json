@@ -1,0 +1,94 @@
+{
+  "name": "noisebench-production",
+  "description": "Base mainnet production cycle run on 28/07/26. MODEL ORDER IS DELIBERATE: runPool claims models in this order, so entries are interleaved by provider (no window of `modelConcurrency` consecutive models holds more than 2 of one provider) and roughly slowest-first. Re-sorting this list by name or vendor would put 5 openai-pinned models in the first wave, all with allow_fallbacks:false.",
+  "dataset": "datasets/production-28-07-26.json",
+  "models": [
+    {
+      "slug": "openai/gpt-5-nano",
+      "provider": "openai"
+    },
+    {
+      "slug": "anthropic/claude-opus-5",
+      "provider": "claude-on-aws"
+    },
+    {
+      "slug": "qwen/qwen3.5-plus-20260420",
+      "provider": "alibaba"
+    },
+    {
+      "slug": "deepseek/deepseek-v4-pro",
+      "provider": "baidu/fp8"
+    },
+    {
+      "slug": "google/gemini-3.1-pro-preview",
+      "provider": "google-vertex/global"
+    },
+    {
+      "slug": "x-ai/grok-4.5",
+      "provider": "xai/zdr"
+    },
+    {
+      "slug": "openai/gpt-5.6-sol-pro",
+      "provider": "openai"
+    },
+    {
+      "slug": "anthropic/claude-sonnet-5",
+      "provider": "anthropic"
+    },
+    {
+      "slug": "xiaomi/mimo-v2.5",
+      "provider": "xiaomi/fp8"
+    },
+    {
+      "slug": "z-ai/glm-5.2",
+      "provider": "coreweave/fp4"
+    },
+    {
+      "slug": "moonshotai/kimi-k3",
+      "provider": "moonshotai/mxfp4"
+    },
+    {
+      "slug": "mistralai/mistral-large-2512",
+      "provider": "mistral"
+    },
+    {
+      "slug": "openai/gpt-5.5",
+      "provider": "openai"
+    },
+    {
+      "slug": "anthropic/claude-fable-5",
+      "provider": "amazon-bedrock"
+    },
+    {
+      "slug": "google/gemini-3.6-flash",
+      "provider": "google-vertex/global"
+    },
+    {
+      "slug": "nvidia/nemotron-3-ultra-550b-a55b",
+      "provider": "together"
+    },
+    {
+      "slug": "openai/gpt-5.6-luna-pro",
+      "provider": "openai"
+    },
+    {
+      "slug": "deepseek/deepseek-v4-flash",
+      "provider": "baidu/fp8"
+    },
+    {
+      "slug": "google/gemini-3.5-flash-lite",
+      "provider": "google-vertex/global"
+    },
+    {
+      "slug": "openai/gpt-5.6-terra-pro",
+      "provider": "openai"
+    }
+  ],
+  "promptIterations": 4,
+  "pairwiseIterations": 2,
+  "concurrency": 12,
+  "modelConcurrency": 6,
+  "taskMaxRetries": 2,
+  "taskFailureAbortRate": 0.2,
+  "retryPasses": 1
+}

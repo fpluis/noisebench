@@ -360,9 +360,26 @@ async function main(): Promise<void> {
   const dataset = loadDataset(datasetPath);
   const config = loadBenchmarkConfig(configPath);
 
-  const model = args.model
-    ? { slug: args.model as string }
+  // When --model names a model the config already lists, use THAT entry, so the
+  // run carries its provider pin. Building a bare { slug } instead silently
+  // drops the pin, which makes this script useless for the thing it is most
+  // often reached for: checking whether a specific provider actually serves a
+  // model. An unpinned call can succeed against a completely different backend
+  // and read as proof that the pin works.
+  const requestedSlug = args.model as string | undefined;
+  const configured = requestedSlug
+    ? config.models.find((m) => normalizeModel(m).slug === requestedSlug)
+    : undefined;
+  const model = requestedSlug
+    ? configured
+      ? normalizeModel(configured)
+      : { slug: requestedSlug }
     : normalizeModel(config.models[0]);
+  if (requestedSlug && !configured) {
+    console.warn(
+      `⚠️  ${requestedSlug} is not in ${configPath} — calling it with no provider pin.`,
+    );
+  }
 
   if (args.all) {
     await runWholeDataset(dataset, model, apiKey, Boolean(args.verbose));

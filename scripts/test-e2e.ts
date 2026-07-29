@@ -13,7 +13,9 @@
 // What this proves: migrations apply from nothing, the dataset ingests, and
 // 16,000 forecasts survive the whole orchestration — the DB mappings, the
 // concurrency, the progress bookkeeping and the resume path — at production
-// volume, for free.
+// volume, for free. It also rehearses the slice-then-widen workflow a real run
+// uses, and asserts that widening a sliced run REUSES its rows rather than
+// redoing them, since on a real run that difference is money.
 //
 // What this does NOT prove: anything on-chain. Submission is skipped entirely,
 // and is validated by a small real run instead.
@@ -133,6 +135,86 @@ async function latestRunId(): Promise<number> {
   }
 }
 
+/**
+ * A fingerprint of every forecast row belonging to a run, keyed by the task it
+ * answers, used to prove a widening resume REUSES the slice's rows rather than
+ * redoing them. The id and creation timestamp are what a rewrite would change;
+ * the parsed value and trace are what a re-inference would change.
+ *
+ * `parsed` matters because the two kinds of row have DIFFERENT guarantees. A
+ * row that produced a usable probability is complete and must survive widening
+ * untouched — redoing it is money spent twice. A row whose model refused or
+ * returned something unparseable is deliberately NOT counted as complete
+ * (`getCompletedTaskKeys` filters on `parsed_odds IS NOT NULL`), so widening
+ * retrying it, writing a fresh trace and re-pointing the row at it, is the
+ * feature working.
+ */
+interface ForecastFingerprint {
+  parsed: boolean;
+  digest: string;
+}
+
+async function forecastFingerprints(
+  runId: number,
+): Promise<Map<string, ForecastFingerprint>> {
+  const client = new Client({ connectionString: TEST_DATABASE_URL });
+  try {
+    await client.connect();
+    const res = await client.query(
+      `SELECT forecaster_id, market_id, is_negated, prompt_iteration,
+              id, created_at, parsed_odds, outcome, llm_trace_id
+       FROM public.forecast WHERE benchmark_run_id = $1`,
+      [runId],
+    );
+    const out = new Map<string, ForecastFingerprint>();
+    for (const r of res.rows) {
+      out.set(
+        `${r.forecaster_id}:${r.market_id}:${r.is_negated ? 1 : 0}:${r.prompt_iteration}`,
+        {
+          parsed: r.parsed_odds !== null,
+          digest:
+            `${r.id}|${new Date(r.created_at).toISOString()}|${r.parsed_odds}` +
+            `|${r.outcome}|${r.llm_trace_id}`,
+        },
+      );
+    }
+    return out;
+  } finally {
+    await client.end().catch(() => {});
+  }
+}
+
+/** The scope and iteration dials the run row currently records. */
+async function runPlan(runId: number): Promise<{
+  promptIterations: number;
+  pairwiseIterations: number;
+  markets: number;
+  pairs: number;
+}> {
+  const client = new Client({ connectionString: TEST_DATABASE_URL });
+  try {
+    await client.connect();
+    const res = await client.query(
+      `SELECT r.prompt_iterations, r.pairwise_iterations,
+              (SELECT COUNT(*)::int FROM public.benchmark_run_market m
+                 WHERE m.benchmark_run_id = r.id) AS markets,
+              (SELECT COUNT(*)::int FROM public.benchmark_run_pair p
+                 WHERE p.benchmark_run_id = r.id) AS pairs
+       FROM public.benchmark_run r WHERE r.id = $1`,
+      [runId],
+    );
+    const r = res.rows[0];
+    return {
+      promptIterations: r.prompt_iterations,
+      pairwiseIterations: r.pairwise_iterations,
+      markets: r.markets,
+      pairs: r.pairs,
+    };
+  } finally {
+    await client.end().catch(() => {});
+  }
+}
+
 /** A short summary of what actually landed, so the run is legible at a glance. */
 async function summarize(runId: number): Promise<void> {
   const client = new Client({ connectionString: TEST_DATABASE_URL });
@@ -238,6 +320,133 @@ async function main(): Promise<void> {
         "gen-synthetic-dataset",
       );
     }
+
+    // -----------------------------------------------------------------------
+    // The slice-then-widen rehearsal.
+    //
+    // This is the workflow a production run actually uses: start on two markets
+    // and one pair to prove the pipeline works, then widen THE SAME RUN to the
+    // full dataset, keeping everything the slice produced. What makes it safe
+    // is that the slice comes from the same dataset file, so market ids are
+    // identical and the completed-task sets skip exactly the work already paid
+    // for. This asserts that property directly rather than trusting it.
+    // -----------------------------------------------------------------------
+    step("Slice run — 2 markets, 1 pair, 1 iteration of each modality");
+    runScript(
+      "scripts/benchmark.ts",
+      [
+        "--config",
+        configPath,
+        "--dataset",
+        datasetPath,
+        "--max-markets",
+        "2",
+        "--max-pairs",
+        "1",
+        "--prompt-iterations",
+        "1",
+        "--pairwise-iterations",
+        "1",
+        "--model-concurrency",
+        "4",
+      ],
+      "benchmark --max-markets 2",
+    );
+    const sliceRunId = await latestRunId();
+    runScript(
+      "scripts/verify-run.ts",
+      ["--run", String(sliceRunId)],
+      "verify-run (slice)",
+    );
+
+    const slicePlan = await runPlan(sliceRunId);
+    if (slicePlan.markets !== 2 || slicePlan.pairs !== 1) {
+      throw new Error(
+        `slice recorded ${slicePlan.markets} market(s) and ${slicePlan.pairs} pair(s), expected 2 and 1`,
+      );
+    }
+    const sliceRows = await forecastFingerprints(sliceRunId);
+    console.log(
+      `\n  slice produced ${sliceRows.size} forecast row(s) across 2 market(s)`,
+    );
+
+    step(`Widen run ${sliceRunId} to the full dataset`);
+    runScript(
+      "scripts/benchmark.ts",
+      [
+        "--config",
+        configPath,
+        "--dataset",
+        datasetPath,
+        "--resume",
+        String(sliceRunId),
+      ],
+      "benchmark --resume (widen)",
+    );
+
+    step(`Verify the widened run ${sliceRunId}`);
+    // Check A derives what to expect from the run row and its scope tables, so
+    // this passing IS the proof that widening updated the recorded plan. Before
+    // that fix it reported a healthy widened run as catastrophically incomplete.
+    runScript(
+      "scripts/verify-run.ts",
+      ["--run", String(sliceRunId)],
+      "verify-run (widened)",
+    );
+
+    const widenedPlan = await runPlan(sliceRunId);
+    if (widenedPlan.markets <= slicePlan.markets) {
+      throw new Error(
+        `widening did not extend the run's market scope (still ${widenedPlan.markets})`,
+      );
+    }
+    if (widenedPlan.promptIterations <= slicePlan.promptIterations) {
+      throw new Error(
+        `widening did not raise prompt_iterations (still ${widenedPlan.promptIterations})`,
+      );
+    }
+    console.log(
+      `\n  plan widened: ${slicePlan.markets}→${widenedPlan.markets} markets, ` +
+        `${slicePlan.pairs}→${widenedPlan.pairs} pairs, ` +
+        `iterations ${slicePlan.promptIterations}→${widenedPlan.promptIterations} / ` +
+        `${slicePlan.pairwiseIterations}→${widenedPlan.pairwiseIterations}`,
+    );
+
+    // The load-bearing assertion: every USABLE row the slice produced is still
+    // there, byte for byte. A changed id, timestamp or probability means the
+    // widened run redid work that had already been paid for — which on a real
+    // run is money. Unparsed rows are exempt: they are not "complete", so
+    // retrying them is the resume contract doing its job.
+    const afterWidening = await forecastFingerprints(sliceRunId);
+    let preserved = 0;
+    let retried = 0;
+    for (const [task, before] of sliceRows) {
+      const after = afterWidening.get(task);
+      if (after === undefined) {
+        throw new Error(`widening LOST the slice's row for task ${task}`);
+      }
+      if (!before.parsed) {
+        retried++;
+        continue;
+      }
+      if (after.digest !== before.digest) {
+        throw new Error(
+          `widening REWROTE a completed slice row for task ${task}:\n` +
+            `  before: ${before.digest}\n  after:  ${after.digest}`,
+        );
+      }
+      preserved++;
+    }
+    if (preserved === 0) {
+      throw new Error(
+        "the slice produced no usable rows, so preservation was never tested",
+      );
+    }
+    console.log(
+      `  ✅ all ${preserved} completed slice row(s) preserved unchanged; ` +
+        `${retried} unparsed row(s) correctly re-attempted`,
+    );
+    await summarize(sliceRunId);
 
     step("Benchmark run (fake inference, no chain)");
     runScript(

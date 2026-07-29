@@ -99,6 +99,26 @@ export interface BenchmarkConfig {
   pairwiseIterations: number;
   // Max concurrent inference calls per forecaster. Default 6.
   concurrency?: number;
+  /**
+   * Max forecasters running at once. Unset means all of them, which is the
+   * historical behaviour.
+   *
+   * Total in-flight inference is `modelConcurrency * concurrency`, so capping
+   * models without raising `concurrency` cuts throughput proportionally. The
+   * pg pool must also be able to hold that many writers: keep
+   * `PG_POOL_MAX >= modelConcurrency * concurrency + 8` or tasks start failing
+   * on the pool's 10s connection timeout rather than on anything real.
+   */
+  modelConcurrency?: number;
+  // Retries for a task that threw AFTER inference (a DB blip, say). Inference
+  // has its own retry budget inside runInference and never throws. Default 2.
+  taskMaxRetries?: number;
+  // Give up on a forecaster once this share of its attempted tasks have failed
+  // outright, so one broken model cannot burn the budget. Default 0.2.
+  taskFailureAbortRate?: number;
+  // Extra passes over whatever is still unfinished once the main pass drains,
+  // to mop up transient failures without a manual --resume. Default 1.
+  retryPasses?: number;
 }
 
 // A model config normalized to a stable shape.
