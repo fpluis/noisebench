@@ -1,0 +1,135 @@
+{
+  "id": 1,
+  "name": "noisebench-production",
+  "description": "Base mainnet production cycle run on 28/07/26. MODEL ORDER IS DELIBERATE: runPool claims models in this order, so entries are interleaved by provider (no window of `modelConcurrency` consecutive models holds more than 2 of one provider) and roughly slowest-first. Re-sorting this list by name or vendor would put 5 openai-pinned models in the first wave, all with allow_fallbacks:false.",
+  "dataset": "datasets/production-28-07-26.json",
+  "status": "completed",
+  "promptIterations": 4,
+  "pairwiseIterations": 2,
+  "startedAt": "2026-07-28T17:44:12.748Z",
+  "endedAt": "2026-07-28T20:51:31.350Z",
+  "models": [
+    {
+      "model": "anthropic/claude-fable-5",
+      "attempted": 800,
+      "parsed": 792,
+      "parseFailureRate": 0.01
+    },
+    {
+      "model": "anthropic/claude-opus-5",
+      "attempted": 800,
+      "parsed": 800,
+      "parseFailureRate": 0
+    },
+    {
+      "model": "anthropic/claude-sonnet-5",
+      "attempted": 800,
+      "parsed": 712,
+      "parseFailureRate": 0.11
+    },
+    {
+      "model": "deepseek/deepseek-v4-flash",
+      "attempted": 800,
+      "parsed": 800,
+      "parseFailureRate": 0
+    },
+    {
+      "model": "deepseek/deepseek-v4-pro",
+      "attempted": 800,
+      "parsed": 800,
+      "parseFailureRate": 0
+    },
+    {
+      "model": "google/gemini-3.1-pro-preview",
+      "attempted": 800,
+      "parsed": 800,
+      "parseFailureRate": 0
+    },
+    {
+      "model": "google/gemini-3.5-flash-lite",
+      "attempted": 800,
+      "parsed": 800,
+      "parseFailureRate": 0
+    },
+    {
+      "model": "google/gemini-3.6-flash",
+      "attempted": 800,
+      "parsed": 800,
+      "parseFailureRate": 0
+    },
+    {
+      "model": "mistralai/mistral-large-2512",
+      "attempted": 800,
+      "parsed": 797,
+      "parseFailureRate": 0.00375
+    },
+    {
+      "model": "moonshotai/kimi-k3",
+      "attempted": 800,
+      "parsed": 768,
+      "parseFailureRate": 0.04
+    },
+    {
+      "model": "nvidia/nemotron-3-ultra-550b-a55b",
+      "attempted": 800,
+      "parsed": 800,
+      "parseFailureRate": 0
+    },
+    {
+      "model": "openai/gpt-5-nano",
+      "attempted": 800,
+      "parsed": 800,
+      "parseFailureRate": 0
+    },
+    {
+      "model": "openai/gpt-5.5",
+      "attempted": 800,
+      "parsed": 800,
+      "parseFailureRate": 0
+    },
+    {
+      "model": "openai/gpt-5.6-luna-pro",
+      "attempted": 800,
+      "parsed": 800,
+      "parseFailureRate": 0
+    },
+    {
+      "model": "openai/gpt-5.6-sol-pro",
+      "attempted": 800,
+      "parsed": 800,
+      "parseFailureRate": 0
+    },
+    {
+      "model": "openai/gpt-5.6-terra-pro",
+      "attempted": 800,
+      "parsed": 800,
+      "parseFailureRate": 0
+    },
+    {
+      "model": "qwen/qwen3.5-plus-20260420",
+      "attempted": 800,
+      "parsed": 793,
+      "parseFailureRate": 0.00875
+    },
+    {
+      "model": "x-ai/grok-4.5",
+      "attempted": 800,
+      "parsed": 800,
+      "parseFailureRate": 0
+    },
+    {
+      "model": "xiaomi/mimo-v2.5",
+      "attempted": 800,
+      "parsed": 800,
+      "parseFailureRate": 0
+    },
+    {
+      "model": "z-ai/glm-5.2",
+      "attempted": 800,
+      "parsed": 800,
+      "parseFailureRate": 0
+    }
+  ],
+  "markets": 100,
+  "generatedAt": "2026-07-29T09:33:16.322Z"
+}

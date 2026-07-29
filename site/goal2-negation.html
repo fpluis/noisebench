@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Yes/No bias — noisebench</title>
+    <link rel="stylesheet" href="assets/viz.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="masthead">
+        <div>
+          <h1>Yes/No bias</h1>
+          <div class="sub" id="runline">Loading…</div>
+        </div>
+        <nav class="tabs">
+          <a href="index.html">Overview</a>
+          <a href="goal1-noise.html">1 · Noise</a>
+          <a href="goal2-negation.html" aria-current="page">2 · Yes/No bias</a>
+          <button class="link" data-theme-toggle style="margin-left: 8px">
+            Dark
+          </button>
+        </nav>
+      </header>
+
+      <section>
+        <h2>The coherence identity</h2>
+        <p class="lede">
+          Every market is asked twice: in its own phrasing (<em
+            >"Will X happen?"</em
+          >) and in its negation (<em>"Will X fail to happen?"</em>). Nothing
+          else about the prompt changes — same rules, same research, same model.
+          A coherent forecaster must answer two numbers that sum to 1, whatever
+          it believes. The amount by which the sum misses is the bias, and it
+          needs no ground truth to measure.
+        </p>
+        <div class="tiles" id="tiles"></div>
+        <p class="note" id="overallnote"></p>
+      </section>
+
+      <section>
+        <h2>Where the incoherence lives</h2>
+        <p class="lede">
+          Markets grouped by their Polymarket midpoint at snapshot time. The two
+          bars are what the panel said to each phrasing, as reported. A coherent
+          panel would produce two bars that always sum to 1 — so the pair should
+          cross over as the midpoint passes 0.50, and the orange bar should be
+          tallest at the left edge.
+        </p>
+        <figure>
+          <div class="chart-head">
+            <div class="legend" id="bandLegend"></div>
+            <button class="link" id="bandTableBtn">Show data table</button>
+          </div>
+          <div class="chart-scroll"><div id="bandbars"></div></div>
+          <div class="table-wrap hidden" id="bandTable"></div>
+          <figcaption id="bandcap"></figcaption>
+        </figure>
+
+        <figure style="margin-top: 12px">
+          <div class="chart-head">
+            <div>
+              <h3>The gap itself</h3>
+              <div class="sub">
+                base + negated − 1, by band. Zero is coherent.
+              </div>
+            </div>
+          </div>
+          <div class="chart-scroll"><div id="bandgap"></div></div>
+          <figcaption>
+            The failure is almost entirely confined to long shots. Above a
+            midpoint of 0.50 the panel is very nearly coherent; below 0.10 it
+            spends barely a third of the probability mass it owes.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>By model</h2>
+        <p class="lede">
+          Mean of <code>base + negated − 1</code> across every market the model
+          answered in both phrasings. Negative is sub-additive: the model spends
+          less than unit mass across a question and its negation.
+        </p>
+        <figure>
+          <div class="chart-head">
+            <div></div>
+            <button class="link" id="modelTableBtn">Show data table</button>
+          </div>
+          <div class="chart-scroll"><div id="modelgaps"></div></div>
+          <div class="table-wrap hidden" id="modelTable"></div>
+          <figcaption>
+            No model is close to coherent, and the spread between them is small
+            next to the size of the effect — this is a property of the class,
+            not of any one vendor.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Which arm moves</h2>
+        <p class="lede">
+          The gap is a sum missing its target, so either arm could be the one at
+          fault. Plotting each arm against the market's snapshot midpoint
+          separates them: a well-behaved arm tracks the diagonal.
+        </p>
+        <figure>
+          <div class="chart-head">
+            <div class="legend" id="armLegend"></div>
+          </div>
+          <div class="chart-scroll"><div id="arms"></div></div>
+          <figcaption id="armcap"></figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Every market</h2>
+        <p class="lede">
+          Sorted by gap. The questions at the top are where the panel most
+          nearly contradicted itself.
+        </p>
+        <figure>
+          <div class="chart-head">
+            <div></div>
+            <button class="link" id="marketTableBtn">Hide data table</button>
+          </div>
+          <div class="table-wrap" id="marketTable"></div>
+        </figure>
+      </section>
+    </div>
+
+    <script type="module">
+      import {
+        fmt,
+        groupedColumns,
+        horizontalBars,
+        initTheme,
+        legend,
+        loadJson,
+        onRedraw,
+        pct,
+        renderTable,
+        scatter,
+        shortModel,
+        wireTableToggle,
+      } from "./assets/viz.js";
+
+      initTheme();
+
+      const [run, goal2] = await Promise.all([
+        loadJson("run.json"),
+        loadJson("goal2-negation.json"),
+      ]);
+
+      document.getElementById("runline").textContent =
+        `${run.name} · ${run.models.length} models · ${run.markets} markets`;
+
+      const BASE = {
+        key: "base",
+        name: "Asked “will X happen?”",
+        color: "var(--series-1)",
+      };
+      const NEG = {
+        key: "negated",
+        name: "Asked “will X fail to happen?”",
+        color: "var(--series-2)",
+      };
+
+      const o = goal2.overall;
+      document.getElementById("tiles").innerHTML = [
+        ["Mean gap", fmt(o.gap, 3), "base + negated − 1; 0 is coherent"],
+        ["Total mass spent", fmt(1 + o.gap, 3), "Where 1.000 is owed"],
+        ["Mean |gap|", fmt(o.absGap, 3), "Magnitude, ignoring direction"],
+        [
+          "Model × market cells",
+          o.cells.toLocaleString(),
+          "Both phrasings present",
+        ],
+      ]
+        .map(
+          ([label, value, hint], i) => `
+        <div class="tile${i === 1 ? " accent" : ""}">
+          <div class="label">${label}</div>
+          <div class="value">${value}</div>
+          <div class="hint">${hint}</div>
+        </div>`,
+        )
+        .join("");
+
+      document.getElementById("overallnote").textContent =
+        `Across the whole run the panel answers ${fmt(o.base, 3)} to the base phrasing and ${fmt(o.negated, 3)} to the negation — ` +
+        `a total of ${fmt(o.base + o.negated, 3)} where coherence requires 1.000. ` +
+        `Computed from cell means, since base iteration r and negated iteration r are independent calls with no correspondence between them.`;
+
+      const worst = goal2.byBand[0];
+      document.getElementById("bandcap").textContent =
+        `In the ${worst.band} band the panel answers ${fmt(worst.base, 3)} to the base question — close to the market's ${fmt(worst.meanMidpoint, 3)} — ` +
+        `but only ${fmt(worst.negated, 3)} to the negation, where coherence demands about ${fmt(1 - worst.meanMidpoint, 2)}. ` +
+        `The base arm is well calibrated; the negated arm is not.`;
+
+      const draw = () => {
+        legend(document.getElementById("bandLegend"), [BASE, NEG]);
+
+        groupedColumns(document.getElementById("bandbars"), {
+          rows: goal2.byBand.map((b) => ({
+            label: b.band,
+            base: b.base,
+            negated: b.negated,
+            raw: b,
+          })),
+          series: [BASE, NEG],
+          valueFormat: (v) => fmt(v, 2),
+          axisLabel: "Probability reported, as asked",
+          height: 280,
+          tooltip: (row) => [
+            ["Market midpoint", fmt(row.raw.meanMidpoint, 3)],
+            ["Base arm", fmt(row.raw.base, 3)],
+            ["Negated arm", fmt(row.raw.negated, 3)],
+            ["Sum", fmt(row.raw.base + row.raw.negated, 3)],
+            ["Gap", fmt(row.raw.gap, 3)],
+            ["Markets", String(row.raw.markets)],
+          ],
+        });
+
+        groupedColumns(document.getElementById("bandgap"), {
+          rows: goal2.byBand.map((b) => ({
+            label: b.band,
+            gap: b.gap,
+            raw: b,
+          })),
+          series: [{ key: "gap", name: "Gap", color: "var(--diverge-neg)" }],
+          valueFormat: (v) => fmt(v, 2),
+          axisLabel: "base + negated − 1",
+          height: 240,
+          reference: 0,
+          tooltip: (row) => [
+            ["Gap", fmt(row.raw.gap, 3)],
+            ["Log-odds gap", fmt(row.raw.logOddsGap, 2)],
+            ["Markets", String(row.raw.markets)],
+          ],
+        });
+
+        renderTable(
+          document.getElementById("bandTable"),
+          [
+            { name: "Midpoint band", get: (r) => r.band, numeric: false },
+            { name: "Markets", get: (r) => String(r.markets) },
+            { name: "Mean midpoint", get: (r) => fmt(r.meanMidpoint, 3) },
+            { name: "Base", get: (r) => fmt(r.base, 3) },
+            { name: "Negated", get: (r) => fmt(r.negated, 3) },
+            { name: "Sum", get: (r) => fmt(r.base + r.negated, 3) },
+            { name: "Gap", get: (r) => fmt(r.gap, 3) },
+          ],
+          goal2.byBand,
+        );
+
+        const modelRows = [...goal2.byModel]
+          .sort((a, b) => a.gap - b.gap)
+          .map((m) => ({ label: shortModel(m.model), gap: m.gap, raw: m }));
+
+        horizontalBars(document.getElementById("modelgaps"), {
+          rows: modelRows,
+          series: [{ key: "gap", name: "Gap", color: "var(--diverge-neg)" }],
+          signed: true,
+          labelWidth: 190,
+          valueFormat: (v) => fmt(v, 2),
+          axisLabel: "base + negated − 1 (0 is coherent)",
+          tooltip: (row) => [
+            ["Gap", fmt(row.raw.gap, 3)],
+            ["Mean |gap|", fmt(row.raw.absGap, 3)],
+            ["Base arm", fmt(row.raw.base, 3)],
+            ["Negated arm", fmt(row.raw.negated, 3)],
+            ["Markets", String(row.raw.markets)],
+          ],
+        });
+
+        renderTable(
+          document.getElementById("modelTable"),
+          [
+            { name: "Model", get: (r) => r.raw.model, numeric: false },
+            { name: "Base", get: (r) => fmt(r.raw.base, 3) },
+            { name: "Negated", get: (r) => fmt(r.raw.negated, 3) },
+            { name: "Gap", get: (r) => fmt(r.raw.gap, 3) },
+            { name: "Mean |gap|", get: (r) => fmt(r.raw.absGap, 3) },
+            { name: "Markets", get: (r) => String(r.raw.markets) },
+          ],
+          modelRows,
+        );
+
+        // Both arms on one probability axis — the same measure for both series,
+        // so this is one scale, not two.
+        const withMid = goal2.byMarket.filter((m) => m.midpoint !== null);
+        legend(document.getElementById("armLegend"), [
+          BASE,
+          NEG,
+          {
+            name: "Where each arm would sit if coherent",
+            color: "var(--text-muted)",
+          },
+        ]);
+        scatter(document.getElementById("arms"), {
+          // y = x is where the base arm belongs; y = 1 − x is where the negated
+          // arm belongs. Drawing both turns "orange should mirror blue" from a
+          // claim in the caption into something visible in the plot.
+          guides: [
+            { x1: 0, y1: 0, x2: 1, y2: 1, label: "base = midpoint" },
+            {
+              x1: 0,
+              y1: 1,
+              x2: 1,
+              y2: 0,
+              label: "negated = 1 − midpoint",
+              labelBelow: true,
+            },
+          ],
+          points: [
+            ...withMid.map((m) => ({
+              x: m.midpoint,
+              y: m.base,
+              label: m.question || m.slug,
+              color: "var(--series-1)",
+              raw: m,
+              arm: "base",
+            })),
+            ...withMid.map((m) => ({
+              x: m.midpoint,
+              y: m.negated,
+              label: m.negatedQuestion || m.slug,
+              color: "var(--series-2)",
+              raw: m,
+              arm: "negated",
+            })),
+          ],
+          logX: false,
+          height: 340,
+          xLabel: "Polymarket midpoint at snapshot",
+          yLabel: "Probability the panel reported",
+          xFormat: (v) => pct(v, 0),
+          yFormat: (v) => pct(v, 0),
+          tooltip: (p) => [
+            ["Arm", p.arm === "base" ? "Base" : "Negated"],
+            ["Midpoint", pct(p.raw.midpoint, 1)],
+            ["Reported", pct(p.y, 1)],
+            [
+              "Coherent answer",
+              pct(p.arm === "base" ? p.raw.midpoint : 1 - p.raw.midpoint, 1),
+            ],
+            ["Gap for this market", fmt(p.raw.gap, 3)],
+          ],
+        });
+
+        document.getElementById("armcap").textContent =
+          "Blue tracks the market closely: asked the question in its own phrasing, the panel is roughly calibrated. " +
+          "Orange should mirror it — high where blue is low — and instead stays low across the whole range. " +
+          "The negated arm is where the incoherence sits.";
+
+        renderTable(
+          document.getElementById("marketTable"),
+          [
+            {
+              name: "Question",
+              get: (r) => r.question || r.slug,
+              numeric: false,
+            },
+            {
+              name: "Midpoint",
+              get: (r) => (r.midpoint === null ? "—" : pct(r.midpoint, 1)),
+            },
+            { name: "Base", get: (r) => fmt(r.base, 3) },
+            { name: "Negated", get: (r) => fmt(r.negated, 3) },
+            { name: "Sum", get: (r) => fmt(r.base + r.negated, 3) },
+            { name: "Gap", get: (r) => fmt(r.gap, 3) },
+          ],
+          goal2.byMarket,
+        );
+      };
+
+      wireTableToggle(
+        document.getElementById("bandTableBtn"),
+        document.getElementById("bandTable"),
+      );
+      wireTableToggle(
+        document.getElementById("modelTableBtn"),
+        document.getElementById("modelTable"),
+      );
+      wireTableToggle(
+        document.getElementById("marketTableBtn"),
+        document.getElementById("marketTable"),
+      );
+
+      onRedraw(draw);
+    </script>
+  </body>
+</html>

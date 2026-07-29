@@ -14,6 +14,16 @@ export interface DatasetMarket {
   question: string;
   negatedQuestion?: string;
   description?: string;
+  // Orderbook state when the dataset was prepared. Optional because a synthetic
+  // or hand-written dataset has no book behind it. These are snapshot INPUTS
+  // describing what the crowd thought at prompt time — never outcomes, and
+  // never used to score a forecast. Persisted per run by
+  // `benchmark_run_market_snapshot`, since a later dataset re-reads them.
+  midpoint?: number;
+  spread?: number;
+  yesLiquidity?: number;
+  noLiquidity?: number;
+  orderbookSnapshotAt?: string;
 }
 
 export interface DatasetEvent {

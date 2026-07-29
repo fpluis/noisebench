@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>noisebench — run analysis</title>
+    <link rel="stylesheet" href="assets/viz.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="masthead">
+        <div>
+          <h1>noisebench</h1>
+          <div class="sub" id="runline">Loading…</div>
+        </div>
+        <nav class="tabs">
+          <a href="index.html" aria-current="page">Overview</a>
+          <a href="goal1-noise.html">1 · Noise</a>
+          <a href="goal2-negation.html">2 · Yes/No bias</a>
+          <button class="link" data-theme-toggle style="margin-left: 8px">
+            Dark
+          </button>
+        </nav>
+      </header>
+
+      <section>
+        <p class="lede">
+          How much do language models disagree with themselves when forecasting?
+          Twenty models were asked 100 Polymarket questions, each in its own
+          phrasing and in its negation, four times each, plus 50 ranked pairs —
+          24,000 forecasts in total. Every measure here is about
+          <b>noise and internal consistency</b>. Nothing is scored against how
+          the markets actually resolved; where a market price appears it is an
+          input describing what the crowd thought when the question was asked.
+        </p>
+        <div class="tiles" id="tiles"></div>
+      </section>
+
+      <section>
+        <h2>Findings so far</h2>
+        <div class="tiles">
+          <div class="tile">
+            <div class="label">Goal 1 · Noise</div>
+            <div class="value" id="v-occasion">—</div>
+            <div class="hint">
+              Occasion noise — the same model, the same prompt, a different
+              answer — is the largest of the three components, and system noise
+              exceeds the real spread between markets.
+              <br /><a href="goal1-noise.html">Open →</a>
+            </div>
+          </div>
+          <div class="tile">
+            <div class="label">Goal 2 · Yes/No bias</div>
+            <div class="value" id="v-gap">—</div>
+            <div class="hint">
+              A question and its negation should sum to 1. The panel spends far
+              less, almost entirely on long shots.
+              <br /><a href="goal2-negation.html">Open →</a>
+            </div>
+          </div>
+        </div>
+        <p class="note">
+          Goals 3–7 — market-level noise, pairwise consistency,
+          direct-versus-pairwise agreement, question ranking and inference cost
+          — are not built yet. Their design is specified in
+          <code>docs/analysis-design.md</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2>Coverage</h2>
+        <p class="lede">
+          Parse failures are not spread evenly, so the noise analysis reports a
+          strictly balanced subset alongside its primary fit. A model that
+          answered fewer questions is measured on fewer of them.
+        </p>
+        <figure>
+          <div class="chart-head">
+            <div>
+              <h3>Unparseable forecasts, by model</h3>
+              <div class="sub">
+                Share of attempted direct forecasts with no usable probability
+              </div>
+            </div>
+            <button class="link" id="covTableBtn">Show data table</button>
+          </div>
+          <div class="chart-scroll"><div id="coverage"></div></div>
+          <div class="table-wrap hidden" id="covTable"></div>
+          <figcaption>
+            Everything above zero is a model that failed to answer, not one that
+            answered badly — those rows are absent from the analysis rather than
+            counted as noise.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Reproducing this</h2>
+        <p class="lede">
+          The site reads only static JSON, so it needs no database once the
+          analysis has run.
+        </p>
+        <figure>
+          <pre style="margin: 0; overflow-x: auto; font-size: 12.5px">
+npm run db:up            # postgres
+npm run db:setup         # apply migrations
+npx tsx scripts/backfill-snapshot.ts --run 1
+npx tsx scripts/analyze.ts --run 1
+npm run site             # serve on http://localhost:4321</pre>
+        </figure>
+      </section>
+    </div>
+
+    <script type="module">
+      import {
+        fmt,
+        horizontalBars,
+        initTheme,
+        loadJson,
+        onRedraw,
+        pct,
+        renderTable,
+        shortModel,
+        wireTableToggle,
+      } from "./assets/viz.js";
+
+      initTheme();
+
+      const [run, goal1, goal2] = await Promise.all([
+        loadJson("run.json"),
+        loadJson("goal1-noise.json"),
+        loadJson("goal2-negation.json"),
+      ]);
+
+      const started = new Date(run.startedAt);
+      document.getElementById("runline").textContent =
+        `${run.name} · ${started.toISOString().slice(0, 10)} · ${run.status}`;
+
+      const fit = goal1.scales.probability.primary;
+      const attempted = run.models.reduce((s, m) => s + m.attempted, 0);
+      const parsed = run.models.reduce((s, m) => s + m.parsed, 0);
+
+      document.getElementById("tiles").innerHTML = [
+        ["Models", String(run.models.length), "Across 10 vendors"],
+        ["Markets", String(run.markets), "72 Polymarket events"],
+        [
+          "Direct forecasts",
+          parsed.toLocaleString(),
+          `${attempted.toLocaleString()} attempted`,
+        ],
+        [
+          "Iterations",
+          `${run.promptIterations} × 2`,
+          "Per market, both phrasings",
+        ],
+      ]
+        .map(
+          ([label, value, hint]) => `
+        <div class="tile">
+          <div class="label">${label}</div>
+          <div class="value">${value}</div>
+          <div class="hint">${hint}</div>
+        </div>`,
+        )
+        .join("");
+
+      document.getElementById("v-occasion").textContent = fmt(fit.occasion, 3);
+      document.getElementById("v-gap").textContent = fmt(goal2.overall.gap, 3);
+
+      const rows = [...run.models]
+        .sort((a, b) => b.parseFailureRate - a.parseFailureRate)
+        .filter((m) => m.parseFailureRate > 0)
+        .map((m) => ({
+          label: shortModel(m.model),
+          rate: m.parseFailureRate,
+          raw: m,
+        }));
+
+      const draw = () => {
+        horizontalBars(document.getElementById("coverage"), {
+          rows,
+          series: [
+            { key: "rate", name: "Parse failure", color: "var(--series-2)" },
+          ],
+          labelWidth: 190,
+          valueFormat: (v) => pct(v, 1),
+          axisLabel: "Share of attempted forecasts with no usable answer",
+          tooltip: (row) => [
+            ["Attempted", row.raw.attempted.toLocaleString()],
+            ["Parsed", row.raw.parsed.toLocaleString()],
+            ["Failure rate", pct(row.raw.parseFailureRate, 2)],
+          ],
+        });
+
+        renderTable(
+          document.getElementById("covTable"),
+          [
+            { name: "Model", get: (r) => r.model, numeric: false },
+            { name: "Attempted", get: (r) => r.attempted.toLocaleString() },
+            { name: "Parsed", get: (r) => r.parsed.toLocaleString() },
+            { name: "Failure rate", get: (r) => pct(r.parseFailureRate, 2) },
+          ],
+          [...run.models].sort(
+            (a, b) => b.parseFailureRate - a.parseFailureRate,
+          ),
+        );
+      };
+
+      wireTableToggle(
+        document.getElementById("covTableBtn"),
+        document.getElementById("covTable"),
+      );
+
+      onRedraw(draw);
+    </script>
+  </body>
+</html>

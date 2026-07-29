@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Forecasting noise — noisebench</title>
+    <link rel="stylesheet" href="assets/viz.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="masthead">
+        <div>
+          <h1>Forecasting noise</h1>
+          <div class="sub" id="runline">Loading…</div>
+        </div>
+        <nav class="tabs">
+          <a href="index.html">Overview</a>
+          <a href="goal1-noise.html" aria-current="page">1 · Noise</a>
+          <a href="goal2-negation.html">2 · Yes/No bias</a>
+          <button class="link" data-theme-toggle style="margin-left: 8px">
+            Dark
+          </button>
+        </nav>
+      </header>
+
+      <section>
+        <h2>The decomposition</h2>
+        <p class="lede">
+          Twenty models each forecast 100 markets, in both the market's own
+          phrasing and its negation, four times each. Kahneman's decomposition
+          splits the disagreement in that panel into three parts:
+          <b>level</b> noise (some models are just higher than others),
+          <b>stable pattern</b> noise (a model's consistent idiosyncratic
+          reaction to a particular market), and <b>occasion</b> noise (the same
+          model, the same prompt, a different answer). Case spread is shown
+          beside them because it is the thing the noise competes with — it is
+          the real difference between markets, and it is not noise.
+        </p>
+
+        <div class="controls">
+          <div class="seg" role="group" aria-label="Scale">
+            <button data-scale="probability" aria-pressed="true">
+              Probability
+            </button>
+            <button data-scale="logOdds" aria-pressed="false">Log-odds</button>
+          </div>
+          <span class="sub" id="scalehint"></span>
+        </div>
+
+        <div class="tiles" id="tiles"></div>
+        <p class="note" id="fitnote"></p>
+      </section>
+
+      <section>
+        <figure>
+          <div class="chart-head">
+            <div>
+              <h3>Noise components against the signal</h3>
+              <div class="sub" id="compsub"></div>
+            </div>
+          </div>
+          <div class="chart-scroll"><div id="components"></div></div>
+          <figcaption id="compcap"></figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Level noise, by model</h2>
+        <p class="lede">
+          Each model's mean forecast minus the grand mean across all models, on
+          the market's Yes scale. Positive means this model is systematically
+          more bullish than the panel; negative, more bearish. One number per
+          model — goal 1.1.
+        </p>
+        <figure>
+          <div class="chart-scroll"><div id="levels"></div></div>
+          <figcaption>
+            Bars are anchored at the panel mean. The spread of these bars
+            <em>is</em> the level noise reported above.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Stable pattern and occasion noise, by model</h2>
+        <p class="lede">
+          Stable pattern noise is what survives after averaging the four
+          repetitions — a model's durable idiosyncrasy about specific markets.
+          Occasion noise is the scatter among those four repetitions. The
+          stable-pattern figure has the sampling variance of a four-draw cell
+          mean removed, so a merely inconsistent model does not register as an
+          idiosyncratic one.
+        </p>
+        <figure>
+          <div class="chart-head">
+            <div class="legend" id="msLegend"></div>
+            <button class="link" id="msTableBtn">Show data table</button>
+          </div>
+          <div class="chart-scroll"><div id="modelnoise"></div></div>
+          <div class="table-wrap hidden" id="msTable"></div>
+          <figcaption>
+            Sorted by occasion noise. A model can be quiet on repetition and
+            still idiosyncratic about which markets it reads differently — the
+            two bars measure different failures.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Noise against how extreme the market is</h2>
+        <p class="lede">
+          The reason every measure here is computed twice. Markets are grouped
+          by their Polymarket midpoint at snapshot time, and within-cell noise
+          is pooled inside each band. Two charts rather than two axes on one:
+          the scales are not comparable and overlaying them would invent a
+          relationship.
+        </p>
+        <figure>
+          <div class="chart-head">
+            <div>
+              <h3>In percentage points</h3>
+              <div class="sub">Absolute movement, probability scale</div>
+            </div>
+          </div>
+          <div class="chart-scroll"><div id="bandprob"></div></div>
+          <figcaption>
+            Noise is <em>largest</em> on the longest shots even in absolute
+            terms — the opposite of what a floor-and-ceiling effect would
+            produce.
+          </figcaption>
+        </figure>
+        <figure style="margin-top: 12px">
+          <div class="chart-head">
+            <div>
+              <h3>In log-odds</h3>
+              <div class="sub">Movement relative to how rare the event is</div>
+            </div>
+            <button class="link" id="bandTableBtn">Show data table</button>
+          </div>
+          <div class="chart-scroll"><div id="bandlog"></div></div>
+          <div class="table-wrap hidden" id="bandTable"></div>
+          <figcaption>
+            On the relative scale the gap widens sharply: a forecast wandering
+            between 1% and 3% is a threefold swing in the odds of the event, and
+            only this scale registers it.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Most contested and most irreproducible markets</h2>
+        <p class="lede">
+          Two different questions. Between-model spread is genuine disagreement
+          about the world; within-model spread is a model failing to reproduce
+          itself. They do not pick the same markets.
+        </p>
+        <figure>
+          <div class="chart-scroll"><div id="marketscatter"></div></div>
+          <figcaption>
+            Each dot is one market, positioned by its snapshot midpoint (log
+            axis) and its between-model spread. Hover for the question.
+          </figcaption>
+        </figure>
+      </section>
+    </div>
+
+    <script type="module">
+      import {
+        fmt,
+        groupedColumns,
+        horizontalBars,
+        initTheme,
+        legend,
+        loadJson,
+        onRedraw,
+        pct,
+        renderTable,
+        scatter,
+        shortModel,
+        wireTableToggle,
+      } from "./assets/viz.js";
+
+      initTheme();
+
+      const [run, goal1] = await Promise.all([
+        loadJson("run.json"),
+        loadJson("goal1-noise.json"),
+      ]);
+
+      document.getElementById("runline").textContent =
+        `${run.name} · ${run.models.length} models · ${run.markets} markets · ` +
+        `${run.promptIterations} iterations per phrasing`;
+
+      let scale = "probability";
+      const fitFor = () => goal1.scales[scale].primary;
+      const dp = () => (scale === "probability" ? 3 : 2);
+      const unit = () => (scale === "probability" ? "probability" : "logits");
+
+      const SERIES = {
+        stable: {
+          key: "stablePattern",
+          name: "Stable pattern",
+          color: "var(--series-1)",
+        },
+        occasion: {
+          key: "occasion",
+          name: "Occasion",
+          color: "var(--series-2)",
+        },
+      };
+
+      const tiles = () => {
+        const fit = fitFor();
+        const rob = goal1.scales[scale].robustness;
+        const items = [
+          ["Level", fit.level, "Between-model, one number each"],
+          ["Stable pattern", fit.stablePattern, "Model × market idiosyncrasy"],
+          ["Occasion", fit.occasion, "Same prompt, different answer"],
+          ["System noise", fit.systemNoise, "All three combined"],
+        ];
+        document.getElementById("tiles").innerHTML = items
+          .map(
+            ([label, value, hint], i) => `
+          <div class="tile${i === 3 ? " accent" : ""}">
+            <div class="label">${label}</div>
+            <div class="value">${fmt(value, dp())}</div>
+            <div class="hint">${hint}</div>
+          </div>`,
+          )
+          .join("");
+
+        document.getElementById("scalehint").textContent =
+          scale === "probability"
+            ? "Absolute movement, in probability points."
+            : `Relative movement, in logits. ${fit.clipped} of ${fit.observations} observations clipped to [0.001, 0.999].`;
+
+        document.getElementById("fitnote").textContent =
+          `Fitted on ${fit.markets} markets where every model × phrasing cell has at least one parsed forecast, ` +
+          `from ${fit.observations.toLocaleString()} forecasts. Restricting further to the ${rob.markets} strictly balanced markets ` +
+          `gives level ${fmt(rob.level, dp())}, stable pattern ${fmt(rob.stablePattern, dp())}, occasion ${fmt(rob.occasion, dp())} — ` +
+          `so the run's parse failures are not driving these numbers.`;
+
+        document.getElementById("compsub").textContent =
+          `Standard deviations in ${unit()}`;
+        document.getElementById("compcap").textContent =
+          `System noise ${fmt(fit.systemNoise, dp())} against a case spread of ${fmt(fit.caseSpread, dp())} — ` +
+          (fit.systemNoise > fit.caseSpread
+            ? "there is more noise in the panel than there is real difference between the markets it is judging."
+            : "the real differences between markets still outweigh the noise.");
+      };
+
+      const draw = () => {
+        const fit = fitFor();
+        tiles();
+
+        groupedColumns(document.getElementById("components"), {
+          rows: [
+            { label: "Level", v: fit.level },
+            { label: "Stable pattern", v: fit.stablePattern },
+            { label: "Occasion", v: fit.occasion },
+            { label: "System noise", v: fit.systemNoise },
+            { label: "Case spread", v: fit.caseSpread },
+          ],
+          series: [{ key: "v", name: "SD", color: "var(--series-1)" }],
+          valueFormat: (v) => fmt(v, dp()),
+          axisLabel: `Standard deviation (${unit()})`,
+          height: 250,
+        });
+
+        horizontalBars(document.getElementById("levels"), {
+          rows: [...fit.perModel]
+            .sort((a, b) => b.level - a.level)
+            .map((m) => ({
+              label: shortModel(m.model),
+              level: m.level,
+              raw: m,
+            })),
+          series: [{ key: "level", name: "Level", color: "var(--series-1)" }],
+          signed: true,
+          labelWidth: 190,
+          valueFormat: (v) => fmt(v, dp()),
+          axisLabel: `Deviation from the panel mean (${unit()})`,
+          tooltip: (row) => [
+            ["Level effect", fmt(row.raw.level, dp())],
+            ["Occasion noise", fmt(row.raw.occasion, dp())],
+            ["Forecasts", row.raw.observations.toLocaleString()],
+          ],
+        });
+
+        const modelRows = [...fit.perModel]
+          .sort((a, b) => b.occasion - a.occasion)
+          .map((m) => ({
+            label: shortModel(m.model),
+            stablePattern: m.stablePattern,
+            occasion: m.occasion,
+            raw: m,
+          }));
+
+        legend(document.getElementById("msLegend"), [
+          SERIES.stable,
+          SERIES.occasion,
+        ]);
+
+        horizontalBars(document.getElementById("modelnoise"), {
+          rows: modelRows,
+          series: [SERIES.stable, SERIES.occasion],
+          labelWidth: 190,
+          valueFormat: (v) => fmt(v, dp()),
+          axisLabel: `Standard deviation (${unit()})`,
+          tooltip: (row) => [
+            ["Stable pattern", fmt(row.raw.stablePattern, dp())],
+            ["Occasion", fmt(row.raw.occasion, dp())],
+            ["Level", fmt(row.raw.level, dp())],
+            ["Yes/No bias", fmt(row.raw.phrasingBias, dp())],
+          ],
+        });
+
+        renderTable(
+          document.getElementById("msTable"),
+          [
+            { name: "Model", get: (r) => r.raw.model, numeric: false },
+            { name: "Level", get: (r) => fmt(r.raw.level, dp()) },
+            {
+              name: "Stable pattern",
+              get: (r) => fmt(r.raw.stablePattern, dp()),
+            },
+            { name: "Occasion", get: (r) => fmt(r.raw.occasion, dp()) },
+            { name: "Yes/No bias", get: (r) => fmt(r.raw.phrasingBias, dp()) },
+            {
+              name: "Forecasts",
+              get: (r) => r.raw.observations.toLocaleString(),
+            },
+          ],
+          modelRows,
+        );
+
+        const bands = goal1.occasionByBand;
+        groupedColumns(document.getElementById("bandprob"), {
+          rows: bands.map((b) => ({ label: b.band, v: b.probability, raw: b })),
+          series: [{ key: "v", name: "Occasion SD", color: "var(--series-1)" }],
+          valueFormat: (v) => fmt(v, 2),
+          axisLabel: "Within-cell SD (probability points)",
+          height: 240,
+          tooltip: (row) => [
+            ["Occasion SD", fmt(row.raw.probability, 3)],
+            ["Markets", String(row.raw.markets)],
+            ["Degrees of freedom", row.raw.df.toLocaleString()],
+          ],
+        });
+
+        groupedColumns(document.getElementById("bandlog"), {
+          rows: bands.map((b) => ({ label: b.band, v: b.logOdds, raw: b })),
+          series: [{ key: "v", name: "Occasion SD", color: "var(--series-2)" }],
+          valueFormat: (v) => fmt(v, 2),
+          axisLabel: "Within-cell SD (logits)",
+          height: 240,
+          tooltip: (row) => [
+            ["Occasion SD", fmt(row.raw.logOdds, 3)],
+            ["Markets", String(row.raw.markets)],
+            ["Degrees of freedom", row.raw.df.toLocaleString()],
+          ],
+        });
+
+        renderTable(
+          document.getElementById("bandTable"),
+          [
+            { name: "Midpoint band", get: (r) => r.band, numeric: false },
+            { name: "Markets", get: (r) => String(r.markets) },
+            { name: "SD (points)", get: (r) => fmt(r.probability, 3) },
+            { name: "SD (logits)", get: (r) => fmt(r.logOdds, 3) },
+          ],
+          bands,
+        );
+
+        scatter(document.getElementById("marketscatter"), {
+          points: fit.perMarket
+            .filter((m) => m.midpoint !== null)
+            .map((m) => ({
+              x: m.midpoint,
+              y: m.betweenModel,
+              label: m.question || m.slug,
+              raw: m,
+            })),
+          logX: true,
+          xLabel: "Polymarket midpoint at snapshot (log scale)",
+          yLabel: `Between-model spread (${unit()})`,
+          xFormat: (v) => pct(v, 0),
+          yFormat: (v) => fmt(v, 2),
+          tooltip: (p) => [
+            ["Midpoint", pct(p.raw.midpoint, 1)],
+            ["Model consensus", fmt(p.raw.consensus, 3)],
+            ["Between-model", fmt(p.raw.betweenModel, 3)],
+            ["Within-model", fmt(p.raw.withinModel, 3)],
+          ],
+        });
+      };
+
+      for (const button of document.querySelectorAll("[data-scale]")) {
+        button.addEventListener("click", () => {
+          scale = button.dataset.scale;
+          for (const b of document.querySelectorAll("[data-scale]"))
+            b.setAttribute("aria-pressed", String(b === button));
+          draw();
+        });
+      }
+
+      wireTableToggle(
+        document.getElementById("msTableBtn"),
+        document.getElementById("msTable"),
+      );
+      wireTableToggle(
+        document.getElementById("bandTableBtn"),
+        document.getElementById("bandTable"),
+      );
+
+      onRedraw(draw);
+    </script>
+  </body>
+</html>
