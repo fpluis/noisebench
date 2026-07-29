@@ -30,6 +30,42 @@ export const pct = (x, dp = 1) =>
 export const shortModel = (name) => name.split("/").pop();
 
 // ---------------------------------------------------------------------------
+// Units
+// ---------------------------------------------------------------------------
+//
+// Every number on the site carries its unit, because a bare "0.146" tells a
+// reader nothing. Probabilities read as percentage points; log-odds read as a
+// multiplier on the odds, which is the only form in which "this forecast moved
+// from 1% to 3%" and "from 50% to 53%" are comparable.
+
+export const points = (v, dp = 1) =>
+  v === null || v === undefined ? "—" : `${(v * 100).toFixed(dp)} pts`;
+
+export const signedPoints = (v, dp = 1) =>
+  v === null || v === undefined
+    ? "—"
+    : `${v > 0 ? "+" : v < 0 ? "−" : ""}${(Math.abs(v) * 100).toFixed(dp)} pts`;
+
+/** A log-odds distance as the factor it represents on the odds. */
+export const oddsFactor = (v, dp = 2) =>
+  v === null || v === undefined ? "—" : `×${Math.exp(Math.abs(v)).toFixed(dp)}`;
+
+export const signedOddsFactor = (v, dp = 2) =>
+  v === null || v === undefined
+    ? "—"
+    : `${v < 0 ? "÷" : "×"}${Math.exp(Math.abs(v)).toFixed(dp)}`;
+
+/** Format a value on whichever scale is showing, signed or not. */
+export const onScale = (v, scale, signed = false) =>
+  scale === "probability"
+    ? signed
+      ? signedPoints(v)
+      : points(v)
+    : signed
+      ? signedOddsFactor(v)
+      : oddsFactor(v);
+
+// ---------------------------------------------------------------------------
 // Theme
 // ---------------------------------------------------------------------------
 
@@ -130,6 +166,17 @@ const niceTicks = (min, max, count = 5) => {
   for (let t = Math.ceil(min / step) * step; t <= max + 1e-9; t += step)
     out.push(Math.abs(t) < 1e-9 ? 0 : t);
   return out;
+};
+
+// Row labels are right-anchored against the plot, so an over-long one runs off
+// the left edge of the SVG rather than wrapping. Budget characters against the
+// gutter it has to fit in; the untruncated text still reaches the tooltip.
+const ELLIPSIS = "…";
+const truncate = (text, pixels) => {
+  const maxChars = Math.max(8, Math.floor((pixels - 10) / 5.7));
+  return text.length <= maxChars
+    ? text
+    : `${text.slice(0, maxChars - 1).trimEnd()}${ELLIPSIS}`;
 };
 
 // A bar with its far end rounded and its baseline end square, so the mark reads
@@ -244,7 +291,7 @@ export const horizontalBars = (mount, options) => {
         fill: "var(--text-secondary)",
       },
       svg,
-    ).textContent = row.label;
+    ).textContent = truncate(row.label, labelWidth);
 
     series.forEach((s, j) => {
       const value = row[s.key] ?? 0;
@@ -324,15 +371,25 @@ export const groupedColumns = (mount, options) => {
     axisLabel = "",
     height = 260,
     reference = null,
+    // Names the reference line in place, so the reader never has to hunt for
+    // what a bare rule across the plot is supposed to mean.
+    referenceLabel = "",
+    // Baseline the bars grow from. Defaults to zero; a chance-level baseline is
+    // the honest anchor when the measure's floor is not zero.
+    baseline = 0,
     tooltip = null,
+    highlight = null,
   } = options;
 
   mount.innerHTML = "";
   const width = Math.max(mount.clientWidth || 640, 420);
+  // Many categories cannot share a horizontal label row, so they tilt and the
+  // plot gives the extra depth back.
+  const rotate = rows.length > 8;
   const left = 52;
   const right = 12;
   const top = 12;
-  const bottom = 46;
+  const bottom = rotate ? 108 : 46;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
 
@@ -346,9 +403,19 @@ export const groupedColumns = (mount, options) => {
   const values = rows.flatMap((r) => series.map((s) => r[s.key] ?? 0));
   if (reference !== null) values.push(reference);
   const rawMax = Math.max(...values, 0);
-  const rawMin = Math.min(...values, 0);
+  // The smallest value actually plotted, NOT floored at zero — the baseline
+  // decision below needs to know whether every bar clears it.
+  const rawMin = Math.min(...values);
   const pad = (rawMax - rawMin) * 0.08 || 0.05;
-  const lo = rawMin < 0 ? rawMin - pad : 0;
+  // Anchoring at the baseline rather than zero keeps a field that all sits
+  // between 55% and 83% from being flattened into twenty near-identical bars.
+  // Negative values still pull the floor down; the baseline only ever raises
+  // it, and only when every bar clears it.
+  const floor = rawMin < 0 ? rawMin - pad : 0;
+  // Drop slightly below the baseline so a reference line drawn there reads as a
+  // line inside the plot with room for its own label, rather than merging into
+  // the axis rule.
+  const lo = rawMin >= baseline ? baseline - pad * 0.9 : floor;
   const hi = rawMax + pad;
   const y = (v) => top + plotHeight - ((v - lo) / (hi - lo)) * plotHeight;
 
@@ -392,6 +459,26 @@ export const groupedColumns = (mount, options) => {
       },
       svg,
     );
+    if (referenceLabel) {
+      // A reference line anchoring the floor sits on the axis, where a label
+      // above it would land on the bars; drop it into the gutter instead.
+      const atFloor = y(reference) > top + plotHeight - 20;
+      el(
+        "text",
+        {
+          x: left + plotWidth,
+          y: y(reference) + (atFloor ? 14 : -6),
+          "text-anchor": "end",
+          "font-size": 11,
+          fill: "var(--text-muted)",
+          // Halo, so the label survives wherever the marks happen to fall.
+          stroke: "var(--surface-1)",
+          "stroke-width": 3,
+          "paint-order": "stroke",
+        },
+        svg,
+      ).textContent = referenceLabel;
+    }
   }
 
   const bandWidth = plotWidth / rows.length;
@@ -403,7 +490,7 @@ export const groupedColumns = (mount, options) => {
     series.forEach((s, j) => {
       const value = row[s.key] ?? 0;
       const bx = centre - groupWidth / 2 + j * (barWidth + 2);
-      const zero = y(Math.max(lo, 0));
+      const zero = y(Math.max(lo, baseline));
       const top0 = Math.min(y(value), zero);
       const h = Math.abs(y(value) - zero);
       const rr = Math.min(4, h / 2);
@@ -417,6 +504,9 @@ export const groupedColumns = (mount, options) => {
         {
           d: h > 1 ? d : `M${bx},${zero} h${barWidth} v1 h${-barWidth} z`,
           fill: s.color,
+          // Emphasis, not a second hue: everything not highlighted recedes so
+          // the named entity carries the eye without adding a colour class.
+          "fill-opacity": highlight && row.label !== highlight ? 0.32 : 1,
           stroke: "var(--surface-1)",
           "stroke-width": 2,
           "paint-order": "stroke",
@@ -435,16 +525,21 @@ export const groupedColumns = (mount, options) => {
       "text",
       {
         x: centre,
-        y: height - bottom + 18,
-        "text-anchor": "middle",
+        y: height - bottom + (rotate ? 12 : 18),
+        "text-anchor": rotate ? "end" : "middle",
         "font-size": 11,
         fill: "var(--text-secondary)",
+        transform: rotate
+          ? `rotate(-45 ${centre} ${height - bottom + 12})`
+          : null,
       },
       svg,
     ).textContent = row.label;
   });
 
-  if (axisLabel) {
+  // Tilted category labels occupy the strip an axis caption would sit in, and
+  // a list of model names needs no caption anyway.
+  if (axisLabel && !rotate) {
     el(
       "text",
       {
@@ -711,14 +806,28 @@ export const wireTableToggle = (button, container) => {
   });
 };
 
-/** Re-render charts on resize and on theme change, debounced. */
+/**
+ * Re-render charts on resize and on theme change, debounced.
+ *
+ * Only a change in viewport WIDTH triggers a redraw. Charts size themselves
+ * from their container's width and set an explicit height, so a redraw can
+ * change the document height, which toggles the scrollbar, which fires another
+ * resize — a loop that leaves the renderer busy and the page half-painted.
+ * Height changes cannot affect what a chart draws, so ignoring them is both
+ * safe and sufficient to break the cycle.
+ */
 export const onRedraw = (draw) => {
   let timer = null;
+  let lastWidth = window.innerWidth;
   const run = () => {
     clearTimeout(timer);
     timer = setTimeout(draw, 120);
   };
-  window.addEventListener("resize", run);
+  window.addEventListener("resize", () => {
+    if (window.innerWidth === lastWidth) return;
+    lastWidth = window.innerWidth;
+    run();
+  });
   document.addEventListener("nb-theme", run);
   draw();
 };

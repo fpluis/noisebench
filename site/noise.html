@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Noise — noisebench</title>
+    <link rel="stylesheet" href="assets/viz.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="masthead">
+        <div>
+          <h1>Noise</h1>
+          <div class="sub" id="runline">Loading…</div>
+        </div>
+        <nav class="tabs">
+          <a href="index.html">Overview</a>
+          <a href="noise.html" aria-current="page">Noise</a>
+          <a href="bias.html">Yes/No bias</a>
+          <a href="details.html">Details</a>
+          <button class="link" data-theme-toggle style="margin-left: 8px">
+            Dark
+          </button>
+        </nav>
+      </header>
+
+      <section>
+        <p class="lede">
+          Twenty models each forecast 100 questions, in the question's own
+          wording and in its negation, four times each. Where does the
+          disagreement in that pile of numbers come from? Three sources, and
+          they mean very different things.
+        </p>
+
+        <div class="controls">
+          <div class="seg" role="group" aria-label="Units">
+            <button data-scale="probability" aria-pressed="true">
+              Percentage points
+            </button>
+            <button data-scale="logOdds" aria-pressed="false">
+              Odds multiple
+            </button>
+          </div>
+          <span class="sub" id="scalehint"></span>
+        </div>
+
+        <div class="tiles" id="tiles"></div>
+        <p class="note" id="fitnote"></p>
+      </section>
+
+      <section>
+        <figure>
+          <div class="chart-head">
+            <div>
+              <h3>Noise against the real signal</h3>
+              <div class="sub" id="compsub"></div>
+            </div>
+          </div>
+          <div class="chart-scroll"><div id="components"></div></div>
+          <figcaption id="compcap"></figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Baseline tilt, by model</h2>
+        <p class="lede">
+          How far each model's average forecast sits from the average across all
+          twenty. Positive means this model reads the world as more likely than
+          the field does; negative, less likely. It says nothing about whether
+          the model is right — only that it runs high or low.
+        </p>
+        <figure>
+          <div class="chart-scroll"><div id="levels"></div></div>
+          <figcaption>
+            Bars are anchored at the field average. How spread out they are is
+            the baseline-tilt figure above.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Idiosyncrasy and repeat drift, by model</h2>
+        <p class="lede">
+          <b>Idiosyncrasy</b> is a model's durable private take on particular
+          questions — the part that survives averaging its four attempts, so it
+          returns every time you ask. <b>Repeat drift</b> is the scatter among
+          those four attempts: same model, same prompt, different answer. The
+          idiosyncrasy figure has the sampling error of a four-attempt average
+          removed, so a model that is merely unsteady is not counted as
+          opinionated.
+        </p>
+        <figure>
+          <div class="chart-head">
+            <div class="legend" id="msLegend"></div>
+            <button class="link" id="msTableBtn">Show data table</button>
+          </div>
+          <div class="chart-scroll"><div id="modelnoise"></div></div>
+          <div class="table-wrap hidden" id="msTable"></div>
+          <figcaption>
+            Sorted by repeat drift. A model can be steady on repetition and
+            still hold unusual views about specific questions — the two bars
+            measure different things.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Noise against how much of a long shot the question is</h2>
+        <p class="lede">
+          Questions grouped by their market price at the moment they were asked.
+          The two charts measure the same drift in two units, because the units
+          disagree about what "noisy" means: moving from 1% to 3% is two
+          percentage points but a tripling of the odds.
+        </p>
+        <figure>
+          <div class="chart-head">
+            <div>
+              <h3>In percentage points</h3>
+              <div class="sub">How far the answer moves, in absolute terms</div>
+            </div>
+          </div>
+          <div class="chart-scroll"><div id="bandprob"></div></div>
+          <figcaption>
+            Drift is <em>largest</em> on the longest shots even in absolute
+            terms — the opposite of what a floor-and-ceiling effect would
+            produce.
+          </figcaption>
+        </figure>
+        <figure style="margin-top: 12px">
+          <div class="chart-head">
+            <div>
+              <h3>As a multiple of the odds</h3>
+              <div class="sub">
+                How far the answer moves, relative to how rare the event is
+              </div>
+            </div>
+            <button class="link" id="bandTableBtn">Show data table</button>
+          </div>
+          <div class="chart-scroll"><div id="bandlog"></div></div>
+          <div class="table-wrap hidden" id="bandTable"></div>
+          <figcaption>
+            On the relative scale the gap widens sharply. A typical answer to a
+            sub-5% question swings by a factor of
+            <b id="tailfactor">—</b> between identical repeats.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Which questions did the models disagree about?</h2>
+        <p class="lede">
+          Two different failures, easy to confuse.
+          <b>Between-model spread</b> is genuine disagreement — twenty models
+          reading the same question differently. <b>Within-model spread</b> is
+          irreproducibility — one model that cannot give the same answer twice.
+          Both are measured in the units selected at the top of the page, so
+          they are directly comparable to the drift figures above.
+        </p>
+        <figure>
+          <div class="chart-head">
+            <div class="controls" style="margin-bottom: 0">
+              <div class="seg" role="group" aria-label="View">
+                <button data-view="midpoint" aria-pressed="true">
+                  By market price
+                </button>
+                <button data-view="between" aria-pressed="false">
+                  Most disagreed about
+                </button>
+                <button data-view="within" aria-pressed="false">
+                  Least reproducible
+                </button>
+              </div>
+            </div>
+            <button class="link" id="mktTableBtn">Show data table</button>
+          </div>
+          <div class="chart-scroll"><div id="marketchart"></div></div>
+          <div class="table-wrap hidden" id="mktTable"></div>
+          <figcaption id="mktcap"></figcaption>
+        </figure>
+      </section>
+    </div>
+
+    <script type="module">
+      import {
+        fmt,
+        groupedColumns,
+        horizontalBars,
+        initTheme,
+        legend,
+        loadJson,
+        onRedraw,
+        onScale,
+        pct,
+        renderTable,
+        scatter,
+        shortModel,
+        wireTableToggle,
+      } from "./assets/viz.js";
+
+      initTheme();
+
+      const [run, noise] = await Promise.all([
+        loadJson("run.json"),
+        loadJson("noise.json"),
+      ]);
+
+      document.getElementById("runline").textContent =
+        `${run.models.length} models · ${run.markets} questions · ${run.promptIterations} attempts per wording`;
+
+      let scale = "probability";
+      let view = "midpoint";
+      const fitFor = () => noise.scales[scale].primary;
+      const unit = () =>
+        scale === "probability" ? "percentage points" : "odds multiple";
+      const show = (v, signed = false) => onScale(v, scale, signed);
+      // Axis ticks stay terse but must carry the SAME unit as the tiles above.
+      // The log-odds axis is linear in logits, so its ticks are not round
+      // multiples — that is what a log axis looks like, and labelling them in
+      // raw logits while the headline reads "×3.18" would be two units on one
+      // page.
+      const tick = (v) =>
+        scale === "probability"
+          ? `${(v * 100).toFixed(0)}`
+          : `×${Math.exp(v).toFixed(1)}`;
+
+      const SERIES = {
+        idio: {
+          key: "stablePattern",
+          name: "Idiosyncrasy",
+          color: "var(--series-1)",
+        },
+        drift: {
+          key: "occasion",
+          name: "Repeat drift",
+          color: "var(--series-2)",
+        },
+      };
+
+      const tiles = () => {
+        const fit = fitFor();
+        const rob = noise.scales[scale].robustness;
+        const items = [
+          [
+            "Baseline tilt",
+            fit.level,
+            "How far apart the models' overall averages sit",
+          ],
+          [
+            "Idiosyncrasy",
+            fit.stablePattern,
+            "Durable private takes on particular questions",
+          ],
+          [
+            "Repeat drift",
+            fit.occasion,
+            "Same model, same prompt, different answer",
+          ],
+          ["Total noise", fit.systemNoise, "All three sources combined"],
+        ];
+        document.getElementById("tiles").innerHTML = items
+          .map(
+            ([label, value, hint], i) => `
+          <div class="tile${i === 3 ? " accent" : ""}">
+            <div class="label">${label}</div>
+            <div class="value">${show(value)}</div>
+            <div class="hint">${hint}</div>
+          </div>`,
+          )
+          .join("");
+
+        document.getElementById("scalehint").textContent =
+          scale === "probability"
+            ? "Typical distance between answers, in points of probability."
+            : `Typical swing in the odds of the event. ${fit.clipped} of ${fit.observations.toLocaleString()} forecasts were clipped into the 0.1%–99.9% range first.`;
+
+        document.getElementById("fitnote").textContent =
+          `Measured on ${fit.markets} questions where every model answered both wordings at least once, ` +
+          `from ${fit.observations.toLocaleString()} forecasts. Narrowing to the ${rob.markets} questions where every model ` +
+          `completed all four attempts gives ${show(rob.level)}, ${show(rob.stablePattern)} and ${show(rob.occasion)} — ` +
+          `so the models that failed to answer are not what produces these numbers.`;
+
+        document.getElementById("compsub").textContent =
+          `Typical spread, in ${unit()}`;
+        document.getElementById("compcap").textContent =
+          `Total noise of ${show(fit.systemNoise)} against a real spread between questions of ${show(fit.caseSpread)} — ` +
+          (fit.systemNoise > fit.caseSpread
+            ? "there is more noise in this panel than there is real difference between the questions it is judging."
+            : "the real differences between questions still outweigh the noise.");
+      };
+
+      const marketTip = (m) => [
+        ["Market price when asked", pct(m.midpoint, 1)],
+        ["Models' average answer", pct(m.consensus, 1)],
+        ["Between-model spread", show(m.betweenModel)],
+        ["Within-model spread", show(m.withinModel)],
+      ];
+
+      const drawMarkets = (fit) => {
+        const mount = document.getElementById("marketchart");
+
+        if (view === "midpoint") {
+          scatter(mount, {
+            points: fit.perMarket
+              .filter((m) => m.midpoint !== null)
+              .map((m) => ({
+                x: m.midpoint,
+                y: m.betweenModel,
+                label: m.question || m.slug,
+                raw: m,
+              })),
+            logX: true,
+            xLabel: "Market price when the question was asked (log scale)",
+            yLabel: `Between-model spread (${unit()})`,
+            xFormat: (v) => pct(v, 0),
+            yFormat: tick,
+            tooltip: (p) => marketTip(p.raw),
+          });
+          document.getElementById("mktcap").textContent =
+            "Each dot is one question, placed by what the market thought at the time. Disagreement runs across the whole price range — it is not a property of long shots alone.";
+          return;
+        }
+
+        const key = view === "between" ? "betweenModel" : "withinModel";
+        const label =
+          view === "between" ? "Between-model spread" : "Within-model spread";
+        horizontalBars(mount, {
+          rows: [...fit.perMarket]
+            .sort((a, b) => b[key] - a[key])
+            .slice(0, 20)
+            .map((m) => ({
+              label: (m.question || m.slug).replace(/\?$/, ""),
+              v: m[key],
+              raw: m,
+            })),
+          series: [{ key: "v", name: label, color: "var(--series-1)" }],
+          labelWidth: 340,
+          valueFormat: tick,
+          axisLabel: `${label} (${unit()})`,
+          tooltip: (row) => marketTip(row.raw),
+        });
+        document.getElementById("mktcap").textContent =
+          view === "between"
+            ? "The twenty questions the models most disagreed about. These are genuine differences of opinion — each model was reasonably steady, they just did not agree with each other."
+            : "The twenty questions models were least able to answer the same way twice. Repetition alone moved the answer this much.";
+      };
+
+      const draw = () => {
+        const fit = fitFor();
+        tiles();
+
+        groupedColumns(document.getElementById("components"), {
+          rows: [
+            { label: "Baseline tilt", v: fit.level },
+            { label: "Idiosyncrasy", v: fit.stablePattern },
+            { label: "Repeat drift", v: fit.occasion },
+            { label: "Total noise", v: fit.systemNoise },
+            { label: "Real spread between questions", v: fit.caseSpread },
+          ],
+          series: [{ key: "v", name: "Spread", color: "var(--series-1)" }],
+          valueFormat: tick,
+          axisLabel: `Typical spread (${unit()})`,
+          height: 260,
+          tooltip: (row) => [["Spread", show(row.v)]],
+        });
+
+        horizontalBars(document.getElementById("levels"), {
+          rows: [...fit.perModel]
+            .sort((a, b) => b.level - a.level)
+            .map((m) => ({
+              label: shortModel(m.model),
+              level: m.level,
+              raw: m,
+            })),
+          series: [
+            { key: "level", name: "Baseline tilt", color: "var(--series-1)" },
+          ],
+          signed: true,
+          labelWidth: 190,
+          valueFormat: (v) => show(v, true),
+          axisLabel: `Distance from the field average (${unit()})`,
+          tooltip: (row) => [
+            ["Baseline tilt", show(row.raw.level, true)],
+            ["Idiosyncrasy", show(row.raw.stablePattern)],
+            ["Repeat drift", show(row.raw.occasion)],
+            ["Forecasts", row.raw.observations.toLocaleString()],
+          ],
+        });
+
+        const modelRows = [...fit.perModel]
+          .sort((a, b) => b.occasion - a.occasion)
+          .map((m) => ({
+            label: shortModel(m.model),
+            stablePattern: m.stablePattern,
+            occasion: m.occasion,
+            raw: m,
+          }));
+
+        legend(document.getElementById("msLegend"), [
+          SERIES.idio,
+          SERIES.drift,
+        ]);
+
+        horizontalBars(document.getElementById("modelnoise"), {
+          rows: modelRows,
+          series: [SERIES.idio, SERIES.drift],
+          labelWidth: 190,
+          valueFormat: tick,
+          axisLabel: `Typical spread (${unit()})`,
+          tooltip: (row) => [
+            ["Idiosyncrasy", show(row.raw.stablePattern)],
+            ["Repeat drift", show(row.raw.occasion)],
+            ["Baseline tilt", show(row.raw.level, true)],
+            ["Yes/No gap", show(row.raw.phrasingBias, true)],
+          ],
+        });
+
+        renderTable(
+          document.getElementById("msTable"),
+          [
+            { name: "Model", get: (r) => r.raw.model, numeric: false },
+            { name: "Baseline tilt", get: (r) => show(r.raw.level, true) },
+            { name: "Idiosyncrasy", get: (r) => show(r.raw.stablePattern) },
+            { name: "Repeat drift", get: (r) => show(r.raw.occasion) },
+            { name: "Yes/No gap", get: (r) => show(r.raw.phrasingBias, true) },
+            {
+              name: "Forecasts",
+              get: (r) => r.raw.observations.toLocaleString(),
+            },
+          ],
+          modelRows,
+        );
+
+        const bands = noise.occasionByBand;
+        document.getElementById("tailfactor").textContent =
+          `×${Math.exp(bands[0].logOdds).toFixed(1)}`;
+
+        groupedColumns(document.getElementById("bandprob"), {
+          rows: bands.map((b) => ({ label: b.band, v: b.probability, raw: b })),
+          series: [
+            { key: "v", name: "Repeat drift", color: "var(--series-1)" },
+          ],
+          valueFormat: (v) => `${(100 * v).toFixed(0)}`,
+          axisLabel: "Market price when the question was asked",
+          height: 250,
+          tooltip: (row) => [
+            ["Repeat drift", `${(100 * row.raw.probability).toFixed(1)} pts`],
+            ["Questions", String(row.raw.markets)],
+          ],
+        });
+
+        groupedColumns(document.getElementById("bandlog"), {
+          rows: bands.map((b) => ({
+            label: b.band,
+            v: Math.exp(b.logOdds),
+            raw: b,
+          })),
+          series: [
+            { key: "v", name: "Repeat drift", color: "var(--series-2)" },
+          ],
+          valueFormat: (v) => `×${v.toFixed(1)}`,
+          axisLabel: "Market price when the question was asked",
+          height: 250,
+          baseline: 1,
+          tooltip: (row) => [
+            ["Odds swing", `×${Math.exp(row.raw.logOdds).toFixed(2)}`],
+            ["Questions", String(row.raw.markets)],
+          ],
+        });
+
+        renderTable(
+          document.getElementById("bandTable"),
+          [
+            { name: "Market price", get: (r) => r.band, numeric: false },
+            { name: "Questions", get: (r) => String(r.markets) },
+            {
+              name: "Drift (points)",
+              get: (r) => `${(100 * r.probability).toFixed(1)} pts`,
+            },
+            {
+              name: "Drift (odds multiple)",
+              get: (r) => `×${Math.exp(r.logOdds).toFixed(2)}`,
+            },
+          ],
+          bands,
+        );
+
+        drawMarkets(fit);
+        renderTable(
+          document.getElementById("mktTable"),
+          [
+            {
+              name: "Question",
+              get: (r) => r.question || r.slug,
+              numeric: false,
+            },
+            {
+              name: "Market price",
+              get: (r) => (r.midpoint === null ? "—" : pct(r.midpoint, 1)),
+            },
+            { name: "Models' average", get: (r) => pct(r.consensus, 1) },
+            { name: "Between-model", get: (r) => show(r.betweenModel) },
+            { name: "Within-model", get: (r) => show(r.withinModel) },
+          ],
+          [...fit.perMarket].sort((a, b) => b.betweenModel - a.betweenModel),
+        );
+      };
+
+      for (const button of document.querySelectorAll("[data-scale]")) {
+        button.addEventListener("click", () => {
+          scale = button.dataset.scale;
+          for (const b of document.querySelectorAll("[data-scale]"))
+            b.setAttribute("aria-pressed", String(b === button));
+          draw();
+        });
+      }
+
+      for (const button of document.querySelectorAll("[data-view]")) {
+        button.addEventListener("click", () => {
+          view = button.dataset.view;
+          for (const b of document.querySelectorAll("[data-view]"))
+            b.setAttribute("aria-pressed", String(b === button));
+          drawMarkets(fitFor());
+        });
+      }
+
+      wireTableToggle(
+        document.getElementById("msTableBtn"),
+        document.getElementById("msTable"),
+      );
+      wireTableToggle(
+        document.getElementById("bandTableBtn"),
+        document.getElementById("bandTable"),
+      );
+      wireTableToggle(
+        document.getElementById("mktTableBtn"),
+        document.getElementById("mktTable"),
+      );
+
+      onRedraw(draw);
+    </script>
+  </body>
+</html>

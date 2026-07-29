@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Details — noisebench</title>
+    <link rel="stylesheet" href="assets/viz.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="masthead">
+        <div>
+          <h1>Details</h1>
+          <div class="sub" id="runline">Loading…</div>
+        </div>
+        <nav class="tabs">
+          <a href="index.html">Overview</a>
+          <a href="noise.html">Noise</a>
+          <a href="bias.html">Yes/No bias</a>
+          <a href="details.html" aria-current="page">Details</a>
+          <button class="link" data-theme-toggle style="margin-left: 8px">
+            Dark
+          </button>
+        </nav>
+      </header>
+
+      <section>
+        <h2>What was measured</h2>
+        <p class="lede">
+          Every number on this site is about a model's agreement with
+          <em>itself</em>. None of it scores a forecast against how a market
+          actually resolved — the questions were still open when they were
+          asked, and resolution is outside what this benchmark tries to say.
+          Where a market price appears, it describes what the crowd thought at
+          the moment the question was put to the models, and is used only as
+          context for grouping questions.
+        </p>
+        <div class="tiles" id="tiles"></div>
+      </section>
+
+      <section>
+        <h2>How the run worked</h2>
+        <p class="lede">Two ways of asking, over one set of questions.</p>
+        <div class="tiles">
+          <div class="tile">
+            <div class="label">Direct</div>
+            <div class="value" style="font-size: 20px">How likely is this?</div>
+            <div class="hint">
+              Each question put to each model as a probability request, in the
+              market's own wording and in its negation, four times each. The two
+              wordings should produce answers that add to 100%.
+            </div>
+          </div>
+          <div class="tile">
+            <div class="label">Head-to-head</div>
+            <div class="value" style="font-size: 20px">Which is likelier?</div>
+            <div class="hint">
+              Fifty fixed pairs of questions, ranked against each other with no
+              probability attached, in all four wording combinations, twice
+              each. Negating both sides must reverse the answer.
+            </div>
+          </div>
+        </div>
+        <p class="note">
+          The pairs are fixed, not random. They were built by sorting the
+          questions by market price and pairing neighbours, so the two sides are
+          deliberately close in likelihood and the comparison is hard.
+        </p>
+      </section>
+
+      <section>
+        <h2>The noise vocabulary</h2>
+        <p class="lede">
+          The three-way split comes from Daniel Kahneman, Olivier Sibony and
+          Cass Sunstein's <em>Noise</em>, which decomposes the disagreement in a
+          panel of judges. This site uses plainer names for the same quantities.
+          The mapping:
+        </p>
+        <figure>
+          <div class="table-wrap">
+            <table class="prose">
+              <thead>
+                <tr>
+                  <th>On this site</th>
+                  <th style="text-align: left">In <em>Noise</em></th>
+                  <th style="text-align: left">What it measures</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Baseline tilt</td>
+                  <td style="text-align: left">Level noise</td>
+                  <td style="text-align: left">
+                    A model's overall average sitting above or below the field's
+                    — it reads the world as generally more or less likely than
+                    everyone else.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Idiosyncrasy</td>
+                  <td style="text-align: left">Stable pattern noise</td>
+                  <td style="text-align: left">
+                    A model's durable private reaction to a particular question,
+                    left over once its baseline tilt is accounted for. It
+                    survives averaging the repeats, so it recurs every time.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Repeat drift</td>
+                  <td style="text-align: left">Occasion noise</td>
+                  <td style="text-align: left">
+                    The scatter among identical repeats of one prompt. The
+                    cleanest of the three, because it is measured entirely
+                    inside a single model–question–wording cell.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Total noise</td>
+                  <td style="text-align: left">System noise</td>
+                  <td style="text-align: left">
+                    All three combined, as
+                    <code>√(tilt² + idiosyncrasy² + drift²)</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Real spread between questions</td>
+                  <td style="text-align: left">Case spread</td>
+                  <td style="text-align: left">
+                    Not noise. How much the questions genuinely differ from one
+                    another — the signal the noise is competing against.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <figcaption>
+            One deliberate departure: <em>Noise</em> studies human judges, where
+            occasion noise means mood, fatigue or the time of day. Here the
+            prompt is byte-identical between repeats, so repeat drift is purely
+            the model's own sampling randomness.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Units</h2>
+        <p class="lede">
+          Noise figures are shown two ways, and the choice matters more than it
+          looks. Most of these questions are long shots — half sit below a 20%
+          market price — and the two units disagree about what "noisy" means
+          down there.
+        </p>
+        <div class="tiles">
+          <div class="tile">
+            <div class="label">Percentage points</div>
+            <div class="value" style="font-size: 22px">14.6 pts</div>
+            <div class="hint">
+              How far the answer moves in absolute terms. A forecast wandering
+              between 50% and 53% moves 3 points; one wandering between 1% and
+              3% moves 2 points, and looks quieter.
+            </div>
+          </div>
+          <div class="tile">
+            <div class="label">Odds multiple</div>
+            <div class="value" style="font-size: 22px">×3.2</div>
+            <div class="hint">
+              How far it moves relative to how rare the event is. That same 1%
+              to 3% wander is a tripling of the odds — a far bigger claim than
+              the 3-point move, and only this unit registers it.
+            </div>
+          </div>
+        </div>
+        <p class="note">
+          Neither is the "right" one, which is why every noise chart offers
+          both. The odds multiple is computed in log-odds and reported as
+          <code>e^SD</code>; forecasts are clipped into the 0.1%–99.9% range
+          first, so a single 0.01% answer cannot dominate a whole cell.
+        </p>
+      </section>
+
+      <section>
+        <h2>The consistency score</h2>
+        <p class="lede">
+          Five checks, equally weighted, each a plain share of something
+          countable. They do not share a floor: a model answering at random
+          would score 0% on the first, about 67% on the second and 50% on the
+          rest. Rather than rescale them into something less legible, the charts
+          draw that combined baseline —
+          <b id="chance">—</b> — as a line.
+        </p>
+        <figure>
+          <div class="table-wrap">
+            <table class="prose">
+              <thead>
+                <tr>
+                  <th style="text-align: left">Check</th>
+                  <th style="text-align: left">What it asks</th>
+                  <th class="num">Coin flip</th>
+                  <th class="num">Field avg</th>
+                </tr>
+              </thead>
+              <tbody id="components"></tbody>
+            </table>
+          </div>
+          <figcaption>
+            The head-to-head repeat check has a known blind spot: a model that
+            picks the left-hand option every time scores 100% on it without
+            being consistent about anything. The negation check catches exactly
+            that failure, which is why they are reported together and why the
+            share of picks going to side A is carried in the tooltip.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Why the four wordings must disagree</h2>
+        <p class="lede">
+          Each pair is asked four ways. Those four answers only probe
+          <em>two</em> independent facts, and each fact gets asked twice in
+          opposite directions — which is what makes a coherence check possible
+          without knowing any true answer.
+        </p>
+        <figure>
+          <div class="table-wrap">
+            <table class="prose">
+              <thead>
+                <tr>
+                  <th style="text-align: left">Asked</th>
+                  <th style="text-align: left">Picking A means</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="text-align: left">A vs B</td>
+                  <td style="text-align: left"><code>P(A) &gt; P(B)</code></td>
+                </tr>
+                <tr>
+                  <td style="text-align: left">not-A vs not-B</td>
+                  <td style="text-align: left">
+                    <code>P(A) &lt; P(B)</code> — must reverse the first
+                  </td>
+                </tr>
+                <tr>
+                  <td style="text-align: left">A vs not-B</td>
+                  <td style="text-align: left">
+                    <code>P(A) + P(B) &gt; 1</code>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="text-align: left">not-A vs B</td>
+                  <td style="text-align: left">
+                    <code>P(A) + P(B) &lt; 1</code> — must reverse the third
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <figcaption>
+            Those two reversals are the whole test: checking them is both
+            necessary and sufficient for the set of four answers to be logically
+            coherent. Note what is <em>not</em> a contradiction — saying A beats
+            B and also that A beats not-B is perfectly fine (A&nbsp;=&nbsp;90%,
+            B&nbsp;=&nbsp;40% does both).
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Questions that went unanswered</h2>
+        <p class="lede">
+          Not every request came back with a usable number. Those attempts are
+          absent from the analysis rather than counted as noise — but they are
+          not spread evenly across models, so the noise figures are also
+          reported on the subset of questions every model completed in full.
+        </p>
+        <figure>
+          <div class="chart-head">
+            <div>
+              <h3>Unanswerable requests, by model</h3>
+              <div class="sub">
+                Share of direct forecasts that returned no usable probability
+              </div>
+            </div>
+            <button class="link" id="covTableBtn">Show data table</button>
+          </div>
+          <div class="chart-scroll"><div id="coverage"></div></div>
+          <div class="table-wrap hidden" id="covTable"></div>
+          <figcaption id="covcap"></figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Reproducing this</h2>
+        <p class="lede">
+          The site reads static JSON only, so once the analysis has run it needs
+          no database.
+        </p>
+        <figure>
+          <pre style="margin: 0; overflow-x: auto; font-size: 12.5px">
+npm run db:up            # postgres
+npm run db:setup         # apply migrations
+npm run backfill-snapshot -- --run 1
+npm run analyze -- --run 1
+npm run site             # http://localhost:4321</pre>
+        </figure>
+        <p class="note" id="provenance"></p>
+      </section>
+    </div>
+
+    <script type="module">
+      import {
+        horizontalBars,
+        initTheme,
+        loadJson,
+        onRedraw,
+        pct,
+        renderTable,
+        shortModel,
+        wireTableToggle,
+      } from "./assets/viz.js";
+
+      initTheme();
+
+      const [run, consistency, noise] = await Promise.all([
+        loadJson("run.json"),
+        loadJson("consistency.json"),
+        loadJson("noise.json"),
+      ]);
+
+      const started = new Date(run.startedAt);
+      const ended = new Date(run.endedAt);
+      document.getElementById("runline").textContent =
+        `${run.models.length} models · ${run.markets} questions · ${started.toISOString().slice(0, 10)}`;
+
+      const attempted = run.models.reduce((s, m) => s + m.attempted, 0);
+      const parsed = run.models.reduce((s, m) => s + m.parsed, 0);
+      const fit = noise.scales.probability.primary;
+
+      document.getElementById("tiles").innerHTML = [
+        ["Models", String(run.models.length), "Across ten vendors"],
+        ["Questions", String(run.markets), "From 72 Polymarket events"],
+        [
+          "Forecasts used",
+          parsed.toLocaleString(),
+          `of ${attempted.toLocaleString()} direct requests`,
+        ],
+        [
+          "Head-to-head judgments",
+          consistency.models
+            .reduce((s, m) => s + m.judgments, 0)
+            .toLocaleString(),
+          "Across 50 fixed pairs",
+        ],
+      ]
+        .map(
+          ([label, value, hint]) => `
+        <div class="tile">
+          <div class="label">${label}</div>
+          <div class="value">${value}</div>
+          <div class="hint">${hint}</div>
+        </div>`,
+        )
+        .join("");
+
+      document.getElementById("chance").textContent = pct(
+        consistency.chance,
+        0,
+      );
+
+      document.getElementById("components").innerHTML = consistency.components
+        .map(
+          (c) => `
+        <tr>
+          <td style="text-align:left"><b>${c.label}</b></td>
+          <td style="text-align:left">${c.description}</td>
+          <td class="num">${pct(c.chance, 0)}</td>
+          <td class="num">${pct(
+            consistency.models.reduce((s, m) => s + m[c.key], 0) /
+              consistency.models.length,
+            1,
+          )}</td>
+        </tr>`,
+        )
+        .join("");
+
+      const failing = [...run.models]
+        .filter((m) => m.parseFailureRate > 0)
+        .sort((a, b) => b.parseFailureRate - a.parseFailureRate);
+      const worst = failing[0];
+      document.getElementById("covcap").textContent =
+        `${failing.length} of ${run.models.length} models left at least one request unanswered. ` +
+        `${shortModel(worst.model)} accounts for most of it at ${pct(worst.parseFailureRate, 1)}; ` +
+        `the remaining ${run.models.length - failing.length} models answered everything asked of them.`;
+
+      document.getElementById("provenance").textContent =
+        `Run "${run.name}" started ${started.toISOString().replace("T", " ").slice(0, 16)} UTC ` +
+        `and finished ${ended.toISOString().replace("T", " ").slice(0, 16)} UTC, status ${run.status}. ` +
+        `Noise figures are fitted on ${fit.markets} questions; the strict subset uses ${noise.scales.probability.robustness.markets}.`;
+
+      const rows = failing.map((m) => ({
+        label: shortModel(m.model),
+        rate: m.parseFailureRate,
+        raw: m,
+      }));
+
+      const draw = () => {
+        horizontalBars(document.getElementById("coverage"), {
+          rows,
+          series: [
+            { key: "rate", name: "Unanswered", color: "var(--series-2)" },
+          ],
+          labelWidth: 190,
+          valueFormat: (v) => pct(v, 1),
+          axisLabel: "Share of requests with no usable answer",
+          tooltip: (row) => [
+            ["Requested", row.raw.attempted.toLocaleString()],
+            ["Answered", row.raw.parsed.toLocaleString()],
+            ["Unanswered", pct(row.raw.parseFailureRate, 2)],
+          ],
+        });
+
+        renderTable(
+          document.getElementById("covTable"),
+          [
+            { name: "Model", get: (r) => r.model, numeric: false },
+            { name: "Requested", get: (r) => r.attempted.toLocaleString() },
+            { name: "Answered", get: (r) => r.parsed.toLocaleString() },
+            { name: "Unanswered", get: (r) => pct(r.parseFailureRate, 2) },
+          ],
+          [...run.models].sort(
+            (a, b) => b.parseFailureRate - a.parseFailureRate,
+          ),
+        );
+      };
+
+      wireTableToggle(
+        document.getElementById("covTableBtn"),
+        document.getElementById("covTable"),
+      );
+
+      onRedraw(draw);
+    </script>
+  </body>
+</html>

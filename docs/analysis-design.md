@@ -106,9 +106,9 @@ for a rare event varied 5×" claim legible without teaching the reader logits.
 
 ---
 
-## 2. Goal 1 — the noise decomposition
+## 2. The noise decomposition
 
-### 2.1 One model, all of goals 1 and 2
+### 2.1 One model, both the noise split and the Yes/No effect
 
 Rather than three separate calculations, fit a single fully-crossed
 decomposition per scale. Indices: model _i_ (20), market _j_, phrasing _k_
@@ -188,7 +188,7 @@ Cell completeness overall: 3,938 of 4,000 direct cells have all 4 iterations;
 
 ---
 
-## 3. Goal 3 — market-level noise
+## 3. Question-level noise
 
 Per market, on both scales:
 
@@ -209,7 +209,7 @@ this data, probably different markets.
 
 ---
 
-## 4. Goal 2 — the Yes/No result, and its confound
+## 4. The Yes/No result
 
 ### 4.1 The measure
 
@@ -270,7 +270,7 @@ which is itself the evidence for the base-rate-retrieval reading.
 
 ---
 
-## 5. Goal 6 — ranking vs the market snapshot
+## 5. Ranking vs the market snapshot
 
 Needs midpoints, which are not in the DB (F3). **Fix: a migration adding
 `midpoint`, `spread`, `yes_liquidity`, `no_liquidity`, `orderbook_snapshot_at`
@@ -293,9 +293,9 @@ Measures, per model and for the consensus:
 
 ---
 
-## 6. Goal 4 — pairwise consistency
+## 6. Head-to-head consistency
 
-### 6.1 A correction to the stated goal
+### 6.1 A correction to the original brief
 
 The goal text gives as an example of logical inconsistency: "if they say A is
 likelier than B when both are positive, but that A is likelier than not_B".
@@ -334,7 +334,7 @@ violation, so the two must be shown together, with the A-rate alongside.
 
 ---
 
-## 7. Goal 5 — direct vs pairwise agreement
+## 7. Direct vs head-to-head agreement
 
 For each model × pair, take the model's own direct means `P̄(A)`, `P̄(B)` on the
 Yes scale (8 observations each), then split the check the way §6.1 splits the
@@ -362,7 +362,7 @@ but the models' internal gaps vary a lot.
 
 ---
 
-## 8. Goal 7 — inference properties
+## 8. Inference properties
 
 Straight aggregation over `llm_trace`, joined to `forecast` / `pairwise_forecast`
 on `llm_trace_id` so the direct and pairwise modalities can be split (the
@@ -384,15 +384,103 @@ genuinely useful result for anyone choosing a forecasting model.
 
 ---
 
-## 9. Build plan
+## 9. The consistency score
+
+The site's headline number, and the only place the two modalities are combined.
+Five sub-scores, **equally weighted**, each a plain share in [0,1]. Two probe
+**repeatability** (ask the same thing again, get the same answer); three probe
+**coherence** (answer logically linked questions in a linked way). None needs
+to know how a market resolved.
+
+| Sub-score                | Question                                                                             | Chance | Field avg |
+| ------------------------ | ------------------------------------------------------------------------------------ | ------ | --------- |
+| Repeat reliability       | Of the spread in four answers to one question, how much is signal rather than drift? | 0%     | 63.9%     |
+| Negation coherence       | Does P(yes) + P(no) reach 100%?                                                      | ~67%   | 54.7%     |
+| Repeat reliability (H2H) | Same comparison twice, same pick?                                                    | 50%    | 84.9%     |
+| Negation coherence (H2H) | Negating both sides reverses the answer?                                             | 50%    | 55.2%     |
+| Self-agreement           | Does the head-to-head pick match its own probabilities?                              | 50%    | 66.2%     |
+
+Range: **83.0%** (claude-opus-5) down to **55.2%** (mimo-v2.5).
+
+Three decisions worth recording:
+
+**Repeat reliability is an intraclass correlation**, not a raw SD — between-
+question variance over total variance. Being a ratio, it needs no tolerance and
+no choice of scale, which matters on a dataset this skewed to the tails. Its
+one cost is that a model with no discrimination at all scores 0 even if
+perfectly steady; nothing in run 1 is near that degenerate.
+
+**The sub-scores are left un-normalized.** They do not share a floor, so a
+coin-flipping forecaster scores `CHANCE_CONSISTENCY` ≈ **43.3%**, not 0. The
+alternative — skill-scoring each against its own baseline — puts the range at
+10–65% and is arguably more honest, but sends **17 of 20 models negative on
+negation coherence**, since most are genuinely worse than random there. The
+charts therefore draw the 43.3% baseline rather than bake it into the scaling,
+and anchor the bar floor at it so a field spanning 55–83% is not flattened.
+
+**The head-to-head repeat check is gameable** — a model that always picks the
+left option scores 100%. The negation check catches exactly that failure, so
+the two are always reported together, and `aRate` (share of picks going to side
+A) rides along in the tooltip. Run 1's A-rates span 0.47–0.58, so nothing is
+degenerate.
+
+### 9.1 The margin curve
+
+Cross-modal agreement bucketed by the model's **own** margin, pooled across all
+twenty models (one model supplies ~200 rank comparisons, too thin to bucket):
+
+| Model's own margin | Agreement | n     |
+| ------------------ | --------- | ----- |
+| 0–5 pts            | 50.9%     | 1,480 |
+| 5–15 pts           | 63.6%     | 970   |
+| 15–30 pts          | 71.5%     | 880   |
+| 30–50 pts          | 70.4%     | 594   |
+| 50+ pts            | 92.3%     | 52    |
+
+Textbook shape — 50% where the model is genuinely indifferent, which is correct
+behaviour — but it tops out around 71%. **A model that has already said one
+outcome is 15 to 30 points likelier still contradicts itself in three of every
+ten comparisons.**
+
+Restricted to the **rank** comparisons. Pooling the sum comparisons in would
+flatter every model: the dataset is skewed to long shots, so a pair usually sums
+far below 1, landing its sum check in the widest margin bucket while being
+trivially easy ("is 95% more likely than 10%?"). Field rank agreement is 62.0%
+against sum agreement of 70.4% — the gap is the whole reason to separate them.
+
+---
+
+## 10. Build plan
 
 ```
 migrations/05_market_snapshot.sql   run-scoped midpoint/spread/liquidity (§5)
 scripts/backfill-snapshot.ts        populate it from the dataset JSON
+src/analysis.ts                     the statistics, pure and unit-tested
 scripts/analyze.ts                  SQL → TS → site/data/*.json
-site/index.html + one page per goal
+site/index.html                     consistency (§9)
+site/noise.html                     the decomposition (§2)
+site/bias.html                      the Yes/No result (§4)
+site/details.html                   method, vocabulary, units, coverage
 site/data/*.json                    committed, so the site opens with no DB
 ```
+
+### Vocabulary on the site
+
+The site is written for a reader who has not read _Noise_, so the terms are
+renamed; `details.html` carries the mapping.
+
+| On the site                   | Kahneman             |
+| ----------------------------- | -------------------- |
+| Baseline tilt                 | Level noise          |
+| Idiosyncrasy                  | Stable pattern noise |
+| Repeat drift                  | Occasion noise       |
+| Total noise                   | System noise         |
+| Real spread between questions | Case spread          |
+
+Units are never bare numbers: the probability scale reads as `14.6 pts`, the
+log-odds scale as `×3.18` on the odds. Both appear on every noise view behind
+one toggle, and the axis, the tiles and the caption always agree on which is
+showing.
 
 `analyze.ts` does the SQL in Postgres for aggregation that SQL is good at
 (counts, joins, per-cell means) and the decomposition arithmetic in TypeScript,
@@ -403,7 +491,7 @@ file copy.
 
 Everything above is derived per-model **and** globally, per goal 1–7.
 
-## 10. Open gaps to fix in the next run
+## 11. Open gaps to fix in the next run
 
 - Reversed pairs, so position bias becomes measurable (F2).
 - A complete pair matching, or an explicit note that it is not one (F1).

@@ -15,8 +15,9 @@
         </div>
         <nav class="tabs">
           <a href="index.html">Overview</a>
-          <a href="goal1-noise.html">1 · Noise</a>
-          <a href="goal2-negation.html" aria-current="page">2 · Yes/No bias</a>
+          <a href="noise.html">Noise</a>
+          <a href="bias.html" aria-current="page">Yes/No bias</a>
+          <a href="details.html">Details</a>
           <button class="link" data-theme-toggle style="margin-left: 8px">
             Dark
           </button>
@@ -26,13 +27,13 @@
       <section>
         <h2>The coherence identity</h2>
         <p class="lede">
-          Every market is asked twice: in its own phrasing (<em
+          Every question is asked twice: in its own wording (<em
             >"Will X happen?"</em
           >) and in its negation (<em>"Will X fail to happen?"</em>). Nothing
           else about the prompt changes — same rules, same research, same model.
-          A coherent forecaster must answer two numbers that sum to 1, whatever
-          it believes. The amount by which the sum misses is the bias, and it
-          needs no ground truth to measure.
+          A coherent forecaster must answer two numbers that sum to 100%,
+          whatever it believes. The amount by which the sum misses is the bias,
+          and it needs no ground truth to measure.
         </p>
         <div class="tiles" id="tiles"></div>
         <p class="note" id="overallnote"></p>
@@ -41,11 +42,11 @@
       <section>
         <h2>Where the incoherence lives</h2>
         <p class="lede">
-          Markets grouped by their Polymarket midpoint at snapshot time. The two
-          bars are what the panel said to each phrasing, as reported. A coherent
-          panel would produce two bars that always sum to 1 — so the pair should
-          cross over as the midpoint passes 0.50, and the orange bar should be
-          tallest at the left edge.
+          Questions grouped by their market price at the moment they were asked.
+          The two bars are what the panel said to each wording, as reported. A
+          coherent panel would produce two bars that always sum to 100% — so the
+          pair should cross over as the market price passes 50%, and the orange
+          bar should be tallest at the left edge.
         </p>
         <figure>
           <div class="chart-head">
@@ -69,7 +70,7 @@
           <div class="chart-scroll"><div id="bandgap"></div></div>
           <figcaption>
             The failure is almost entirely confined to long shots. Above a
-            midpoint of 0.50 the panel is very nearly coherent; below 0.10 it
+            market price of 50% the panel is very nearly coherent; below 10% it
             spends barely a third of the probability mass it owes.
           </figcaption>
         </figure>
@@ -78,9 +79,9 @@
       <section>
         <h2>By model</h2>
         <p class="lede">
-          Mean of <code>base + negated − 1</code> across every market the model
-          answered in both phrasings. Negative is sub-additive: the model spends
-          less than unit mass across a question and its negation.
+          Mean of <code>base + negated − 100%</code> across every question the
+          model answered in both wordings. Negative is sub-additive: the model
+          spends less than unit mass across a question and its negation.
         </p>
         <figure>
           <div class="chart-head">
@@ -101,7 +102,7 @@
         <h2>Which arm moves</h2>
         <p class="lede">
           The gap is a sum missing its target, so either arm could be the one at
-          fault. Plotting each arm against the market's snapshot midpoint
+          fault. Plotting each arm against the market price when it was asked
           separates them: a well-behaved arm tracks the diagonal.
         </p>
         <figure>
@@ -114,10 +115,10 @@
       </section>
 
       <section>
-        <h2>Every market</h2>
+        <h2>Every question</h2>
         <p class="lede">
-          Sorted by gap. The questions at the top are where the panel most
-          nearly contradicted itself.
+          Sorted by gap. The questions at the top are where the panel came
+          closest to flatly contradicting itself.
         </p>
         <figure>
           <div class="chart-head">
@@ -132,6 +133,8 @@
     <script type="module">
       import {
         fmt,
+        points,
+        signedPoints,
         groupedColumns,
         horizontalBars,
         initTheme,
@@ -147,13 +150,13 @@
 
       initTheme();
 
-      const [run, goal2] = await Promise.all([
+      const [run, negation] = await Promise.all([
         loadJson("run.json"),
-        loadJson("goal2-negation.json"),
+        loadJson("negation.json"),
       ]);
 
       document.getElementById("runline").textContent =
-        `${run.name} · ${run.models.length} models · ${run.markets} markets`;
+        `${run.models.length} models · ${run.markets} questions · both wordings, ${run.promptIterations} attempts each`;
 
       const BASE = {
         key: "base",
@@ -166,15 +169,19 @@
         color: "var(--series-2)",
       };
 
-      const o = goal2.overall;
+      const o = negation.overall;
       document.getElementById("tiles").innerHTML = [
-        ["Mean gap", fmt(o.gap, 3), "base + negated − 1; 0 is coherent"],
-        ["Total mass spent", fmt(1 + o.gap, 3), "Where 1.000 is owed"],
-        ["Mean |gap|", fmt(o.absGap, 3), "Magnitude, ignoring direction"],
+        [
+          "Mean gap",
+          signedPoints(o.gap),
+          "How far the two answers fall short of 100%",
+        ],
+        ["Total allocated", pct(1 + o.gap, 1), "Where 100% is owed"],
+        ["Typical size", points(o.absGap), "Magnitude, ignoring direction"],
         [
           "Model × market cells",
           o.cells.toLocaleString(),
-          "Both phrasings present",
+          "Both wordings answered",
         ],
       ]
         .map(
@@ -188,54 +195,57 @@
         .join("");
 
       document.getElementById("overallnote").textContent =
-        `Across the whole run the panel answers ${fmt(o.base, 3)} to the base phrasing and ${fmt(o.negated, 3)} to the negation — ` +
-        `a total of ${fmt(o.base + o.negated, 3)} where coherence requires 1.000. ` +
+        `Across the whole run the panel answers ${pct(o.base, 1)} to the question as written and ${pct(o.negated, 1)} to the negation — ` +
+        `a total of ${pct(o.base + o.negated, 1)} where coherence requires 100%. ` +
         `Computed from cell means, since base iteration r and negated iteration r are independent calls with no correspondence between them.`;
 
-      const worst = goal2.byBand[0];
+      const worst = negation.byBand[0];
       document.getElementById("bandcap").textContent =
-        `In the ${worst.band} band the panel answers ${fmt(worst.base, 3)} to the base question — close to the market's ${fmt(worst.meanMidpoint, 3)} — ` +
-        `but only ${fmt(worst.negated, 3)} to the negation, where coherence demands about ${fmt(1 - worst.meanMidpoint, 2)}. ` +
+        `In the ${worst.band} band the panel answers ${pct(worst.base, 1)} to the base question — close to the market's ${pct(worst.meanMidpoint, 1)} — ` +
+        `but only ${pct(worst.negated, 1)} to the negation, where coherence demands about ${pct(1 - worst.meanMidpoint, 0)}. ` +
         `The base arm is well calibrated; the negated arm is not.`;
 
       const draw = () => {
         legend(document.getElementById("bandLegend"), [BASE, NEG]);
 
         groupedColumns(document.getElementById("bandbars"), {
-          rows: goal2.byBand.map((b) => ({
+          rows: negation.byBand.map((b) => ({
             label: b.band,
             base: b.base,
             negated: b.negated,
             raw: b,
           })),
           series: [BASE, NEG],
-          valueFormat: (v) => fmt(v, 2),
+          valueFormat: (v) => pct(v, 0),
           axisLabel: "Probability reported, as asked",
           height: 280,
           tooltip: (row) => [
-            ["Market midpoint", fmt(row.raw.meanMidpoint, 3)],
-            ["Base arm", fmt(row.raw.base, 3)],
-            ["Negated arm", fmt(row.raw.negated, 3)],
-            ["Sum", fmt(row.raw.base + row.raw.negated, 3)],
-            ["Gap", fmt(row.raw.gap, 3)],
+            ["Market price when asked", pct(row.raw.meanMidpoint, 1)],
+            ["Asked as written", pct(row.raw.base, 1)],
+            ["Asked negated", pct(row.raw.negated, 1)],
+            ["Sum", pct(row.raw.base + row.raw.negated, 1)],
+            ["Gap", signedPoints(row.raw.gap)],
             ["Markets", String(row.raw.markets)],
           ],
         });
 
         groupedColumns(document.getElementById("bandgap"), {
-          rows: goal2.byBand.map((b) => ({
+          rows: negation.byBand.map((b) => ({
             label: b.band,
             gap: b.gap,
             raw: b,
           })),
           series: [{ key: "gap", name: "Gap", color: "var(--diverge-neg)" }],
-          valueFormat: (v) => fmt(v, 2),
+          valueFormat: (v) => pct(v, 0),
           axisLabel: "base + negated − 1",
           height: 240,
           reference: 0,
           tooltip: (row) => [
-            ["Gap", fmt(row.raw.gap, 3)],
-            ["Log-odds gap", fmt(row.raw.logOddsGap, 2)],
+            ["Gap", signedPoints(row.raw.gap)],
+            [
+              "Shortfall on the odds",
+              `÷${Math.exp(-row.raw.logOddsGap).toFixed(1)} on the odds`,
+            ],
             ["Markets", String(row.raw.markets)],
           ],
         });
@@ -245,16 +255,16 @@
           [
             { name: "Midpoint band", get: (r) => r.band, numeric: false },
             { name: "Markets", get: (r) => String(r.markets) },
-            { name: "Mean midpoint", get: (r) => fmt(r.meanMidpoint, 3) },
-            { name: "Base", get: (r) => fmt(r.base, 3) },
-            { name: "Negated", get: (r) => fmt(r.negated, 3) },
-            { name: "Sum", get: (r) => fmt(r.base + r.negated, 3) },
-            { name: "Gap", get: (r) => fmt(r.gap, 3) },
+            { name: "Market price", get: (r) => pct(r.meanMidpoint, 1) },
+            { name: "Base", get: (r) => pct(r.base, 1) },
+            { name: "Negated", get: (r) => pct(r.negated, 1) },
+            { name: "Sum", get: (r) => pct(r.base + r.negated, 1) },
+            { name: "Gap", get: (r) => signedPoints(r.gap) },
           ],
-          goal2.byBand,
+          negation.byBand,
         );
 
-        const modelRows = [...goal2.byModel]
+        const modelRows = [...negation.byModel]
           .sort((a, b) => a.gap - b.gap)
           .map((m) => ({ label: shortModel(m.model), gap: m.gap, raw: m }));
 
@@ -263,13 +273,13 @@
           series: [{ key: "gap", name: "Gap", color: "var(--diverge-neg)" }],
           signed: true,
           labelWidth: 190,
-          valueFormat: (v) => fmt(v, 2),
+          valueFormat: (v) => pct(v, 0),
           axisLabel: "base + negated − 1 (0 is coherent)",
           tooltip: (row) => [
-            ["Gap", fmt(row.raw.gap, 3)],
-            ["Mean |gap|", fmt(row.raw.absGap, 3)],
-            ["Base arm", fmt(row.raw.base, 3)],
-            ["Negated arm", fmt(row.raw.negated, 3)],
+            ["Gap", signedPoints(row.raw.gap)],
+            ["Typical size", points(row.raw.absGap)],
+            ["Asked as written", pct(row.raw.base, 1)],
+            ["Asked negated", pct(row.raw.negated, 1)],
             ["Markets", String(row.raw.markets)],
           ],
         });
@@ -278,10 +288,10 @@
           document.getElementById("modelTable"),
           [
             { name: "Model", get: (r) => r.raw.model, numeric: false },
-            { name: "Base", get: (r) => fmt(r.raw.base, 3) },
-            { name: "Negated", get: (r) => fmt(r.raw.negated, 3) },
-            { name: "Gap", get: (r) => fmt(r.raw.gap, 3) },
-            { name: "Mean |gap|", get: (r) => fmt(r.raw.absGap, 3) },
+            { name: "Base", get: (r) => pct(r.raw.base, 1) },
+            { name: "Negated", get: (r) => pct(r.raw.negated, 1) },
+            { name: "Gap", get: (r) => signedPoints(r.raw.gap) },
+            { name: "Typical size", get: (r) => points(r.raw.absGap) },
             { name: "Markets", get: (r) => String(r.raw.markets) },
           ],
           modelRows,
@@ -289,7 +299,7 @@
 
         // Both arms on one probability axis — the same measure for both series,
         // so this is one scale, not two.
-        const withMid = goal2.byMarket.filter((m) => m.midpoint !== null);
+        const withMid = negation.byMarket.filter((m) => m.midpoint !== null);
         legend(document.getElementById("armLegend"), [
           BASE,
           NEG,
@@ -303,13 +313,13 @@
           // arm belongs. Drawing both turns "orange should mirror blue" from a
           // claim in the caption into something visible in the plot.
           guides: [
-            { x1: 0, y1: 0, x2: 1, y2: 1, label: "base = midpoint" },
+            { x1: 0, y1: 0, x2: 1, y2: 1, label: "matches the market price" },
             {
               x1: 0,
               y1: 1,
               x2: 1,
               y2: 0,
-              label: "negated = 1 − midpoint",
+              label: "matches 100% − market price",
               labelBelow: true,
             },
           ],
@@ -333,24 +343,24 @@
           ],
           logX: false,
           height: 340,
-          xLabel: "Polymarket midpoint at snapshot",
+          xLabel: "Market price when the question was asked",
           yLabel: "Probability the panel reported",
           xFormat: (v) => pct(v, 0),
           yFormat: (v) => pct(v, 0),
           tooltip: (p) => [
             ["Arm", p.arm === "base" ? "Base" : "Negated"],
-            ["Midpoint", pct(p.raw.midpoint, 1)],
+            ["Market price when asked", pct(p.raw.midpoint, 1)],
             ["Reported", pct(p.y, 1)],
             [
-              "Coherent answer",
+              "A coherent answer",
               pct(p.arm === "base" ? p.raw.midpoint : 1 - p.raw.midpoint, 1),
             ],
-            ["Gap for this market", fmt(p.raw.gap, 3)],
+            ["Gap for this question", signedPoints(p.raw.gap)],
           ],
         });
 
         document.getElementById("armcap").textContent =
-          "Blue tracks the market closely: asked the question in its own phrasing, the panel is roughly calibrated. " +
+          "Blue tracks the market closely: asked in its own wording, the panel is roughly calibrated. " +
           "Orange should mirror it — high where blue is low — and instead stays low across the whole range. " +
           "The negated arm is where the incoherence sits.";
 
@@ -366,12 +376,12 @@
               name: "Midpoint",
               get: (r) => (r.midpoint === null ? "—" : pct(r.midpoint, 1)),
             },
-            { name: "Base", get: (r) => fmt(r.base, 3) },
-            { name: "Negated", get: (r) => fmt(r.negated, 3) },
-            { name: "Sum", get: (r) => fmt(r.base + r.negated, 3) },
-            { name: "Gap", get: (r) => fmt(r.gap, 3) },
+            { name: "Base", get: (r) => pct(r.base, 1) },
+            { name: "Negated", get: (r) => pct(r.negated, 1) },
+            { name: "Sum", get: (r) => pct(r.base + r.negated, 1) },
+            { name: "Gap", get: (r) => signedPoints(r.gap) },
           ],
-          goal2.byMarket,
+          negation.byMarket,
         );
       };
 

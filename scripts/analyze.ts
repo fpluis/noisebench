@@ -9,23 +9,29 @@
 // `src/analysis.ts`, where the unbalanced-cell handling stays readable and is
 // unit-tested.
 //
-// Covers research goals 1 (level / stable pattern / occasion noise) and 2
-// (Yes/No phrasing bias). Goals 3-7 land in later passes.
+// Emits the consistency score, the noise decomposition and the negation
+// analysis. Market-level detail, ranking and inference cost land in later passes.
 
 import fs from "fs";
 import path from "path";
 import { Client } from "pg";
 import * as dotenv from "dotenv";
 import {
+  CHANCE_CONSISTENCY,
+  CONSISTENCY_COMPONENTS,
   DirectObservation,
   MIDPOINT_BANDS,
+  PairwiseObservation,
   SCALES,
   Scale,
   bandFor,
+  consistencyScores,
+  crossModalAgreement,
   decompose,
   logit,
   meanOf,
   negationGaps,
+  pairwiseConsistency,
 } from "../src/analysis";
 import { parseArgs } from "../src/utils";
 
@@ -144,6 +150,26 @@ async function main(): Promise<void> {
       parsedOdds: Number(r.parsed_odds),
     }));
 
+    const pairwiseRows = await client.query(
+      `SELECT lm.name AS model, p.market_a_id, p.market_b_id,
+              p.is_a_negated, p.is_b_negated, p.prompt_iteration, p.is_a_likelier
+         FROM public.pairwise_forecast p
+         JOIN public.forecaster fc ON fc.id = p.forecaster_id
+         JOIN public.llm_model lm ON lm.id = fc.forecasting_model_id
+        WHERE p.benchmark_run_id = $1
+          AND p.is_a_likelier IS NOT NULL`,
+      [runId],
+    );
+    const pairwise: PairwiseObservation[] = pairwiseRows.rows.map((r) => ({
+      model: r.model,
+      marketAId: r.market_a_id,
+      marketBId: r.market_b_id,
+      isANegated: r.is_a_negated,
+      isBNegated: r.is_b_negated,
+      iteration: r.prompt_iteration,
+      isALikelier: r.is_a_likelier,
+    }));
+
     const coverageRows = await client.query(
       `SELECT lm.name AS model,
               COUNT(*) AS attempted,
@@ -158,11 +184,28 @@ async function main(): Promise<void> {
 
     console.log(
       `Run ${runId} (${run.name}): ${observations.length} parsed direct forecasts, ` +
-        `${markets.length} markets.`,
+        `${pairwise.length} head-to-head judgments, ${markets.length} markets.`,
     );
 
     // ---------------------------------------------------------------------
-    // Goal 1 — the noise decomposition, on both scales and both subsets.
+    // Consistency — the headline score, from both modalities.
+    // ---------------------------------------------------------------------
+    const scores = consistencyScores(observations, pairwise);
+    const pairDetail = new Map(
+      pairwiseConsistency(pairwise).map((r) => [r.model, r]),
+    );
+    const crossDetail = new Map(
+      crossModalAgreement(observations, pairwise).map((r) => [r.model, r]),
+    );
+
+    console.log(
+      `  consistency ${(100 * scores[0].consistency).toFixed(1)}% (${scores[0].model}) ` +
+        `down to ${(100 * scores[scores.length - 1].consistency).toFixed(1)}% ` +
+        `(${scores[scores.length - 1].model}); chance ${(100 * CHANCE_CONSISTENCY).toFixed(1)}%`,
+    );
+
+    // ---------------------------------------------------------------------
+    // Noise decomposition, on both scales and both subsets.
     // ---------------------------------------------------------------------
     const strict = strictlyBalanced(observations, run.prompt_iterations);
     const fits: Record<string, unknown> = {};
@@ -188,7 +231,7 @@ async function main(): Promise<void> {
     const occasionByBand = occasionNoiseByBand(observations, marketById);
 
     // ---------------------------------------------------------------------
-    // Goal 2 — negation coherence.
+    // Negation coherence.
     // ---------------------------------------------------------------------
     const gaps = negationGaps(observations);
     const byModel = new Map<string, typeof gaps>();
@@ -282,7 +325,43 @@ async function main(): Promise<void> {
       generatedAt: new Date().toISOString(),
     });
 
-    write(outDir, "goal1-noise.json", {
+    write(outDir, "consistency.json", {
+      runId,
+      chance: round(CHANCE_CONSISTENCY, 4),
+      components: CONSISTENCY_COMPONENTS,
+      marginBuckets: crossDetail.get(scores[0].model)?.byMargin.map((b) => ({
+        label: b.label,
+        lo: b.lo,
+        hi: b.hi,
+      })),
+      models: scores.map((s) => {
+        const pd = pairDetail.get(s.model);
+        const cd = crossDetail.get(s.model);
+        return {
+          model: s.model,
+          consistency: round(s.consistency, 4),
+          reliability: round(s.reliability, 4),
+          negationCoherence: round(s.negationCoherence, 4),
+          pairRepeat: round(s.pairRepeat, 4),
+          pairNegation: round(s.pairNegation, 4),
+          selfAgreement: round(s.selfAgreement, 4),
+          aRate: round(s.aRate, 4),
+          withinSd: round(s.withinSd, 4),
+          rankAgreement: round(cd?.rank ?? 0, 4),
+          sumAgreement: round(cd?.sum ?? 0, 4),
+          judgments: cd?.n ?? 0,
+          repeatComparisons: pd?.repeatN ?? 0,
+          coherenceChecks: pd?.coherenceN ?? 0,
+          byMargin: (cd?.byMargin ?? []).map((b) => ({
+            label: b.label,
+            agreement: round(b.agreement, 4),
+            n: b.n,
+          })),
+        };
+      }),
+    });
+
+    write(outDir, "noise.json", {
       runId,
       scales: fits,
       occasionByBand,
@@ -298,7 +377,7 @@ async function main(): Promise<void> {
       },
     });
 
-    write(outDir, "goal2-negation.json", {
+    write(outDir, "negation.json", {
       runId,
       overall: {
         gap: round(meanOf(gaps.map((g) => g.gap))),

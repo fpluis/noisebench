@@ -369,6 +369,25 @@ td:first-child {
   white-space: normal;
 }
 
+/* Explanatory tables carry sentences, not figures — they wrap and fill the
+   column rather than forcing the reader to scroll sideways through prose. */
+table.prose {
+  min-width: 0;
+}
+
+table.prose td,
+table.prose th {
+  white-space: normal;
+  vertical-align: top;
+}
+
+/* The narrow columns hold a label or a percentage; leaving them unconstrained
+   lets auto-layout give the prose column whatever is left. */
+table.prose td.num,
+table.prose th.num {
+  width: 1%;
+}
+
 thead th {
   color: var(--text-secondary);
   font-weight: 600;

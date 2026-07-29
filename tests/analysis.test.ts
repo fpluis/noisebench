@@ -1,11 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  CHANCE_CONSISTENCY,
+  CONSISTENCY_COMPONENTS,
   DirectObservation,
+  PairwiseObservation,
   buildPanel,
+  consistencyScores,
+  crossModalAgreement,
   decompose,
+  expectedChoice,
   logit,
   negationGaps,
+  pairwiseConsistency,
+  reliability,
   toYes,
 } from "../src/analysis";
 
@@ -275,4 +283,185 @@ test("phrasingEffect agrees with the independent negationGaps path", () => {
     Math.abs(d.phrasingEffect - meanGap) < 0.005,
     `${d.phrasingEffect} vs ${meanGap}`,
   );
+});
+
+// ---------------------------------------------------------------------------
+// Pairwise + consistency
+// ---------------------------------------------------------------------------
+
+const pw = (
+  overrides: Partial<PairwiseObservation> = {},
+): PairwiseObservation => ({
+  model: "m",
+  marketAId: 1,
+  marketBId: 2,
+  isANegated: false,
+  isBNegated: false,
+  iteration: 0,
+  isALikelier: true,
+  ...overrides,
+});
+
+// All four combinations for one pair/iteration, given the two facts they probe.
+const quad = (
+  aBeatsB: boolean,
+  sumOverOne: boolean,
+  iteration = 0,
+  model = "m",
+): PairwiseObservation[] => [
+  pw({ model, iteration, isANegated: false, isBNegated: false, isALikelier: aBeatsB }),
+  pw({ model, iteration, isANegated: true, isBNegated: true, isALikelier: !aBeatsB }),
+  pw({ model, iteration, isANegated: false, isBNegated: true, isALikelier: sumOverOne }),
+  pw({ model, iteration, isANegated: true, isBNegated: false, isALikelier: !sumOverOne }),
+];
+
+test("expectedChoice decodes what each phrasing combination asks", () => {
+  // A = 0.9, B = 0.4: A beats B, and they sum past 1.
+  assert.equal(expectedChoice("00", 0.9, 0.4), true);
+  assert.equal(expectedChoice("11", 0.9, 0.4), false);
+  assert.equal(expectedChoice("01", 0.9, 0.4), true);
+  assert.equal(expectedChoice("10", 0.9, 0.4), false);
+  // A = 0.4, B = 0.1: A beats B, but they do NOT sum past 1 — the case the
+  // research brief mistook for a contradiction. Both are perfectly coherent.
+  assert.equal(expectedChoice("00", 0.4, 0.1), true);
+  assert.equal(expectedChoice("01", 0.4, 0.1), false);
+});
+
+test("a fully coherent quadruple scores 100% pairwise negation coherence", () => {
+  for (const aBeatsB of [true, false]) {
+    for (const sumOverOne of [true, false]) {
+      const [row] = pairwiseConsistency(quad(aBeatsB, sumOverOne));
+      assert.equal(row.negationCoherence, 1, `${aBeatsB}/${sumOverOne}`);
+      assert.equal(row.coherenceN, 2);
+    }
+  }
+});
+
+test("a model stuck on one side scores 0 coherence but perfect repeats", () => {
+  const stuck = [
+    ...quad(true, true).map((o) => ({ ...o, isALikelier: true })),
+    ...quad(true, true, 1).map((o) => ({ ...o, isALikelier: true })),
+  ];
+  const [row] = pairwiseConsistency(stuck);
+  assert.equal(row.repeatAgreement, 1);
+  assert.equal(row.negationCoherence, 0);
+  // The guard that stops the perfect repeat rate being read as consistency.
+  assert.equal(row.aRate, 1);
+});
+
+test("pairwise repeat agreement counts every pair of repetitions", () => {
+  const rows = [
+    pw({ iteration: 0, isALikelier: true }),
+    pw({ iteration: 1, isALikelier: false }),
+    pw({ iteration: 2, isALikelier: true }),
+  ];
+  const [row] = pairwiseConsistency(rows);
+  // 3 comparisons among 3 repetitions; only 0-vs-2 agrees.
+  assert.equal(row.repeatN, 3);
+  assert.ok(Math.abs(row.repeatAgreement - 1 / 3) < 1e-12);
+});
+
+test("cross-modal agreement is 100% when picks follow the model's own odds", () => {
+  // Market 1 at 0.80, market 2 at 0.30: A beats B, and they sum past 1.
+  const direct: DirectObservation[] = [
+    { model: "m", marketId: 1, isNegated: false, iteration: 0, parsedOdds: 0.8 },
+    { model: "m", marketId: 1, isNegated: true, iteration: 0, parsedOdds: 0.2 },
+    { model: "m", marketId: 2, isNegated: false, iteration: 0, parsedOdds: 0.3 },
+    { model: "m", marketId: 2, isNegated: true, iteration: 0, parsedOdds: 0.7 },
+  ];
+  const [row] = crossModalAgreement(direct, quad(true, true));
+  assert.equal(row.agreement, 1);
+  assert.equal(row.rank, 1);
+  assert.equal(row.sum, 1);
+});
+
+test("cross-modal agreement is 0 when every pick contradicts its own odds", () => {
+  const direct: DirectObservation[] = [
+    { model: "m", marketId: 1, isNegated: false, iteration: 0, parsedOdds: 0.8 },
+    { model: "m", marketId: 2, isNegated: false, iteration: 0, parsedOdds: 0.3 },
+  ];
+  const [row] = crossModalAgreement(direct, quad(false, false));
+  assert.equal(row.agreement, 0);
+});
+
+test("reliability is high for a repeatable model and low for a drifting one", () => {
+  const build = (noise: number, seed: number): DirectObservation[] => {
+    const normal = makeNormal(seed);
+    const out: DirectObservation[] = [];
+    for (let j = 0; j < 30; j += 1) {
+      const truth = 0.1 + (j / 30) * 0.8;
+      for (const isNegated of [false, true]) {
+        for (let r = 0; r < 4; r += 1) {
+          const yes = truth + normal() * noise;
+          out.push({
+            model: "m",
+            marketId: j,
+            isNegated,
+            iteration: r,
+            parsedOdds: isNegated ? 1 - yes : yes,
+          });
+        }
+      }
+    }
+    return out;
+  };
+  const [tight] = reliability(build(0.01, 5));
+  const [loose] = reliability(build(0.25, 5));
+  assert.ok(tight.reliability > 0.95, `tight ${tight.reliability}`);
+  // Drift of 0.25 against a true spread of ~0.23 puts roughly half the variance
+  // in the noise, which is what a ratio should report — not zero.
+  assert.ok(loose.reliability < 0.55, `loose ${loose.reliability}`);
+  assert.ok(
+    tight.reliability - loose.reliability > 0.4,
+    `separation ${tight.reliability - loose.reliability}`,
+  );
+});
+
+test("a perfectly consistent model scores 1 on every component", () => {
+  const direct: DirectObservation[] = [];
+  for (let j = 1; j <= 20; j += 1) {
+    const yes = j / 21;
+    for (const isNegated of [false, true]) {
+      for (let r = 0; r < 4; r += 1) {
+        direct.push({
+          model: "m",
+          marketId: j,
+          isNegated,
+          iteration: r,
+          parsedOdds: isNegated ? 1 - yes : yes,
+        });
+      }
+    }
+  }
+  // Pair market 1 (1/21) against market 15 (15/21), answered coherently both
+  // times: B beats A, and the two sum to 16/21, short of 1.
+  //
+  // Deliberately NOT market 20, which would sum to exactly 1.0 — there
+  // "P(A)+P(B) > 1" and "P(A)+P(B) < 1" are both false, so no quadruple can
+  // satisfy the couple identity and a perfect model would still score 0.75.
+  const pairs: PairwiseObservation[] = [];
+  for (let it = 0; it < 2; it += 1) {
+    pairs.push(
+      ...quad(false, false, it).map((o) => ({
+        ...o,
+        marketAId: 1,
+        marketBId: 15,
+      })),
+    );
+  }
+  const [score] = consistencyScores(direct, pairs);
+  assert.ok(score.reliability > 0.99, `reliability ${score.reliability}`);
+  assert.equal(score.negationCoherence, 1);
+  assert.equal(score.pairRepeat, 1);
+  assert.equal(score.pairNegation, 1);
+  assert.equal(score.selfAgreement, 1);
+  assert.ok(score.consistency > 0.99);
+});
+
+test("CHANCE_CONSISTENCY is the average of the components' own baselines", () => {
+  assert.equal(CONSISTENCY_COMPONENTS.length, 5);
+  const expected = (0 + 2 / 3 + 0.5 + 0.5 + 0.5) / 5;
+  assert.ok(Math.abs(CHANCE_CONSISTENCY - expected) < 1e-12);
+  // The floor a coin-flipping forecaster sits at — worth being ~0.43, not 0.
+  assert.ok(CHANCE_CONSISTENCY > 0.4 && CHANCE_CONSISTENCY < 0.45);
 });

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>noisebench — run analysis</title>
+    <title>noisebench — how consistent are AI forecasters?</title>
     <link rel="stylesheet" href="assets/viz.css" />
   </head>
   <body>
@@ -15,8 +15,9 @@
         </div>
         <nav class="tabs">
           <a href="index.html" aria-current="page">Overview</a>
-          <a href="goal1-noise.html">1 · Noise</a>
-          <a href="goal2-negation.html">2 · Yes/No bias</a>
+          <a href="noise.html">Noise</a>
+          <a href="bias.html">Yes/No bias</a>
+          <a href="details.html">Details</a>
           <button class="link" data-theme-toggle style="margin-left: 8px">
             Dark
           </button>
@@ -25,96 +26,114 @@
 
       <section>
         <p class="lede">
-          How much do language models disagree with themselves when forecasting?
-          Twenty models were asked 100 Polymarket questions, each in its own
-          phrasing and in its negation, four times each, plus 50 ranked pairs —
-          24,000 forecasts in total. Every measure here is about
-          <b>noise and internal consistency</b>. Nothing is scored against how
-          the markets actually resolved; where a market price appears it is an
-          input describing what the crowd thought when the question was asked.
+          Ask a language model the same forecasting question twice and you get
+          two different answers. Ask it the same question phrased backwards and
+          the two answers may not even add up. This benchmark measures that —
+          <b>how much a model agrees with itself</b>, never whether it was
+          right. Twenty models, 100 Polymarket questions, 24,000 forecasts.
         </p>
-        <div class="tiles" id="tiles"></div>
       </section>
 
       <section>
-        <h2>Findings so far</h2>
-        <div class="tiles">
-          <div class="tile">
-            <div class="label">Goal 1 · Noise</div>
-            <div class="value" id="v-occasion">—</div>
-            <div class="hint">
-              Occasion noise — the same model, the same prompt, a different
-              answer — is the largest of the three components, and system noise
-              exceeds the real spread between markets.
-              <br /><a href="goal1-noise.html">Open →</a>
-            </div>
-          </div>
-          <div class="tile">
-            <div class="label">Goal 2 · Yes/No bias</div>
-            <div class="value" id="v-gap">—</div>
-            <div class="hint">
-              A question and its negation should sum to 1. The panel spends far
-              less, almost entirely on long shots.
-              <br /><a href="goal2-negation.html">Open →</a>
-            </div>
+        <div class="chart-head">
+          <div>
+            <h2>Consistency</h2>
+            <p class="lede" style="margin-bottom: 0">
+              One score per model, averaging five checks that a coherent
+              forecaster would pass automatically. Higher is better. A model
+              answering at random would score
+              <b id="chance-inline">—</b>, marked on the chart — so the distance
+              above that line, not the raw height, is what a model has earned.
+            </p>
           </div>
         </div>
-        <p class="note">
-          Goals 3–7 — market-level noise, pairwise consistency,
-          direct-versus-pairwise agreement, question ranking and inference cost
-          — are not built yet. Their design is specified in
-          <code>docs/analysis-design.md</code>.
-        </p>
+        <figure>
+          <div class="chart-scroll"><div id="consistency"></div></div>
+          <figcaption>
+            Every check is internal: none of them needs to know how a market
+            resolved. Hover a bar for its five sub-scores.
+          </figcaption>
+        </figure>
+        <div class="tiles" style="margin-top: 12px" id="topline"></div>
       </section>
 
       <section>
-        <h2>Coverage</h2>
+        <h2>What goes into the score</h2>
         <p class="lede">
-          Parse failures are not spread evenly, so the noise analysis reports a
-          strictly balanced subset alongside its primary fit. A model that
-          answered fewer questions is measured on fewer of them.
+          Five checks, equally weighted. Two ask whether a model repeats itself;
+          three ask whether its answers are logically compatible with each
+          other. Each is a plain percentage with its own coin-flip baseline,
+          shown beside it.
+        </p>
+        <div class="tiles" id="components"></div>
+      </section>
+
+      <section>
+        <h2>Where each model gains and loses</h2>
+        <p class="lede">
+          The same five checks, per model. Repeating yourself turns out to be
+          much easier than staying logically coherent — the two repeat scores
+          run high across the field while the negation checks collapse.
         </p>
         <figure>
           <div class="chart-head">
-            <div>
-              <h3>Unparseable forecasts, by model</h3>
-              <div class="sub">
-                Share of attempted direct forecasts with no usable probability
+            <div class="controls" style="margin-bottom: 0">
+              <div class="seg" role="group" aria-label="Sub-score">
+                <button data-part="reliability" aria-pressed="true">
+                  Repeat
+                </button>
+                <button data-part="negationCoherence" aria-pressed="false">
+                  Negation
+                </button>
+                <button data-part="pairRepeat" aria-pressed="false">
+                  Repeat (H2H)
+                </button>
+                <button data-part="pairNegation" aria-pressed="false">
+                  Negation (H2H)
+                </button>
+                <button data-part="selfAgreement" aria-pressed="false">
+                  Self-agreement
+                </button>
               </div>
             </div>
-            <button class="link" id="covTableBtn">Show data table</button>
+            <button class="link" id="partTableBtn">Show data table</button>
           </div>
-          <div class="chart-scroll"><div id="coverage"></div></div>
-          <div class="table-wrap hidden" id="covTable"></div>
-          <figcaption>
-            Everything above zero is a model that failed to answer, not one that
-            answered badly — those rows are absent from the analysis rather than
-            counted as noise.
-          </figcaption>
+          <div class="chart-scroll"><div id="parts"></div></div>
+          <div class="table-wrap hidden" id="partTable"></div>
+          <figcaption id="partcap"></figcaption>
         </figure>
       </section>
 
       <section>
-        <h2>Reproducing this</h2>
+        <h2>Does a model's pick match the odds it just gave?</h2>
         <p class="lede">
-          The site reads only static JSON, so it needs no database once the
-          analysis has run.
+          Asked "which of these two is likelier?", a model should pick whichever
+          it had already given the higher probability. Here every such
+          comparison is grouped by how far apart the model's <em>own</em> two
+          probabilities were. Where that gap is near zero, the model is
+          genuinely torn and either pick is defensible — 50% is correct
+          behaviour, not a failure. The question is how fast the line climbs
+          once the model has staked out a real difference.
         </p>
         <figure>
-          <pre style="margin: 0; overflow-x: auto; font-size: 12.5px">
-npm run db:up            # postgres
-npm run db:setup         # apply migrations
-npx tsx scripts/backfill-snapshot.ts --run 1
-npx tsx scripts/analyze.ts --run 1
-npm run site             # serve on http://localhost:4321</pre>
+          <div class="chart-scroll"><div id="margin"></div></div>
+          <figcaption id="margincap"></figcaption>
         </figure>
+        <p class="note">
+          Pooled across all twenty models, because a single model contributes
+          only about 200 of these comparisons and the buckets get too thin to
+          read. Restricted to the "which is likelier" comparisons: the other two
+          wordings ask whether the pair's probabilities sum past 100%, which on
+          a set of questions this skewed toward long shots is usually an easy
+          call and would flatter the right-hand end.
+        </p>
       </section>
     </div>
 
     <script type="module">
       import {
         fmt,
-        horizontalBars,
+        groupedColumns,
         initTheme,
         loadJson,
         onRedraw,
@@ -126,89 +145,175 @@ npm run site             # serve on http://localhost:4321</pre>
 
       initTheme();
 
-      const [run, goal1, goal2] = await Promise.all([
+      const [run, consistency] = await Promise.all([
         loadJson("run.json"),
-        loadJson("goal1-noise.json"),
-        loadJson("goal2-negation.json"),
+        loadJson("consistency.json"),
       ]);
 
       const started = new Date(run.startedAt);
       document.getElementById("runline").textContent =
-        `${run.name} · ${started.toISOString().slice(0, 10)} · ${run.status}`;
+        `${run.models.length} models · ${run.markets} questions · ${started.toISOString().slice(0, 10)}`;
 
-      const fit = goal1.scales.probability.primary;
-      const attempted = run.models.reduce((s, m) => s + m.attempted, 0);
-      const parsed = run.models.reduce((s, m) => s + m.parsed, 0);
+      const chance = consistency.chance;
+      document.getElementById("chance-inline").textContent = pct(chance, 0);
 
-      document.getElementById("tiles").innerHTML = [
-        ["Models", String(run.models.length), "Across 10 vendors"],
-        ["Markets", String(run.markets), "72 Polymarket events"],
+      const best = consistency.models[0];
+      const worst = consistency.models[consistency.models.length - 1];
+      document.getElementById("topline").innerHTML = [
         [
-          "Direct forecasts",
-          parsed.toLocaleString(),
-          `${attempted.toLocaleString()} attempted`,
+          "Most consistent",
+          shortModel(best.model),
+          `${pct(best.consistency, 1)} — ${(100 * (best.consistency - chance)).toFixed(0)} points clear of chance`,
         ],
         [
-          "Iterations",
-          `${run.promptIterations} × 2`,
-          "Per market, both phrasings",
+          "Least consistent",
+          shortModel(worst.model),
+          `${pct(worst.consistency, 1)} — ${(100 * (worst.consistency - chance)).toFixed(0)} points clear of chance`,
+        ],
+        [
+          "Field average",
+          pct(
+            consistency.models.reduce((s, m) => s + m.consistency, 0) /
+              consistency.models.length,
+            1,
+          ),
+          "Across all twenty models",
         ],
       ]
         .map(
-          ([label, value, hint]) => `
-        <div class="tile">
+          ([label, value, hint], i) => `
+        <div class="tile${i === 0 ? " accent" : ""}">
           <div class="label">${label}</div>
-          <div class="value">${value}</div>
+          <div class="value" style="font-size:${i === 2 ? "30px" : "20px"}">${value}</div>
           <div class="hint">${hint}</div>
         </div>`,
         )
         .join("");
 
-      document.getElementById("v-occasion").textContent = fmt(fit.occasion, 3);
-      document.getElementById("v-gap").textContent = fmt(goal2.overall.gap, 3);
+      document.getElementById("components").innerHTML = consistency.components
+        .map(
+          (c) => `
+        <div class="tile">
+          <div class="label">${c.label}</div>
+          <div class="value" style="font-size:22px">${pct(
+            consistency.models.reduce((s, m) => s + m[c.key], 0) /
+              consistency.models.length,
+            1,
+          )}</div>
+          <div class="hint">${c.description}<br /><span style="opacity:.75">Coin flip: ${pct(c.chance, 0)}</span></div>
+        </div>`,
+        )
+        .join("");
 
-      const rows = [...run.models]
-        .sort((a, b) => b.parseFailureRate - a.parseFailureRate)
-        .filter((m) => m.parseFailureRate > 0)
-        .map((m) => ({
-          label: shortModel(m.model),
-          rate: m.parseFailureRate,
-          raw: m,
-        }));
+      let part = "reliability";
+      const partMeta = () => consistency.components.find((c) => c.key === part);
 
       const draw = () => {
-        horizontalBars(document.getElementById("coverage"), {
-          rows,
-          series: [
-            { key: "rate", name: "Parse failure", color: "var(--series-2)" },
-          ],
-          labelWidth: 190,
-          valueFormat: (v) => pct(v, 1),
-          axisLabel: "Share of attempted forecasts with no usable answer",
+        groupedColumns(document.getElementById("consistency"), {
+          rows: consistency.models.map((m) => ({
+            label: shortModel(m.model),
+            v: m.consistency,
+            raw: m,
+          })),
+          series: [{ key: "v", name: "Consistency", color: "var(--series-1)" }],
+          valueFormat: (v) => pct(v, 0),
+          height: 380,
+          baseline: chance,
+          reference: chance,
+          referenceLabel: `answering at random = ${pct(chance, 0)}`,
+          tooltip: (row) =>
+            consistency.components
+              .map((c) => [c.label, pct(row.raw[c.key], 1)])
+              .concat([["Consistency", pct(row.raw.consistency, 1)]]),
+        });
+
+        const meta = partMeta();
+        groupedColumns(document.getElementById("parts"), {
+          rows: [...consistency.models]
+            .sort((a, b) => b[part] - a[part])
+            .map((m) => ({ label: shortModel(m.model), v: m[part], raw: m })),
+          series: [{ key: "v", name: meta.label, color: "var(--series-1)" }],
+          valueFormat: (v) => pct(v, 0),
+          height: 360,
+          baseline: 0,
+          reference: meta.chance > 0 ? meta.chance : null,
+          referenceLabel:
+            meta.chance > 0 ? `coin flip = ${pct(meta.chance, 0)}` : "",
           tooltip: (row) => [
-            ["Attempted", row.raw.attempted.toLocaleString()],
-            ["Parsed", row.raw.parsed.toLocaleString()],
-            ["Failure rate", pct(row.raw.parseFailureRate, 2)],
+            [meta.label, pct(row.raw[part], 1)],
+            ["Consistency overall", pct(row.raw.consistency, 1)],
+            ...(part === "pairRepeat"
+              ? [["Picked side A", pct(row.raw.aRate, 1)]]
+              : []),
+          ],
+        });
+        document.getElementById("partcap").textContent = meta.description;
+
+        renderTable(
+          document.getElementById("partTable"),
+          [
+            { name: "Model", get: (r) => r.model, numeric: false },
+            { name: "Consistency", get: (r) => pct(r.consistency, 1) },
+            ...consistency.components.map((c) => ({
+              name: c.label,
+              get: (r) => pct(r[c.key], 1),
+            })),
+          ],
+          consistency.models,
+        );
+
+        // Pooled over every model: one model supplies ~200 of these
+        // comparisons, which split across five buckets is too thin to plot.
+        // Weighting by count rather than averaging the per-model rates keeps a
+        // model with few judgments in a bucket from swinging it.
+        const buckets = (consistency.marginBuckets ?? []).map((b, i) => {
+          let hits = 0;
+          let n = 0;
+          for (const m of consistency.models) {
+            const cell = m.byMargin[i];
+            if (!cell) continue;
+            hits += cell.agreement * cell.n;
+            n += cell.n;
+          }
+          return { label: b.label, v: n > 0 ? hits / n : 0, n };
+        });
+
+        groupedColumns(document.getElementById("margin"), {
+          rows: buckets,
+          series: [{ key: "v", name: "Agreement", color: "var(--series-1)" }],
+          valueFormat: (v) => pct(v, 0),
+          axisLabel: "How far apart the model's own two probabilities were",
+          height: 300,
+          baseline: 0,
+          reference: 0.5,
+          referenceLabel: "coin flip = 50%",
+          tooltip: (row) => [
+            ["Agreement", pct(row.v, 1)],
+            ["Comparisons", row.n.toLocaleString()],
           ],
         });
 
-        renderTable(
-          document.getElementById("covTable"),
-          [
-            { name: "Model", get: (r) => r.model, numeric: false },
-            { name: "Attempted", get: (r) => r.attempted.toLocaleString() },
-            { name: "Parsed", get: (r) => r.parsed.toLocaleString() },
-            { name: "Failure rate", get: (r) => pct(r.parseFailureRate, 2) },
-          ],
-          [...run.models].sort(
-            (a, b) => b.parseFailureRate - a.parseFailureRate,
-          ),
-        );
+        const flat = buckets[0];
+        const mid = buckets[2];
+        document.getElementById("margincap").textContent =
+          `It climbs, but nowhere near far enough. At a gap under 5 points the models are at ${pct(flat.v, 0)} — ` +
+          `a coin flip, which is the right answer there. But even when a model has already said one outcome is ` +
+          `15 to 30 points likelier than the other, it still contradicts itself in about ` +
+          `${(100 - 100 * mid.v).toFixed(0)} of every 100 comparisons.`;
       };
 
+      for (const button of document.querySelectorAll("[data-part]")) {
+        button.addEventListener("click", () => {
+          part = button.dataset.part;
+          for (const b of document.querySelectorAll("[data-part]"))
+            b.setAttribute("aria-pressed", String(b === button));
+          draw();
+        });
+      }
+
       wireTableToggle(
-        document.getElementById("covTableBtn"),
-        document.getElementById("covTable"),
+        document.getElementById("partTableBtn"),
+        document.getElementById("partTable"),
       );
 
       onRedraw(draw);
