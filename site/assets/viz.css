@@ -193,6 +193,11 @@ code {
   gap: 12px;
 }
 
+/* Tiles that carry a formula need room for it to sit on one or two lines. */
+.tiles.wide {
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+}
+
 .tile {
   background: var(--surface-1);
   border: 1px solid var(--border);
@@ -400,6 +405,89 @@ td.num {
 
 tbody tr:hover {
   background: color-mix(in srgb, var(--series-1) 6%, transparent);
+}
+
+/* ---------- sortable headers ---------- */
+
+thead th:has(button.sort) {
+  padding: 0;
+}
+
+button.sort {
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 7px 10px;
+  width: 100%;
+  text-align: inherit;
+  white-space: nowrap;
+}
+
+button.sort:hover {
+  color: var(--text-primary);
+}
+
+button.sort:focus-visible {
+  outline: 2px solid var(--series-1);
+  outline-offset: -2px;
+}
+
+/* The idle carets are a hint that the column is clickable, not information —
+   they stay near the floor of legibility so a hundred rows of figures still
+   own the eye. */
+button.sort span.off {
+  opacity: 0.28;
+}
+
+button.sort span.on {
+  color: var(--series-1);
+}
+
+/* A signed distance painted onto the cell. The alpha carries the magnitude, so
+   the number itself stays the primary read and the wash is the sort key made
+   visible. Kept as RGB triples because the alpha is computed per row. */
+:root {
+  --cell-above: 27, 175, 122;
+  --cell-below: 208, 59, 59;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    --cell-above: 25, 158, 112;
+    --cell-below: 230, 103, 103;
+  }
+}
+
+:root[data-theme="dark"] {
+  --cell-above: 25, 158, 112;
+  --cell-below: 230, 103, 103;
+}
+
+/* ---------- formulas ---------- */
+
+.formula {
+  font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0 0 14px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.formula .unit {
+  display: block;
+  font-family: var(--font);
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 6px;
+  white-space: normal;
 }
 
 /* ---------- tooltip ---------- */

@@ -9,30 +9,36 @@
 // `src/analysis.ts`, where the unbalanced-cell handling stays readable and is
 // unit-tested.
 //
-// Emits the consistency score, the noise decomposition and the negation
-// analysis. Market-level detail, ranking and inference cost land in later passes.
+// Emits `metrics.json` — the five headline metrics, their composite and their
+// per-market slices, which is all the site reads besides `run.json`. The noise
+// decomposition and the signed negation analysis are still written out, since
+// they are the underlying statistics `docs/analysis-design.md` describes, but no
+// page depends on them. Ranking and inference cost land in later passes.
 
 import fs from "fs";
 import path from "path";
 import { Client } from "pg";
 import * as dotenv from "dotenv";
 import {
-  CHANCE_CONSISTENCY,
-  CONSISTENCY_COMPONENTS,
   DirectObservation,
   MIDPOINT_BANDS,
   PairwiseObservation,
   SCALES,
   Scale,
   bandFor,
-  consistencyScores,
-  crossModalAgreement,
   decompose,
   logit,
   meanOf,
   negationGaps,
-  pairwiseConsistency,
 } from "../src/analysis";
+import {
+  METRIC_COMPONENTS,
+  METRIC_KEYS,
+  RANDOM_NOISE,
+  directionBlindReference,
+  marketMetrics,
+  noiseScores,
+} from "../src/metrics";
 import { parseArgs } from "../src/utils";
 
 dotenv.config();
@@ -186,21 +192,24 @@ async function main(): Promise<void> {
     );
 
     // ---------------------------------------------------------------------
-    // Consistency — the headline score, from both modalities.
+    // The five headline metrics and their composite, from both modalities.
     // ---------------------------------------------------------------------
-    const scores = consistencyScores(observations, pairwise);
-    const pairDetail = new Map(
-      pairwiseConsistency(pairwise).map((r) => [r.model, r]),
-    );
-    const crossDetail = new Map(
-      crossModalAgreement(observations, pairwise).map((r) => [r.model, r]),
-    );
+    const scores = noiseScores(observations, pairwise);
+    const perMarket = marketMetrics(observations);
+    const directionBlind = directionBlindReference(observations);
 
     console.log(
-      `  consistency ${(100 * scores[0].consistency).toFixed(1)}% (${scores[0].model}) ` +
-        `down to ${(100 * scores[scores.length - 1].consistency).toFixed(1)}% ` +
-        `(${scores[scores.length - 1].model}); chance ${(100 * CHANCE_CONSISTENCY).toFixed(1)}%`,
+      `  noise ${(100 * scores[0].noise).toFixed(1)}% (${scores[0].model}) ` +
+        `up to ${(100 * scores[scores.length - 1].noise).toFixed(1)}% ` +
+        `(${scores[scores.length - 1].model}); answering at random ${(100 * RANDOM_NOISE).toFixed(1)}%`,
     );
+    for (const c of METRIC_COMPONENTS) {
+      const field = meanOf(scores.map((s) => s[c.key]));
+      console.log(
+        `    ${c.label.padEnd(28)} field ${(100 * field).toFixed(1)}%  ` +
+          `baseline ${(100 * c.baseline).toFixed(1)}%`,
+      );
+    }
 
     // ---------------------------------------------------------------------
     // Noise decomposition, on both scales and both subsets.
@@ -322,38 +331,59 @@ async function main(): Promise<void> {
       generatedAt: new Date().toISOString(),
     });
 
-    write(outDir, "consistency.json", {
+    write(outDir, "metrics.json", {
       runId,
-      chance: round(CHANCE_CONSISTENCY, 4),
-      components: CONSISTENCY_COMPONENTS,
-      marginBuckets: crossDetail.get(scores[0].model)?.byMargin.map((b) => ({
-        label: b.label,
-        lo: b.lo,
-        hi: b.hi,
+      // The five definitions travel with the numbers, so a chart can never
+      // label a metric with a formula the code no longer computes.
+      components: METRIC_COMPONENTS,
+      randomNoise: round(RANDOM_NOISE, 4),
+      directionBlind: round(directionBlind, 4),
+      field: Object.fromEntries([
+        ["noise", round(meanOf(scores.map((s) => s.noise)), 4)],
+        ...METRIC_KEYS.map((key) => [
+          key,
+          round(meanOf(scores.map((s) => s[key])), 4),
+        ]),
+      ]),
+      models: scores.map((s) => ({
+        model: s.model,
+        noise: round(s.noise, 4),
+        averageError: round(s.averageError, 4),
+        negationError: round(s.negationError, 4),
+        pairwiseDisagreement: round(s.pairwiseDisagreement, 4),
+        negationDisagreement: round(s.negationDisagreement, 4),
+        individualPairDisagreement: round(s.individualPairDisagreement, 4),
+        drift: round(s.drift, 4),
+        yes: round(s.yes, 4),
+        no: round(s.no, 4),
+        aRate: round(s.aRate, 4),
+        rankCouple: round(s.rankCouple, 4),
+        sumCouple: round(s.sumCouple, 4),
+        cells: s.cells,
+        forecasts: s.forecasts,
+        markets: s.markets,
+        comparisons: s.comparisons,
+        checks: s.checks,
+        judgments: s.judgments,
+        pairs: s.pairs,
+        ties: s.ties,
       })),
-      models: scores.map((s) => {
-        const pd = pairDetail.get(s.model);
-        const cd = crossDetail.get(s.model);
+      byMarket: perMarket.map((m) => {
+        const meta = marketById.get(m.marketId);
         return {
-          model: s.model,
-          consistency: round(s.consistency, 4),
-          reliability: round(s.reliability, 4),
-          negationCoherence: round(s.negationCoherence, 4),
-          pairRepeat: round(s.pairRepeat, 4),
-          pairNegation: round(s.pairNegation, 4),
-          selfAgreement: round(s.selfAgreement, 4),
-          aRate: round(s.aRate, 4),
-          withinSd: round(s.withinSd, 4),
-          rankAgreement: round(cd?.rank ?? 0, 4),
-          sumAgreement: round(cd?.sum ?? 0, 4),
-          judgments: cd?.n ?? 0,
-          repeatComparisons: pd?.repeatN ?? 0,
-          coherenceChecks: pd?.coherenceN ?? 0,
-          byMargin: (cd?.byMargin ?? []).map((b) => ({
-            label: b.label,
-            agreement: round(b.agreement, 4),
-            n: b.n,
-          })),
+          marketId: m.marketId,
+          slug: meta?.slug ?? String(m.marketId),
+          question: meta?.question ?? "",
+          eventTitle: meta?.eventTitle ?? "",
+          midpoint: meta?.midpoint ?? null,
+          modelEstimate: round(m.modelEstimate, 4),
+          averageError: round(m.averageError, 4),
+          negationError: round(m.negationError, 4),
+          drift: round(m.drift, 4),
+          yes: round(m.yes, 4),
+          no: round(m.no, 4),
+          models: m.models,
+          forecasts: m.forecasts,
         };
       }),
     });

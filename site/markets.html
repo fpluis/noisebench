@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Markets — noisebench</title>
+    <link rel="stylesheet" href="assets/viz.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="masthead">
+        <div>
+          <h1>Markets</h1>
+          <div class="sub" id="runline">Loading…</div>
+        </div>
+        <nav class="tabs">
+          <a href="index.html">Overview</a>
+          <a href="noise.html">Noise</a>
+          <a href="markets.html" aria-current="page">Markets</a>
+          <a href="details.html">Details</a>
+          <button class="link" data-theme-toggle style="margin-left: 8px">
+            Dark
+          </button>
+        </nav>
+      </header>
+
+      <section>
+        <p class="lede">
+          The same two probability-scale measures, sliced by question instead of
+          by model. Both are averages over the twenty models: the average error
+          of one question is how far a typical model's four identical repeats
+          fell from each other on it, and its negation error is how far a
+          typical model's two wordings fell from each other. The market price is
+          what the crowd thought at the moment the question was put to the
+          models — it is context for reading the panel's estimate, never a right
+          answer.
+        </p>
+        <div class="tiles" id="tiles"></div>
+        <p class="note" id="pairnote"></p>
+      </section>
+
+      <section>
+        <h2>Every question</h2>
+        <p class="lede">
+          Sorted by market price, longest shots first. Click any heading to sort
+          by it. <b>Model estimate</b> is the panel's own probability for the
+          question — each model's two wordings folded onto one scale, then
+          averaged over models with equal weight — and its shading is how far
+          that sits above (green) or below (red) the market, reaching full
+          strength when the gap reaches 50%.
+        </p>
+        <figure>
+          <div class="table-wrap" id="marketTable"></div>
+          <figcaption>
+            The market price is the mid of the order book at snapshot time. Two
+            questions the panel reads very differently from the market are not
+            evidence of error on either side — the questions were still open.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>The panel against the market</h2>
+        <p class="lede">
+          Each dot is one question. On the diagonal the panel agrees with the
+          market; below it the panel thinks the outcome is less likely than the
+          crowd does, above it more.
+        </p>
+        <figure>
+          <div class="chart-head">
+            <div class="legend" id="scatterLegend"></div>
+          </div>
+          <div class="chart-scroll"><div id="scatter"></div></div>
+          <figcaption id="scattercap"></figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Which questions the models were noisiest on</h2>
+        <p class="lede">
+          The twenty questions with the largest values, in whichever measure is
+          selected. These are averages over all twenty models, so a question at
+          the top is one the whole field struggled with rather than one model.
+        </p>
+        <figure>
+          <div class="chart-head">
+            <div class="controls" style="margin-bottom: 0">
+              <div class="seg" role="group" aria-label="Measure">
+                <button data-view="averageError" aria-pressed="true">
+                  Average error
+                </button>
+                <button data-view="negationError" aria-pressed="false">
+                  Negation error
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="chart-scroll"><div id="worst"></div></div>
+          <figcaption id="worstcap"></figcaption>
+        </figure>
+      </section>
+    </div>
+
+    <script type="module">
+      import {
+        horizontalBars,
+        initTheme,
+        legend,
+        loadJson,
+        onRedraw,
+        pct,
+        scatter,
+        signedPct,
+        sortableTable,
+      } from "./assets/viz.js";
+
+      initTheme();
+
+      const [run, metrics] = await Promise.all([
+        loadJson("run.json"),
+        loadJson("metrics.json"),
+      ]);
+
+      document.getElementById("runline").textContent =
+        `${run.markets} questions · ${run.models.length} models · both wordings, ${run.promptIterations} attempts each`;
+
+      const rows = metrics.byMarket.map((m) => ({
+        ...m,
+        // Null when the run never recorded a snapshot price, which sorts to the
+        // end rather than to zero.
+        delta: m.midpoint === null ? null : m.modelEstimate - m.midpoint,
+      }));
+      const priced = rows.filter((r) => r.delta !== null);
+
+      const ABOVE = {
+        name: "Panel above the market",
+        color: "var(--series-3)",
+      };
+      const BELOW = {
+        name: "Panel below the market",
+        color: "var(--diverge-neg)",
+      };
+
+      const mean = (xs) => xs.reduce((s, x) => s + x, 0) / xs.length;
+      const meanAbsDelta = mean(priced.map((r) => Math.abs(r.delta)));
+      const below = priced.filter((r) => r.delta < 0).length;
+      const worstAe = [...rows].sort(
+        (a, b) => b.averageError - a.averageError,
+      )[0];
+
+      // Pearson r between the market price and a measure, over priced questions.
+      // Quoted in the captions so a claim about "long shots" is checkable rather
+      // than an impression from the scatter.
+      const corr = (pick) => {
+        const xs = priced.map((r) => r.midpoint);
+        const ys = priced.map(pick);
+        const mx = mean(xs);
+        const my = mean(ys);
+        let sxy = 0;
+        let sx = 0;
+        let sy = 0;
+        for (let i = 0; i < xs.length; i += 1) {
+          sxy += (xs[i] - mx) * (ys[i] - my);
+          sx += (xs[i] - mx) ** 2;
+          sy += (ys[i] - my) ** 2;
+        }
+        return sxy / Math.sqrt(sx * sy);
+      };
+      const signedR = (r) => `${r < 0 ? "−" : "+"}${Math.abs(r).toFixed(2)}`;
+
+      document.getElementById("tiles").innerHTML = [
+        [
+          "Questions",
+          String(rows.length),
+          `${priced.length} with a recorded market price`,
+        ],
+        [
+          "Typical gap to the market",
+          pct(meanAbsDelta, 1),
+          `Mean |estimate − price|; ${below} of ${priced.length} sit below the market`,
+        ],
+        [
+          "Average error",
+          pct(mean(rows.map((r) => r.averageError)), 1),
+          "Across questions, averaged over models",
+        ],
+        [
+          "Negation error",
+          pct(mean(rows.map((r) => r.negationError)), 1),
+          "Across questions, averaged over models",
+        ],
+      ]
+        .map(
+          ([label, value, hint]) => `
+        <div class="tile">
+          <div class="label">${label}</div>
+          <div class="value" style="font-size:26px">${value}</div>
+          <div class="hint">${hint}</div>
+        </div>`,
+        )
+        .join("");
+
+      document.getElementById("pairnote").textContent =
+        `The three head-to-head measures have no per-question form: the run's 50 pairs are not a perfect matching — one question sits in two ` +
+        `pairs and another in none — so a "per question" rate would divide by a number that changes from row to row. They are per model only.`;
+
+      // Colour carries the magnitude of the gap and the neighbouring column
+      // carries its number, so the wash is never the only way to read it.
+      const estimateStyle = (row) => {
+        if (row.delta === null) return "";
+        const strength = Math.min(1, Math.abs(row.delta) / 0.5);
+        const token = row.delta > 0 ? "--cell-above" : "--cell-below";
+        return `background: rgba(var(${token}), ${(0.42 * strength).toFixed(3)})`;
+      };
+
+      sortableTable(document.getElementById("marketTable"), {
+        rows,
+        columns: [
+          {
+            name: "Question",
+            get: (r) => r.question || r.slug,
+            sortValue: (r) => r.question || r.slug,
+            numeric: false,
+          },
+          {
+            name: "Midpoint",
+            get: (r) => (r.midpoint === null ? "—" : pct(r.midpoint, 1)),
+            sortValue: (r) => r.midpoint,
+          },
+          {
+            name: "Model estimate",
+            get: (r) => pct(r.modelEstimate, 1),
+            sortValue: (r) => r.modelEstimate,
+            cellStyle: estimateStyle,
+          },
+          {
+            name: "vs market",
+            get: (r) => (r.delta === null ? "—" : signedPct(r.delta, 1)),
+            sortValue: (r) => r.delta,
+          },
+          {
+            name: "Average error",
+            get: (r) => pct(r.averageError, 1),
+            sortValue: (r) => r.averageError,
+          },
+          {
+            name: "Negation error",
+            get: (r) => pct(r.negationError, 1),
+            sortValue: (r) => r.negationError,
+          },
+        ],
+        // Midpoint ascending: the run is skewed to long shots, and starting at
+        // the bottom of the range puts the interesting half first.
+        sortColumn: 1,
+        descending: false,
+      });
+
+      let view = "averageError";
+      const label = () =>
+        view === "averageError" ? "Average error" : "Negation error";
+
+      const drawWorst = () => {
+        horizontalBars(document.getElementById("worst"), {
+          rows: [...rows]
+            .sort((a, b) => b[view] - a[view])
+            .slice(0, 20)
+            .map((m) => ({
+              label: (m.question || m.slug).replace(/\?$/, ""),
+              v: m[view],
+              raw: m,
+            })),
+          series: [{ key: "v", name: label(), color: "var(--series-1)" }],
+          labelWidth: 340,
+          valueFormat: (v) => pct(v, 1),
+          axisLabel: label(),
+          tooltip: (row) => [
+            ["Market price", pct(row.raw.midpoint, 1)],
+            ["Model estimate", pct(row.raw.modelEstimate, 1)],
+            ["Average error", pct(row.raw.averageError, 1)],
+            ["Negation error", pct(row.raw.negationError, 1)],
+            ["Models", String(row.raw.models)],
+          ],
+        });
+        document.getElementById("worstcap").textContent =
+          view === "averageError"
+            ? `${pct(worstAe.averageError, 1)} on "${worstAe.question}" means a typical model's four identical prompts came back that far ` +
+              `apart. Repeat spread grows with the market price across the run — correlation ${signedR(corr((r) => r.averageError))} — ` +
+              `which is what a measure in points of probability does when the long shots leave it no room to move.`
+            : `Wording error also grows with the market price, correlation ${signedR(corr((r) => r.negationError))}: on a 2% long shot both ` +
+              `answers are easy and nearly forced, while a question the market puts near even money leaves a model free to answer both ` +
+              `sides high, or both low.`;
+      };
+
+      const draw = () => {
+        legend(document.getElementById("scatterLegend"), [
+          ABOVE,
+          BELOW,
+          { name: "Matches the market", color: "var(--text-muted)" },
+        ]);
+
+        scatter(document.getElementById("scatter"), {
+          guides: [
+            { x1: 0, y1: 0, x2: 1, y2: 1, label: "matches the market price" },
+          ],
+          points: priced.map((m) => ({
+            x: m.midpoint,
+            y: m.modelEstimate,
+            label: m.question || m.slug,
+            color: m.delta > 0 ? ABOVE.color : BELOW.color,
+            raw: m,
+          })),
+          height: 360,
+          xLabel: "Market price when the question was asked",
+          yLabel: "The panel's estimate",
+          xFormat: (v) => pct(v, 0),
+          yFormat: (v) => pct(v, 0),
+          tooltip: (p) => [
+            ["Market price", pct(p.raw.midpoint, 1)],
+            ["Model estimate", pct(p.raw.modelEstimate, 1)],
+            ["vs market", signedPct(p.raw.delta, 1)],
+            ["Average error", pct(p.raw.averageError, 1)],
+            ["Negation error", pct(p.raw.negationError, 1)],
+          ],
+        });
+
+        document.getElementById("scattercap").textContent =
+          `The panel tracks the market across the range and sits below it more often than above — ${below} of ${priced.length} questions — ` +
+          `by ${pct(meanAbsDelta, 1)} on average. The scatter is widest in the upper half of the price range, where a question the market ` +
+          `treats as likely can still read as a long shot to the models.`;
+
+        drawWorst();
+      };
+
+      for (const button of document.querySelectorAll("[data-view]")) {
+        button.addEventListener("click", () => {
+          view = button.dataset.view;
+          for (const b of document.querySelectorAll("[data-view]"))
+            b.setAttribute("aria-pressed", String(b === button));
+          drawWorst();
+        });
+      }
+
+      onRedraw(draw);
+    </script>
+  </body>
+</html>

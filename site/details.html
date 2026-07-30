@@ -16,7 +16,7 @@
         <nav class="tabs">
           <a href="index.html">Overview</a>
           <a href="noise.html">Noise</a>
-          <a href="bias.html">Yes/No bias</a>
+          <a href="markets.html">Markets</a>
           <a href="details.html" aria-current="page">Details</a>
           <button class="link" data-theme-toggle style="margin-left: 8px">
             Dark
@@ -33,7 +33,7 @@
           asked, and resolution is outside what this benchmark tries to say.
           Where a market price appears, it describes what the crowd thought at
           the moment the question was put to the models, and is used only as
-          context for grouping questions.
+          context.
         </p>
         <div class="tiles" id="tiles"></div>
       </section>
@@ -46,170 +46,206 @@
             <div class="label">Direct</div>
             <div class="value" style="font-size: 20px">How likely is this?</div>
             <div class="hint">
-              Each question put to each model as a probability request, in the
-              market's own wording and in its negation, four times each. The two
-              wordings should produce answers that add to 100%.
+              Each market put to each model as a probability request, four times
+              for its Yes outcome and four times for its No outcome. The
+              question, the rules, the dates and the research are identical
+              between the two; only which of the market's two outcomes is being
+              asked for changes. A coherent forecaster's two answers add to
+              100%.
             </div>
           </div>
           <div class="tile">
             <div class="label">Head-to-head</div>
             <div class="value" style="font-size: 20px">Which is likelier?</div>
             <div class="hint">
-              Fifty fixed pairs of questions, ranked against each other with no
-              probability attached, in all four wording combinations, twice
-              each. Negating both sides must reverse the answer.
+              Fifty fixed pairs of markets, ranked against each other with no
+              probability attached, in all four combinations of requested
+              outcome, twice each. Flipping the requested outcome on both sides
+              must reverse the answer.
             </div>
           </div>
         </div>
         <p class="note">
           The pairs are fixed, not random. They were built by sorting the
           questions by market price and pairing neighbours, so the two sides are
-          deliberately close in likelihood and the comparison is hard.
+          deliberately close in likelihood and the comparison is hard. Asking
+          for the market's own No outcome rather than rewriting the question
+          into a negated one is deliberate: a hand-negated question contradicts
+          rules that are still written for Yes, which measures the contradiction
+          rather than the model.
         </p>
       </section>
 
       <section>
-        <h2>The noise vocabulary</h2>
+        <h2>The five measures</h2>
         <p class="lede">
-          The three-way split comes from Daniel Kahneman, Olivier Sibony and
-          Cass Sunstein's <em>Noise</em>, which decomposes the disagreement in a
-          panel of judges. This site uses plainer names for the same quantities.
-          The mapping:
+          Each is a failure rate with a genuine zero, and each is reported as a
+          plain percentage — but of two different things, which the unit column
+          spells out. Two are <b>absolute distances in probability</b>: a 3.0%
+          average error means a model's repeated answers to one question sat 3
+          points of probability apart, not that they varied by 3% of their own
+          size. Three are <b>shares of judgments</b>: a 12.0% pairwise
+          disagreement means 12 of every 100 comparable judgments came back
+          different.
         </p>
         <figure>
           <div class="table-wrap">
             <table class="prose">
               <thead>
                 <tr>
-                  <th>On this site</th>
-                  <th style="text-align: left">In <em>Noise</em></th>
-                  <th style="text-align: left">What it measures</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Baseline tilt</td>
-                  <td style="text-align: left">Level noise</td>
-                  <td style="text-align: left">
-                    A model's overall average sitting above or below the field's
-                    — it reads the world as generally more or less likely than
-                    everyone else.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Idiosyncrasy</td>
-                  <td style="text-align: left">Stable pattern noise</td>
-                  <td style="text-align: left">
-                    A model's durable private reaction to a particular question,
-                    left over once its baseline tilt is accounted for. It
-                    survives averaging the repeats, so it recurs every time.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Repeat drift</td>
-                  <td style="text-align: left">Occasion noise</td>
-                  <td style="text-align: left">
-                    The scatter among identical repeats of one prompt. The
-                    cleanest of the three, because it is measured entirely
-                    inside a single model–question–wording cell.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Total noise</td>
-                  <td style="text-align: left">System noise</td>
-                  <td style="text-align: left">
-                    All three combined, as
-                    <code>√(tilt² + idiosyncrasy² + drift²)</code>.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Real spread between questions</td>
-                  <td style="text-align: left">Case spread</td>
-                  <td style="text-align: left">
-                    Not noise. How much the questions genuinely differ from one
-                    another — the signal the noise is competing against.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <figcaption>
-            One deliberate departure: <em>Noise</em> studies human judges, where
-            occasion noise means mood, fatigue or the time of day. Here the
-            prompt is byte-identical between repeats, so repeat drift is purely
-            the model's own sampling randomness.
-          </figcaption>
-        </figure>
-      </section>
-
-      <section>
-        <h2>Units</h2>
-        <p class="lede">
-          Noise figures are shown two ways, and the choice matters more than it
-          looks. Most of these questions are long shots — half sit below a 20%
-          market price — and the two units disagree about what "noisy" means
-          down there.
-        </p>
-        <div class="tiles">
-          <div class="tile">
-            <div class="label">Percentage points</div>
-            <div class="value" style="font-size: 22px">14.6 pts</div>
-            <div class="hint">
-              How far the answer moves in absolute terms. A forecast wandering
-              between 50% and 53% moves 3 points; one wandering between 1% and
-              3% moves 2 points, and looks quieter.
-            </div>
-          </div>
-          <div class="tile">
-            <div class="label">Odds multiple</div>
-            <div class="value" style="font-size: 22px">×3.2</div>
-            <div class="hint">
-              How far it moves relative to how rare the event is. That same 1%
-              to 3% wander is a tripling of the odds — a far bigger claim than
-              the 3-point move, and only this unit registers it.
-            </div>
-          </div>
-        </div>
-        <p class="note">
-          Neither is the "right" one, which is why every noise chart offers
-          both. The odds multiple is computed in log-odds and reported as
-          <code>e^SD</code>; forecasts are clipped into the 0.1%–99.9% range
-          first, so a single 0.01% answer cannot dominate a whole cell.
-        </p>
-      </section>
-
-      <section>
-        <h2>The consistency score</h2>
-        <p class="lede">
-          Five checks, equally weighted, each a plain share of something
-          countable. They do not share a floor: a model answering at random
-          would score 0% on the first, about 67% on the second and 50% on the
-          rest. Rather than rescale them into something less legible, the charts
-          draw that combined baseline —
-          <b id="chance">—</b> — as a line.
-        </p>
-        <figure>
-          <div class="table-wrap">
-            <table class="prose">
-              <thead>
-                <tr>
-                  <th style="text-align: left">Check</th>
-                  <th style="text-align: left">What it asks</th>
-                  <th class="num">Coin flip</th>
-                  <th class="num">Field avg</th>
+                  <th style="text-align: left">Measure</th>
+                  <th style="text-align: left">What it asks, and how</th>
+                  <th class="num">Random</th>
+                  <th class="num">Field</th>
+                  <th class="num">Best</th>
                 </tr>
               </thead>
               <tbody id="components"></tbody>
             </table>
           </div>
           <figcaption>
-            The head-to-head repeat check has a known blind spot: a model that
-            picks the left-hand option every time scores 100% on it without
-            being consistent about anything. The negation check catches exactly
-            that failure, which is why they are reported together and why the
-            share of picks going to side A is carried in the tooltip.
+            The composite is the unweighted mean of the five. Equal weight is
+            not equal contribution — the three judgment shares are several times
+            larger than the two probability distances and dominate the total —
+            so the components travel with it everywhere.
           </figcaption>
         </figure>
+      </section>
+
+      <section>
+        <h2>Where the baselines come from</h2>
+        <p class="lede">
+          One reference point runs through the whole site: what a measure would
+          read for a forecaster answering <b>at random</b> — every direct
+          forecast an independent draw from a uniform distribution over 0–100%,
+          every head-to-head pick an independent coin flip. Nothing about these
+          particular questions enters, so each baseline is a property of the
+          measure and can be derived on paper rather than fitted.
+        </p>
+        <figure>
+          <div class="table-wrap">
+            <table class="prose">
+              <thead>
+                <tr>
+                  <th style="text-align: left">Measure</th>
+                  <th class="num">Random</th>
+                  <th style="text-align: left">Why that number</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="text-align: left"><b>Average error</b></td>
+                  <td class="num">20.8%</td>
+                  <td style="text-align: left">
+                    The mean absolute deviation of four independent
+                    <code>U(0,1)</code> draws about their own mean. Writing
+                    <code>Σ|Xᵢ − X̄| = 2 Σ (Xᵢ − X̄)⁺</code> and folding the four
+                    symmetric terms into one gives
+                    <code>E[(3X₁ − X₂ − X₃ − X₄)⁺] / 2 = 5/24</code>. For two
+                    draws the same argument gives the familiar
+                    <code>E|X − Y| / 2 = 1/6</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="text-align: left"><b>Negation error</b></td>
+                  <td class="num">16.4%</td>
+                  <td style="text-align: left">
+                    Each arm is an average of four draws, so the two arms sum to
+                    an Irwin–Hall(8) variate over four:
+                    <code
+                      >E|avg(Yes) + avg(No) − 1| = E|S₈ − 4| / 4 = (59/90)/4 =
+                      59/360</code
+                    >. Smaller than the average-error baseline because averaging
+                    four draws pulls each arm toward 50%, where the two happen
+                    to be coherent.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="text-align: left">
+                    <b>Pairwise disagreement</b>
+                  </td>
+                  <td class="num">50%</td>
+                  <td style="text-align: left">
+                    Two independent coin flips come back different half the
+                    time.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="text-align: left">
+                    <b>Negation disagreement</b>
+                  </td>
+                  <td class="num">50%</td>
+                  <td style="text-align: left">
+                    A couple requires its two halves to name different markets.
+                    Two independent flips do that half the time — and this is
+                    the one check whose baseline needs no assumption about the
+                    forecaster's beliefs, because the requirement holds whatever
+                    it believes.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="text-align: left">
+                    <b>Individual-pair disagreement</b>
+                  </td>
+                  <td class="num">50%</td>
+                  <td style="text-align: left">
+                    Random picks carry no information about the model's own
+                    probabilities, so the majority they form lands on the other
+                    market half the time. Ties count as half, which leaves the
+                    expectation at 50%.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="text-align: left"><b>The composite</b></td>
+                  <td class="num" id="random-composite">—</td>
+                  <td style="text-align: left">
+                    The mean of the five above:
+                    <code>(5/24 + 59/360 + ½ + ½ + ½) / 5</code>. Every model in
+                    the run is far below it.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <figcaption>
+            Random answering is a reference, not a ceiling: the worst possible
+            score on each measure is 100%.
+          </figcaption>
+        </figure>
+
+        <p class="lede" style="margin-top: 22px">
+          Two things the random baseline is <em>not</em>.
+        </p>
+        <div class="tiles">
+          <div class="tile">
+            <div class="label">Not the worst case</div>
+            <div class="value" style="font-size: 26px" id="blind">—</div>
+            <div class="hint">
+              What negation error would read for a model that ignored the
+              requested outcome and repeated its Yes number for the No side —
+              <code>mean |2·avg(Yes) − 1|</code> over this run's own answers.
+              Unlike the others this one is data-derived: it depends on how
+              lopsided the questions are, and these are mostly long shots. It is
+              roughly what an earlier version of this benchmark measured, when
+              the No prompt was a hand-negated question fighting rules still
+              written for Yes.
+            </div>
+          </div>
+          <div class="tile">
+            <div class="label">Not a floor for cheating</div>
+            <div class="value" style="font-size: 26px">30%</div>
+            <div class="hint">
+              A model that answered 50% to everything and always picked the
+              option printed first would score 0% on average error, negation
+              error and pairwise disagreement, 100% on negation disagreement,
+              and 50% on individual-pair — a composite of 30%, better than
+              random. Nothing in this run is close: A-rates span
+              <span id="arates">—</span> and no model's average error is zero.
+              The composite is never shown without its five parts for exactly
+              this reason.
+            </div>
+          </div>
+        </div>
       </section>
 
       <section>
@@ -227,40 +263,51 @@
                 <tr>
                   <th style="text-align: left">Asked</th>
                   <th style="text-align: left">Picking A means</th>
+                  <th style="text-align: left">Votes for</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
                   <td style="text-align: left">A vs B</td>
                   <td style="text-align: left"><code>P(A) &gt; P(B)</code></td>
+                  <td style="text-align: left">A, or B if B is picked</td>
                 </tr>
                 <tr>
                   <td style="text-align: left">not-A vs not-B</td>
                   <td style="text-align: left">
                     <code>P(A) &lt; P(B)</code> — must reverse the first
                   </td>
+                  <td style="text-align: left">B, or A if not-B is picked</td>
                 </tr>
                 <tr>
                   <td style="text-align: left">A vs not-B</td>
                   <td style="text-align: left">
                     <code>P(A) + P(B) &gt; 1</code>
                   </td>
+                  <td style="text-align: left">A either way</td>
                 </tr>
                 <tr>
                   <td style="text-align: left">not-A vs B</td>
                   <td style="text-align: left">
                     <code>P(A) + P(B) &lt; 1</code> — must reverse the third
                   </td>
+                  <td style="text-align: left">B either way</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <figcaption>
-            Those two reversals are the whole test: checking them is both
-            necessary and sufficient for the set of four answers to be logically
-            coherent. Note what is <em>not</em> a contradiction — saying A beats
-            B and also that A beats not-B is perfectly fine (A&nbsp;=&nbsp;90%,
-            B&nbsp;=&nbsp;40% does both).
+            Those two reversals are the whole of negation disagreement: checking
+            them is both necessary and sufficient for the set of four answers to
+            be logically coherent. Note what is <em>not</em> a contradiction —
+            saying A beats B and also that A beats not-B is perfectly fine
+            (A&nbsp;=&nbsp;90%, B&nbsp;=&nbsp;40% does both). The third column
+            is the vote normalization individual-pair disagreement uses: picking
+            a side as worded votes for its market, picking a flipped side votes
+            against it. The two sum wordings therefore vote one way whatever is
+            picked, and cancel each other out — the majority is decided by the
+            two ranking wordings, and the sum wordings are still counted so the
+            denominator is every judgment the model made about the pair.
           </figcaption>
         </figure>
       </section>
@@ -269,9 +316,10 @@
         <h2>Questions that went unanswered</h2>
         <p class="lede">
           Not every request came back with a usable number. Those attempts are
-          absent from the analysis rather than counted as noise — but they are
-          not spread evenly across models, so the noise figures are also
-          reported on the subset of questions every model completed in full.
+          absent from the analysis rather than counted as noise. A repeat set
+          holding fewer than two surviving forecasts is skipped by average error
+          instead of scoring zero, and a question answered in only one wording
+          is skipped by negation error.
         </p>
         <figure>
           <div class="chart-head">
@@ -303,6 +351,16 @@ npm run backfill-snapshot -- --run 1
 npm run analyze -- --run 1
 npm run site             # http://localhost:4321</pre>
         </figure>
+        <p class="note">
+          The five measures live in <code>src/metrics.ts</code>, are unit-tested
+          in <code>tests/metrics.test.ts</code> — including the two closed-form
+          baselines against a Monte-Carlo draw — and are emitted to
+          <code>site/data/metrics.json</code>, which with
+          <code>run.json</code> is everything these pages read. The analysis
+          layer also still writes <code>noise.json</code>, a fuller variance
+          decomposition of the same forecasts on both the probability and
+          log-odds scales, and <code>negation.json</code>; no page reads them.
+        </p>
         <p class="note" id="provenance"></p>
       </section>
     </div>
@@ -321,10 +379,9 @@ npm run site             # http://localhost:4321</pre>
 
       initTheme();
 
-      const [run, consistency, noise] = await Promise.all([
+      const [run, metrics] = await Promise.all([
         loadJson("run.json"),
-        loadJson("consistency.json"),
-        loadJson("noise.json"),
+        loadJson("metrics.json"),
       ]);
 
       const started = new Date(run.startedAt);
@@ -334,7 +391,7 @@ npm run site             # http://localhost:4321</pre>
 
       const attempted = run.models.reduce((s, m) => s + m.attempted, 0);
       const parsed = run.models.reduce((s, m) => s + m.parsed, 0);
-      const fit = noise.scales.probability.primary;
+      const models = metrics.models;
 
       document.getElementById("tiles").innerHTML = [
         ["Models", String(run.models.length), "Across ten vendors"],
@@ -346,9 +403,7 @@ npm run site             # http://localhost:4321</pre>
         ],
         [
           "Head-to-head judgments",
-          consistency.models
-            .reduce((s, m) => s + m.judgments, 0)
-            .toLocaleString(),
+          models.reduce((s, m) => s + m.judgments, 0).toLocaleString(),
           "Across 50 fixed pairs",
         ],
       ]
@@ -362,26 +417,40 @@ npm run site             # http://localhost:4321</pre>
         )
         .join("");
 
-      document.getElementById("chance").textContent = pct(
-        consistency.chance,
-        0,
-      );
-
-      document.getElementById("components").innerHTML = consistency.components
+      document.getElementById("components").innerHTML = metrics.components
         .map(
           (c) => `
         <tr>
-          <td style="text-align:left"><b>${c.label}</b></td>
-          <td style="text-align:left">${c.description}</td>
-          <td class="num">${pct(c.chance, 0)}</td>
-          <td class="num">${pct(
-            consistency.models.reduce((s, m) => s + m[c.key], 0) /
-              consistency.models.length,
-            1,
-          )}</td>
+          <td style="text-align:left">
+            <b>${c.label}</b><br />
+            <span style="color:var(--text-muted)">${
+              c.unit === "probability"
+                ? "Absolute distance, in points of probability"
+                : "Share of judgments"
+            }</span>
+          </td>
+          <td style="text-align:left">
+            ${c.question}
+            <div style="margin-top:6px"><code>${c.formula}</code></div>
+          </td>
+          <td class="num">${pct(c.baseline, 1)}</td>
+          <td class="num">${pct(metrics.field[c.key], 1)}</td>
+          <td class="num">${pct(Math.min(...models.map((m) => m[c.key])), 1)}</td>
         </tr>`,
         )
         .join("");
+
+      document.getElementById("random-composite").textContent = pct(
+        metrics.randomNoise,
+        1,
+      );
+      document.getElementById("blind").textContent = pct(
+        metrics.directionBlind,
+        1,
+      );
+      const aRates = models.map((m) => m.aRate);
+      document.getElementById("arates").textContent =
+        `${pct(Math.min(...aRates), 1)}–${pct(Math.max(...aRates), 1)}`;
 
       const failing = [...run.models]
         .filter((m) => m.parseFailureRate > 0)
@@ -394,8 +463,7 @@ npm run site             # http://localhost:4321</pre>
 
       document.getElementById("provenance").textContent =
         `Run "${run.name}" started ${started.toISOString().replace("T", " ").slice(0, 16)} UTC ` +
-        `and finished ${ended.toISOString().replace("T", " ").slice(0, 16)} UTC, status ${run.status}. ` +
-        `Noise figures are fitted on ${fit.markets} questions; the strict subset uses ${noise.scales.probability.robustness.markets}.`;
+        `and finished ${ended.toISOString().replace("T", " ").slice(0, 16)} UTC, status ${run.status}.`;
 
       const rows = failing.map((m) => ({
         label: shortModel(m.model),

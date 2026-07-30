@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>noisebench — how consistent are AI forecasters?</title>
+    <title>noisebench — how noisy are AI forecasters?</title>
     <link rel="stylesheet" href="assets/viz.css" />
   </head>
   <body>
@@ -16,7 +16,7 @@
         <nav class="tabs">
           <a href="index.html" aria-current="page">Overview</a>
           <a href="noise.html">Noise</a>
-          <a href="bias.html">Yes/No bias</a>
+          <a href="markets.html">Markets</a>
           <a href="details.html">Details</a>
           <button class="link" data-theme-toggle style="margin-left: 8px">
             Dark
@@ -27,31 +27,34 @@
       <section>
         <p class="lede">
           Ask a language model the same forecasting question twice and you get
-          two different answers. Ask it the same question phrased backwards and
-          the two answers may not even add up. This benchmark measures that —
-          <b>how much a model agrees with itself</b>, never whether it was
-          right. Twenty models, 100 Polymarket questions, 24,000 forecasts.
+          two different answers. Ask it for the opposite outcome and the two
+          answers may not add up. Ask it to rank two outcomes and the ranking
+          may not match the probabilities it just gave. This benchmark measures
+          that — <b>how far a model is from agreeing with itself</b>, never
+          whether it was right. Twenty models, 100 Polymarket questions, 24,000
+          forecasts.
         </p>
       </section>
 
       <section>
         <div class="chart-head">
           <div>
-            <h2>Consistency</h2>
+            <h2>Noise</h2>
             <p class="lede" style="margin-bottom: 0">
-              One score per model, averaging five checks that a coherent
-              forecaster would pass automatically. Higher is better. A model
-              answering at random would score
-              <b id="chance-inline">—</b>, marked on the chart — so the distance
-              above that line, not the raw height, is what a model has earned.
+              One score per model: the unweighted mean of the five failure rates
+              below. Lower is better, and <b>0% is reachable</b> — a forecaster
+              that repeats itself, keeps its two wordings consistent and ranks
+              the same way twice scores zero on all five. Answering at random
+              would score <b id="random-inline">—</b>.
             </p>
           </div>
         </div>
+        <p class="formula" id="composite-formula"></p>
         <figure>
-          <div class="chart-scroll"><div id="consistency"></div></div>
+          <div class="chart-scroll"><div id="composite"></div></div>
           <figcaption>
-            Every check is internal: none of them needs to know how a market
-            resolved. Hover a bar for its five sub-scores.
+            Every component is internal: none of them needs to know how a market
+            resolved. Hover a bar for its five parts.
           </figcaption>
         </figure>
         <div class="tiles" style="margin-top: 12px" id="topline"></div>
@@ -60,44 +63,39 @@
       <section>
         <h2>What goes into the score</h2>
         <p class="lede">
-          Five checks, equally weighted. Two ask whether a model repeats itself;
-          three ask whether its answers are logically compatible with each
-          other. Each is a plain percentage with its own coin-flip baseline,
-          shown beside it.
+          Five measures, equally weighted. Two are distances in probability —
+          how far a model's own numbers sit from each other, in percentage
+          points of probability. Three are shares of head-to-head judgments.
+          Each tile shows the field average and the formula it comes from.
         </p>
-        <div class="tiles" id="components"></div>
+        <div class="tiles wide" id="components"></div>
+        <p class="note">
+          Equal weight is not equal contribution: the three judgment shares run
+          several times larger than the two probability distances, so they carry
+          most of the composite. That is why the parts are never shown without
+          the whole.
+        </p>
       </section>
 
       <section>
         <h2>Where each model gains and loses</h2>
         <p class="lede">
-          The same five checks, per model. Repeating yourself turns out to be
-          much easier than staying logically coherent — the two repeat scores
-          run high across the field while the negation checks collapse.
+          The same five measures, per model, lowest first. Repeating yourself
+          turns out to be much easier than staying coherent across wordings, and
+          harder still is matching your own probabilities when the question is
+          put as a ranking.
         </p>
         <figure>
           <div class="chart-head">
             <div class="controls" style="margin-bottom: 0">
-              <div class="seg" role="group" aria-label="Sub-score">
-                <button data-part="reliability" aria-pressed="true">
-                  Repeat
-                </button>
-                <button data-part="negationCoherence" aria-pressed="false">
-                  Negation
-                </button>
-                <button data-part="pairRepeat" aria-pressed="false">
-                  Repeat (H2H)
-                </button>
-                <button data-part="pairNegation" aria-pressed="false">
-                  Negation (H2H)
-                </button>
-                <button data-part="selfAgreement" aria-pressed="false">
-                  Self-agreement
-                </button>
+              <div class="seg" role="group" aria-label="Measure" id="partSeg">
+                <!-- Filled from the components in the data, so the buttons can
+                     never name a measure the analysis no longer emits. -->
               </div>
             </div>
             <button class="link" id="partTableBtn">Show data table</button>
           </div>
+          <p class="formula" id="part-formula"></p>
           <div class="chart-scroll"><div id="parts"></div></div>
           <div class="table-wrap hidden" id="partTable"></div>
           <figcaption id="partcap"></figcaption>
@@ -105,79 +103,82 @@
       </section>
 
       <section>
-        <h2>Does a model's pick match the odds it just gave?</h2>
+        <h2>Negation error, by model</h2>
         <p class="lede">
-          Asked "which of these two is likelier?", a model should pick whichever
-          it had already given the higher probability. Here every such
-          comparison is grouped by how far apart the model's <em>own</em> two
-          probabilities were. Where that gap is near zero, the model is
-          genuinely torn and either pick is defensible — 50% is correct
-          behaviour, not a failure. The question is how fast the line climbs
-          once the model has staked out a real difference.
+          The one measure where the direction of the miss is worth seeing on its
+          own. Every market is asked twice — for the outcome as the market words
+          it, and for the opposite outcome — and a coherent forecaster's two
+          answers must add to 100%. The bars are the absolute error that goes
+          into the score; the table keeps the sign, where positive means the
+          model spends more than 100% across the pair and negative means less.
         </p>
         <figure>
-          <div class="chart-scroll"><div id="margin"></div></div>
-          <figcaption id="margincap"></figcaption>
+          <div class="chart-head">
+            <div></div>
+            <button class="link" id="negTableBtn">Show data table</button>
+          </div>
+          <div class="chart-scroll"><div id="negation"></div></div>
+          <div class="table-wrap hidden" id="negTable"></div>
+          <figcaption id="negcap"></figcaption>
         </figure>
-        <p class="note">
-          Pooled across all twenty models, because a single model contributes
-          only about 200 of these comparisons and the buckets get too thin to
-          read. Restricted to the "which is likelier" comparisons: the other two
-          wordings ask whether the pair's probabilities sum past 100%, which on
-          a set of questions this skewed toward long shots is usually an easy
-          call and would flatter the right-hand end.
-        </p>
       </section>
     </div>
 
     <script type="module">
       import {
-        fmt,
         groupedColumns,
+        horizontalBars,
         initTheme,
         loadJson,
         onRedraw,
         pct,
         renderTable,
         shortModel,
+        signedPct,
         wireTableToggle,
       } from "./assets/viz.js";
 
       initTheme();
 
-      const [run, consistency] = await Promise.all([
+      const [run, metrics] = await Promise.all([
         loadJson("run.json"),
-        loadJson("consistency.json"),
+        loadJson("metrics.json"),
       ]);
 
       const started = new Date(run.startedAt);
       document.getElementById("runline").textContent =
         `${run.models.length} models · ${run.markets} questions · ${started.toISOString().slice(0, 10)}`;
 
-      const chance = consistency.chance;
-      document.getElementById("chance-inline").textContent = pct(chance, 0);
+      document.getElementById("random-inline").textContent = pct(
+        metrics.randomNoise,
+        1,
+      );
 
-      const best = consistency.models[0];
-      const worst = consistency.models[consistency.models.length - 1];
+      const models = metrics.models;
+      const components = metrics.components;
+      const quietest = models[0];
+      const noisiest = models[models.length - 1];
+
+      document.getElementById("composite-formula").innerHTML =
+        `noise = ( ${components.map((c) => c.label.toLowerCase()).join("\n         + ")} ) / 5` +
+        `<span class="unit">Each term is already a percentage of its own denominator, so the mean is a percentage too. ` +
+        `Answering at random scores ${pct(metrics.randomNoise, 1)}; a perfectly self-consistent forecaster scores 0%.</span>`;
+
       document.getElementById("topline").innerHTML = [
         [
-          "Most consistent",
-          shortModel(best.model),
-          `${pct(best.consistency, 1)} — ${(100 * (best.consistency - chance)).toFixed(0)} points clear of chance`,
+          "Quietest",
+          shortModel(quietest.model),
+          `${pct(quietest.noise, 1)} — ${pct(metrics.randomNoise - quietest.noise, 1)} below random`,
         ],
         [
-          "Least consistent",
-          shortModel(worst.model),
-          `${pct(worst.consistency, 1)} — ${(100 * (worst.consistency - chance)).toFixed(0)} points clear of chance`,
+          "Noisiest",
+          shortModel(noisiest.model),
+          `${pct(noisiest.noise, 1)} — ${(noisiest.noise / quietest.noise).toFixed(1)}× the quietest`,
         ],
         [
           "Field average",
-          pct(
-            consistency.models.reduce((s, m) => s + m.consistency, 0) /
-              consistency.models.length,
-            1,
-          ),
-          "Across all twenty models",
+          pct(metrics.field.noise, 1),
+          `Across all ${models.length} models`,
         ],
       ]
         .map(
@@ -190,60 +191,75 @@
         )
         .join("");
 
-      document.getElementById("components").innerHTML = consistency.components
+      document.getElementById("components").innerHTML = components
         .map(
           (c) => `
         <div class="tile">
           <div class="label">${c.label}</div>
-          <div class="value" style="font-size:22px">${pct(
-            consistency.models.reduce((s, m) => s + m[c.key], 0) /
-              consistency.models.length,
-            1,
-          )}</div>
-          <div class="hint">${c.description}<br /><span style="opacity:.75">Coin flip: ${pct(c.chance, 0)}</span></div>
+          <div class="value" style="font-size:26px">${pct(metrics.field[c.key], 1)}</div>
+          <div class="hint">
+            ${c.question}<br />
+            <code style="display:inline-block;margin-top:6px">${c.formula}</code><br />
+            <span style="opacity:.8">${
+              c.unit === "probability"
+                ? "An absolute distance, in percentage points of probability."
+                : "A share of the judgments in the denominator."
+            } Answering at random: ${pct(c.baseline, 1)}.</span>
+          </div>
         </div>`,
         )
         .join("");
 
-      let part = "reliability";
-      const partMeta = () => consistency.components.find((c) => c.key === part);
+      document.getElementById("partSeg").innerHTML = components
+        .map(
+          (c, i) =>
+            `<button data-part="${c.key}" aria-pressed="${i === 0}">${c.label}</button>`,
+        )
+        .join("");
+
+      let part = components[0].key;
+      const partMeta = () => components.find((c) => c.key === part);
 
       const draw = () => {
-        groupedColumns(document.getElementById("consistency"), {
-          rows: consistency.models.map((m) => ({
+        groupedColumns(document.getElementById("composite"), {
+          rows: models.map((m) => ({
             label: shortModel(m.model),
-            v: m.consistency,
+            v: m.noise,
             raw: m,
           })),
-          series: [{ key: "v", name: "Consistency", color: "var(--series-1)" }],
+          series: [{ key: "v", name: "Noise", color: "var(--series-1)" }],
           valueFormat: (v) => pct(v, 0),
           height: 380,
-          baseline: chance,
-          reference: chance,
-          referenceLabel: `answering at random = ${pct(chance, 0)}`,
           tooltip: (row) =>
-            consistency.components
+            components
               .map((c) => [c.label, pct(row.raw[c.key], 1)])
-              .concat([["Consistency", pct(row.raw.consistency, 1)]]),
+              .concat([["Noise", pct(row.raw.noise, 1)]]),
         });
 
         const meta = partMeta();
+        document.getElementById("part-formula").innerHTML =
+          `${meta.label}\n  ${meta.formula}` +
+          `<span class="unit">${
+            meta.unit === "probability"
+              ? "An absolute distance, in percentage points of probability — not a percentage of anything the model said."
+              : "A share of the judgments in the denominator."
+          } Answering at random: ${pct(meta.baseline, 1)}. ${meta.baselineNote}</span>`;
+
         groupedColumns(document.getElementById("parts"), {
-          rows: [...consistency.models]
-            .sort((a, b) => b[part] - a[part])
+          rows: [...models]
+            .sort((a, b) => a[part] - b[part])
             .map((m) => ({ label: shortModel(m.model), v: m[part], raw: m })),
           series: [{ key: "v", name: meta.label, color: "var(--series-1)" }],
           valueFormat: (v) => pct(v, 0),
           height: 360,
-          baseline: 0,
-          reference: meta.chance > 0 ? meta.chance : null,
-          referenceLabel:
-            meta.chance > 0 ? `coin flip = ${pct(meta.chance, 0)}` : "",
           tooltip: (row) => [
             [meta.label, pct(row.raw[part], 1)],
-            ["Consistency overall", pct(row.raw.consistency, 1)],
-            ...(part === "pairRepeat"
+            ["Noise overall", pct(row.raw.noise, 1)],
+            ...(part === "pairwiseDisagreement"
               ? [["Picked side A", pct(row.raw.aRate, 1)]]
+              : []),
+            ...(part === "individualPairDisagreement"
+              ? [["Pairs with no majority", String(row.raw.ties)]]
               : []),
           ],
         });
@@ -253,67 +269,77 @@
           document.getElementById("partTable"),
           [
             { name: "Model", get: (r) => r.model, numeric: false },
-            { name: "Consistency", get: (r) => pct(r.consistency, 1) },
-            ...consistency.components.map((c) => ({
+            { name: "Noise", get: (r) => pct(r.noise, 1) },
+            ...components.map((c) => ({
               name: c.label,
               get: (r) => pct(r[c.key], 1),
             })),
           ],
-          consistency.models,
+          models,
         );
 
-        // Pooled over every model: one model supplies ~200 of these
-        // comparisons, which split across five buckets is too thin to plot.
-        // Weighting by count rather than averaging the per-model rates keeps a
-        // model with few judgments in a bucket from swinging it.
-        const buckets = (consistency.marginBuckets ?? []).map((b, i) => {
-          let hits = 0;
-          let n = 0;
-          for (const m of consistency.models) {
-            const cell = m.byMargin[i];
-            if (!cell) continue;
-            hits += cell.agreement * cell.n;
-            n += cell.n;
-          }
-          return { label: b.label, v: n > 0 ? hits / n : 0, n };
-        });
+        const negRows = [...models]
+          .sort((a, b) => a.negationError - b.negationError)
+          .map((m) => ({
+            label: shortModel(m.model),
+            v: m.negationError,
+            raw: m,
+          }));
 
-        groupedColumns(document.getElementById("margin"), {
-          rows: buckets,
-          series: [{ key: "v", name: "Agreement", color: "var(--series-1)" }],
-          valueFormat: (v) => pct(v, 0),
-          axisLabel: "How far apart the model's own two probabilities were",
-          height: 300,
-          baseline: 0,
-          reference: 0.5,
-          referenceLabel: "coin flip = 50%",
+        horizontalBars(document.getElementById("negation"), {
+          rows: negRows,
+          series: [
+            { key: "v", name: "Negation error", color: "var(--series-1)" },
+          ],
+          labelWidth: 190,
+          valueFormat: (v) => pct(v, 1),
+          axisLabel: "| avg(Yes) − (1 − avg(No)) |, averaged over questions",
           tooltip: (row) => [
-            ["Agreement", pct(row.v, 1)],
-            ["Comparisons", row.n.toLocaleString()],
+            ["Negation error", pct(row.raw.negationError, 1)],
+            ["Signed drift", signedPct(row.raw.drift, 1)],
+            ["Asked for the Yes side", pct(row.raw.yes, 1)],
+            ["Asked for the No side", pct(row.raw.no, 1)],
+            ["Questions", String(row.raw.markets)],
           ],
         });
 
-        const flat = buckets[0];
-        const mid = buckets[2];
-        document.getElementById("margincap").textContent =
-          `It climbs, but nowhere near far enough. At a gap under 5 points the models are at ${pct(flat.v, 0)} — ` +
-          `a coin flip, which is the right answer there. But even when a model has already said one outcome is ` +
-          `15 to 30 points likelier than the other, it still contradicts itself in about ` +
-          `${(100 - 100 * mid.v).toFixed(0)} of every 100 comparisons.`;
+        renderTable(
+          document.getElementById("negTable"),
+          [
+            { name: "Model", get: (r) => r.raw.model, numeric: false },
+            { name: "Asked Yes", get: (r) => pct(r.raw.yes, 1) },
+            { name: "Asked No", get: (r) => pct(r.raw.no, 1) },
+            { name: "Sum", get: (r) => pct(r.raw.yes + r.raw.no, 1) },
+            { name: "Signed drift", get: (r) => signedPct(r.raw.drift, 1) },
+            { name: "Negation error", get: (r) => pct(r.raw.negationError, 1) },
+            { name: "Questions", get: (r) => String(r.raw.markets) },
+          ],
+          negRows,
+        );
       };
 
-      for (const button of document.querySelectorAll("[data-part]")) {
-        button.addEventListener("click", () => {
-          part = button.dataset.part;
-          for (const b of document.querySelectorAll("[data-part]"))
-            b.setAttribute("aria-pressed", String(b === button));
-          draw();
-        });
-      }
+      const field = metrics.field;
+      document.getElementById("negcap").textContent =
+        `Across the run a model answers ${pct(field.negationError, 1)} away from its own other wording, on average. ` +
+        `The two arms sum to ${pct(metrics.models.reduce((s, m) => s + m.yes + m.no, 0) / models.length, 1)} where coherence requires 100%, so the field is very nearly additive on average — ` +
+        `the error is the part that does not cancel. A model that ignored the wording entirely and repeated its Yes number would score ${pct(metrics.directionBlind, 1)} on this set of questions.`;
+
+      document.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-part]");
+        if (!button) return;
+        part = button.dataset.part;
+        for (const b of document.querySelectorAll("[data-part]"))
+          b.setAttribute("aria-pressed", String(b === button));
+        draw();
+      });
 
       wireTableToggle(
         document.getElementById("partTableBtn"),
         document.getElementById("partTable"),
+      );
+      wireTableToggle(
+        document.getElementById("negTableBtn"),
+        document.getElementById("negTable"),
       );
 
       onRedraw(draw);

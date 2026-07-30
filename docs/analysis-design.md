@@ -97,8 +97,13 @@ therefore computed twice:
 
 Clipping bites on 393 of 15,862 observations (2.5%); the raw range is
 [0.0001, 0.9999] with no exact 0 or 1, so clipping is a tail-tamer, not a
-correctness fix. The site reports the clipped count next to every log-odds
-figure.
+correctness fix.
+
+`src/analysis.ts` still computes both scales. The **site shows only the
+probability scale** — the log-odds readout went with the cross-model comparisons
+(§10) — so the skew it was there to correct for is now stated in the captions
+instead: both probability-scale measures in §9 rise with the market price, which
+is what a points-scale measure does when long shots leave it no room to move.
 
 A third, purely presentational readout for cell-level tooltips: **spread ratio**
 `max(p)/min(p)` within the cell, which is what makes the "this model's forecast
@@ -228,45 +233,57 @@ which should be 0.
 
 ### 4.2 What the data says
 
-Global: mean base parse 0.2648, mean negated parse 0.3518, **sum 0.617**. The
-grand mean on the Yes scale is 0.46 where coherence forces 0.50. Broken out by
-market midpoint:
+Numbers below are from the re-run of the No wording (2026-07-30). The first
+version of this section reported a **sum of 0.617** and a gap of −0.725 in the
+lowest midpoint band; that was an artifact of the prompt, not a property of the
+models — see §4.3.
 
-| midpoint band | n   | mean midpoint | base  | negated | sum   | gap        |
-| ------------- | --- | ------------- | ----- | ------- | ----- | ---------- |
-| 0.00–0.05     | 18  | 0.032         | 0.056 | 0.219   | 0.275 | **−0.725** |
-| 0.05–0.10     | 18  | 0.071         | 0.067 | 0.234   | 0.301 | **−0.699** |
-| 0.10–0.25     | 20  | 0.158         | 0.146 | 0.369   | 0.515 | −0.485     |
-| 0.25–0.50     | 17  | 0.365         | 0.378 | 0.448   | 0.826 | −0.174     |
-| 0.50–0.75     | 17  | 0.601         | 0.466 | 0.530   | 0.996 | −0.004     |
-| 0.75–1.00     | 10  | 0.869         | 0.692 | 0.299   | 0.991 | −0.009     |
+Global: mean Yes-wording parse 0.264, mean No-wording parse 0.740, **sum 1.004**
+against the 1.000 that coherence forces. Mean signed gap +0.004, mean absolute
+gap 0.018. Broken out by market midpoint (n = 100 markets, 20 models each):
 
-The effect is **entirely concentrated in low-probability markets** and vanishes
-above 0.50. Asked "Will Trump fail to acquire Greenland before 2027?" the panel
-says 0.193. Asked "Will Jesus Christ not return before 2027?" it says 0.049.
+| midpoint band | n   | mean midpoint | Yes wording | No wording | sum   | gap    |
+| ------------- | --- | ------------- | ----------- | ---------- | ----- | ------ |
+| 0.00–0.05     | 18  | 0.032         | 0.056       | 0.942      | 0.998 | −0.002 |
+| 0.05–0.10     | 18  | 0.071         | 0.067       | 0.920      | 0.987 | −0.013 |
+| 0.10–0.25     | 20  | 0.158         | 0.146       | 0.847      | 0.994 | −0.006 |
+| 0.25–0.50     | 17  | 0.365         | 0.378       | 0.637      | 1.015 | +0.015 |
+| 0.50–0.75     | 17  | 0.601         | 0.466       | 0.545      | 1.012 | +0.012 |
+| 0.75–1.00     | 10  | 0.869         | 0.692       | 0.343      | 1.034 | +0.034 |
+
+Both arms now track the midpoint, and the residual gap runs the other way: it is
+near zero on long shots (where both answers are nearly forced) and largest on
+questions the market puts near or above even money, where a model is free to
+answer both sides high. Per-question negation error rises the same way, 0.018 in
+the lowest band to 0.054 in the highest.
 
 ### 4.3 Interpretation
 
-The effect is a genuine failure to re-orient to a negated frame: models retrieve
-the salient event's base rate and report it, largely regardless of which
-direction the question points. It is strongest exactly where the base rate is
-most lopsided and therefore where getting the direction right matters most.
+The original result was a prompt bug. The No wording was built by negating the
+question text (`negatedQuestion` — "Will X _not_ happen?") while the rest of the
+prompt still described the market's Yes/No mapping, so the two halves of the
+prompt disagreed about what a probability referred to. Models answered the
+salient event's base rate because that is what the prompt, read as a whole,
+mostly asked for. Fixing the phrasing to **ask the outcome directly** — the No
+wording asks for the probability of the No outcome of the unmodified market —
+removed the effect almost entirely.
 
-Ruled out as an explanation (F5): text-level tension between a negated question
-and a description that hardcodes a Yes/No mapping. Measured, and it does not
-moderate the gap once midpoint is controlled.
+That reframes the finding rather than deleting it. What run 1 measured was
+sensitivity to a self-contradictory prompt, which is a real failure mode but not
+the one the section claimed. What survives is the smaller, opposite-signed
+pattern in §4.2: negation error is a mid-range phenomenon, not a long-shot one.
+
+F5 (text-level tension between a negated question and a description hardcoding
+the Yes/No mapping) was originally ruled out on the grounds that it does not
+moderate the gap once midpoint is controlled. That test was too weak: the tension
+was present in **every** cell of the negated arm, so it had no contrast to show
+up against. It was the cause.
 
 Worth showing alongside, because it is the same question asked without any
-absolute probability at all: the pairwise couple identities (§6), which are
-violated at 42.4% and 47.2% against a 50% chance baseline. Two independent
-modalities agreeing that negation handling collapses is a far stronger result
-than either alone, and the site should present them as a pair.
-
-A useful secondary cut: the gap is the _sum_ deviating from 1, so split it into
-which arm moves. §4.2's base column tracks midpoints closely (0.056 vs 0.032,
-0.146 vs 0.158) while the negated arm is far off (0.219 where ~0.97 is implied).
-The failure is almost entirely in the negated arm, not shared between them —
-which is itself the evidence for the base-rate-retrieval reading.
+absolute probability at all: the pairwise couple identities (§6), violated at
+16.0% (rank) and 7.2% (sum) against a 50% chance baseline. Both modalities now
+agree that negation handling is broadly intact, which is the same kind of
+cross-check the pre-fix version relied on — it simply points the other way.
 
 ---
 
@@ -320,13 +337,18 @@ audit the set.
 ### 6.2 The three measures
 
 1. **Repetition instability** — same model, pair, phrasing combo, iteration 0
-   vs 1. Pure occasion noise in the ranking modality. Measured: **15.1%** flip
-   rate over 3,973 comparable cells.
-2. **Couple violation** — the §6.1 identities. Measured: **42.4%** on
-   (A,B)/(¬A,¬B) and **47.2%** on (¬A,B)/(A,¬B), n = 1,986 each. Chance is 50%.
-   Models are close to **indistinguishable from coin-flipping** on the one
-   identity that holds regardless of what they believe.
-3. **Position bias** — not measurable, F2. Report as a known gap.
+   vs 1. Pure occasion noise in the ranking modality. Measured: **9.2%** flip
+   rate over 3,966 comparable cells. On the site this is
+   _pairwise disagreement_ (§9).
+2. **Couple violation** — the §6.1 identities. Measured (post-fix): **16.0%** on
+   (A,B)/(¬A,¬B) and **7.2%** on (¬A,B)/(A,¬B), 3,965 checks in total. Chance is
+   50%, so both are well clear of coin-flipping; the pre-fix run measured 42.4%
+   and 47.2%, i.e. no better than chance (§4.3). The rank couple stays twice as
+   often violated as the sum couple. On the site the two are averaged into
+   _negation disagreement_ and also charted separately.
+3. **Position bias** — not measurable, F2. Report as a known gap. `aRate` (share
+   of picks going to side A) spans 0.475–0.525 across the field, so nothing is
+   degenerate.
 
 Both 1 and 2 break down per model and per pair. Guard against the trap: a model
 that always answers "A" scores 0% repetition instability and 100% couple
@@ -384,47 +406,77 @@ genuinely useful result for anyone choosing a forecasting model.
 
 ---
 
-## 9. The consistency score
+## 9. The noise score
 
 The site's headline number, and the only place the two modalities are combined.
-Five sub-scores, **equally weighted**, each a plain share in [0,1]. Two probe
-**repeatability** (ask the same thing again, get the same answer); three probe
-**coherence** (answer logically linked questions in a linked way). None needs
-to know how a market resolved.
+It replaced an earlier "consistency score" built from five reliability-style
+sub-scores (intraclass correlation, coherence rates); that version is retired
+because none of its components had a formula a reader could check by hand, and
+the whole framing inverted the thing being measured. **Lower is better
+throughout**: every component is an error or a disagreement rate, so the score
+is noise, not skill. `src/metrics.ts` is the implementation; `tests/metrics.test.ts`
+carries each worked example.
 
-| Sub-score                | Question                                                                             | Chance | Field avg |
-| ------------------------ | ------------------------------------------------------------------------------------ | ------ | --------- |
-| Repeat reliability       | Of the spread in four answers to one question, how much is signal rather than drift? | 0%     | 63.9%     |
-| Negation coherence       | Does P(yes) + P(no) reach 100%?                                                      | ~67%   | 54.7%     |
-| Repeat reliability (H2H) | Same comparison twice, same pick?                                                    | 50%    | 84.9%     |
-| Negation coherence (H2H) | Negating both sides reverses the answer?                                             | 50%    | 55.2%     |
-| Self-agreement           | Does the head-to-head pick match its own probabilities?                              | 50%    | 66.2%     |
+Five components, **equally weighted** (plain mean, no rescaling), each in [0,1].
+Two are distances in probability, three are shares of judgments. None needs to
+know how a market resolved.
 
-Range: **83.0%** (claude-opus-5) down to **55.2%** (mimo-v2.5).
+| Component                  | Formula                                                        | Random | Field avg |
+| -------------------------- | -------------------------------------------------------------- | ------ | --------- |
+| Average error              | mean over cells of MAD of the 4 repeats                        | 5/24 = 20.8% | 2.5%  |
+| Negation error             | mean over {model, market} of \|avg(Yes) − (1 − avg(No))\|      | 59/360 = 16.4% | 3.6% |
+| Pairwise disagreement      | share of repeat comparisons (iteration 0 vs 1) that flip       | 50%    | 9.2%      |
+| Negation disagreement      | share of §6.1 couple checks violated                           | 50%    | 11.6%     |
+| Individual-pair disagreement | share of pairs where the folded 8-forecast ranking differs from the model's own majority pick | 50% | 16.4% |
 
-Three decisions worth recording:
+Composite range: **4.3%** (gpt-5.6-sol-pro) up to **16.5%**
+(mistral-large-2512). Field average **8.7%**; a model answering uniformly at
+random scores **37.4%**.
 
-**Repeat reliability is an intraclass correlation**, not a raw SD — between-
-question variance over total variance. Being a ratio, it needs no tolerance and
-no choice of scale, which matters on a dataset this skewed to the tails. Its
-one cost is that a model with no discrimination at all scores 0 even if
-perfectly steady; nothing in run 1 is near that degenerate.
+Four decisions worth recording:
 
-**The sub-scores are left un-normalized.** They do not share a floor, so a
-coin-flipping forecaster scores `CHANCE_CONSISTENCY` ≈ **43.3%**, not 0. The
-alternative — skill-scoring each against its own baseline — puts the range at
-10–65% and is arguably more honest, but sends **17 of 20 models negative on
-negation coherence**, since most are genuinely worse than random there. The
-charts therefore draw the 43.3% baseline rather than bake it into the scaling,
-and anchor the bar floor at it so a field spanning 55–83% is not flattened.
+**Both probability-scale components use absolute distance, not a ratio.** The
+retired repeat-reliability sub-score was an intraclass correlation, which needs
+no tolerance and no choice of scale — attractive on a dataset this skewed — but
+it cannot be stated as a formula a reader will follow, and it scores a
+perfectly-steady model with no discrimination at 0. Mean absolute deviation
+costs the scale-invariance and buys a number in the same units as the answers:
+"the four repeats landed 2.5 points apart" is directly readable. The cost is
+visible in the data and stated on the site — both components correlate
+_positively_ with the market price (+0.31 for average error), because long shots
+leave a points-scale measure no room to move.
+
+**The random baselines are derived, not asserted, and never baked into the
+scaling.** Average error's 5/24 is the MAD of four iid U(0,1) draws; negation
+error's 59/360 is E|S₈ − 4|/4 under Irwin–Hall(8); the three judgment shares are
+50% by symmetry. Details on the site carries the derivations, and
+`tests/metrics.test.ts` checks both closed forms against a seeded Monte Carlo.
+Charts state the baseline in the caption rather than drawing it, since a 50%
+reference line would flatten a field spanning 3–29%.
+
+**Random is not the worst case, and not a floor for gaming.** A wording-blind
+model — one that answers the same number regardless of direction — scores
+**67.6%**, computed from the run as mean |2·avg(Yes) − 1|. In the other
+direction, a model that always answers 50% and always picks the first option
+scores 0/0/0/100/50 → composite **30%**, better than random. Both are stated on
+the site so the score is not read as a skill measure.
 
 **The head-to-head repeat check is gameable** — a model that always picks the
-left option scores 100%. The negation check catches exactly that failure, so
-the two are always reported together, and `aRate` (share of picks going to side
-A) rides along in the tooltip. Run 1's A-rates span 0.47–0.58, so nothing is
-degenerate.
+left option scores 0% disagreement. The negation check catches exactly that
+failure, so the two are always reported together, and `aRate` (share of picks
+going to side A) rides along in the tooltip. A-rates span 0.475–0.525, so
+nothing is degenerate.
+
+**Ties in the individual-pair check count as half.** The folded direct belief can
+sit exactly level, or the majority vote across the four wording combos can split
+2–2; 96 of 996 model-pairs tie. Counting them as 0.5 keeps the measure at 50%
+under a coin-flip model, and `ties` is reported alongside.
 
 ### 9.1 The margin curve
+
+Pre-fix numbers (§4.3). The site no longer shows this chart — it is a cross-model
+cut, and note 2 of the site rework dropped those — but the design decision is
+worth keeping.
 
 Cross-modal agreement bucketed by the model's **own** margin, pooled across all
 twenty models (one model supplies ~200 rank comparisons, too thin to bucket):
@@ -455,32 +507,36 @@ against sum agreement of 70.4% — the gap is the whole reason to separate them.
 ```
 migrations/05_market_snapshot.sql   run-scoped midpoint/spread/liquidity (§5)
 scripts/backfill-snapshot.ts        populate it from the dataset JSON
-src/analysis.ts                     the statistics, pure and unit-tested
+src/analysis.ts                     the decomposition + Yes/No statistics (§2, §4)
+src/metrics.ts                      the five site measures + composite (§9)
 scripts/analyze.ts                  SQL → TS → site/data/*.json
-site/index.html                     consistency (§9)
-site/noise.html                     the decomposition (§2)
-site/bias.html                      the Yes/No result (§4)
-site/details.html                   method, vocabulary, units, coverage
+site/index.html                     the noise score and its five parts (§9)
+site/noise.html                     the five measures in depth (§9)
+site/markets.html                   per-question analysis (§3, §5)
+site/details.html                   method, formulas, baselines, coverage
 site/data/*.json                    committed, so the site opens with no DB
 ```
 
+`analyze.ts` still emits `noise.json` and `negation.json` — the §2 decomposition
+and the §4 arms — but the site reads only `run.json` and `metrics.json`. Keeping
+them written costs nothing and means the decomposition is one page away from
+being shown again.
+
 ### Vocabulary on the site
 
-The site is written for a reader who has not read _Noise_, so the terms are
-renamed; `details.html` carries the mapping.
+The site is written for a reader who has not read _Noise_. It used to rename
+Kahneman's terms (baseline tilt / idiosyncrasy / repeat drift / total noise /
+real spread between questions for level, stable pattern, occasion and system
+noise, and case spread); the current site drops that vocabulary altogether, since
+the five measures in §9 are defined by their formulas and need no analogy. The
+mapping stays here for anyone reading `src/analysis.ts`, which still computes the
+decomposition.
 
-| On the site                   | Kahneman             |
-| ----------------------------- | -------------------- |
-| Baseline tilt                 | Level noise          |
-| Idiosyncrasy                  | Stable pattern noise |
-| Repeat drift                  | Occasion noise       |
-| Total noise                   | System noise         |
-| Real spread between questions | Case spread          |
-
-Units are never bare numbers: the probability scale reads as `14.6 pts`, the
-log-odds scale as `×3.18` on the odds. Both appear on every noise view behind
-one toggle, and the axis, the tiles and the caption always agree on which is
-showing.
+Units are never bare numbers, and there is one scale: probability, written as a
+percentage (`14.6%`). The log-odds view and its `×3.18` odds-multiple toggle are
+gone with the cross-model comparisons. Every chart names its formula and its
+random baseline next to it, so a reader can tell an absolute distance from a
+share of judgments without inferring it from the axis.
 
 `analyze.ts` does the SQL in Postgres for aggregation that SQL is good at
 (counts, joins, per-cell means) and the decomposition arithmetic in TypeScript,

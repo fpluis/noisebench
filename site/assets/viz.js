@@ -33,37 +33,16 @@ export const shortModel = (name) => name.split("/").pop();
 // Units
 // ---------------------------------------------------------------------------
 //
-// Every number on the site carries its unit, because a bare "0.146" tells a
-// reader nothing. Probabilities read as percentage points; log-odds read as a
-// multiplier on the odds, which is the only form in which "this forecast moved
-// from 1% to 3%" and "from 50% to 53%" are comparable.
+// Every quantity on this site is a share of something, so every number on it is
+// a percentage and `pct` is the only formatter. `signedPct` is for the handful
+// of quantities where direction is the point — how far the panel sits from the
+// market, which way a model's two wordings miss each other — and carries an
+// explicit + or − so a signed figure is never mistaken for a magnitude.
 
-export const points = (v, dp = 1) =>
-  v === null || v === undefined ? "—" : `${(v * 100).toFixed(dp)} pts`;
-
-export const signedPoints = (v, dp = 1) =>
-  v === null || v === undefined
+export const signedPct = (x, dp = 1) =>
+  x === null || x === undefined
     ? "—"
-    : `${v > 0 ? "+" : v < 0 ? "−" : ""}${(Math.abs(v) * 100).toFixed(dp)} pts`;
-
-/** A log-odds distance as the factor it represents on the odds. */
-export const oddsFactor = (v, dp = 2) =>
-  v === null || v === undefined ? "—" : `×${Math.exp(Math.abs(v)).toFixed(dp)}`;
-
-export const signedOddsFactor = (v, dp = 2) =>
-  v === null || v === undefined
-    ? "—"
-    : `${v < 0 ? "÷" : "×"}${Math.exp(Math.abs(v)).toFixed(dp)}`;
-
-/** Format a value on whichever scale is showing, signed or not. */
-export const onScale = (v, scale, signed = false) =>
-  scale === "probability"
-    ? signed
-      ? signedPoints(v)
-      : points(v)
-    : signed
-      ? signedOddsFactor(v)
-      : oddsFactor(v);
+    : `${x > 0 ? "+" : x < 0 ? "−" : ""}${(Math.abs(x) * 100).toFixed(dp)}%`;
 
 // ---------------------------------------------------------------------------
 // Theme
@@ -796,6 +775,107 @@ export const renderTable = (mount, columns, rows) => {
   }
   table.append(thead, tbody);
   mount.appendChild(table);
+};
+
+/**
+ * A table the reader can re-order by any column.
+ *
+ * Columns declare `get` for what to print and, when the printed string does not
+ * sort correctly (a formatted percentage, a signed figure, an em dash for a
+ * missing value), `sortValue` for what to sort on. Sorting is stable: equal keys
+ * keep the order they arrived in, so re-sorting on a coarse column does not
+ * scramble the finer one underneath it.
+ *
+ * `cellStyle` lets a column paint its own cells — used for the model estimate,
+ * where the distance from the market price is easier to read as a wash of colour
+ * across a hundred rows than as a second numeric column.
+ */
+export const sortableTable = (mount, options) => {
+  const { columns, rows, sortColumn = 0, descending = false } = options;
+  let active = sortColumn;
+  let desc = descending;
+
+  const keyOf = (column, row) =>
+    column.sortValue ? column.sortValue(row) : column.get(row);
+
+  const paint = () => {
+    // Missing values sort to the end whichever direction is asked for: they are
+    // not "small", they are absent, and letting them lead a descending sort
+    // pushes the rows the reader asked for off the bottom of the screen.
+    const decorated = rows.map((row, i) => ({ row, i }));
+    const column = columns[active];
+    decorated.sort((a, b) => {
+      const x = keyOf(column, a.row);
+      const y = keyOf(column, b.row);
+      const xMissing = x === null || x === undefined || Number.isNaN(x);
+      const yMissing = y === null || y === undefined || Number.isNaN(y);
+      if (xMissing || yMissing)
+        return xMissing === yMissing ? a.i - b.i : xMissing ? 1 : -1;
+      const cmp =
+        typeof x === "string" || typeof y === "string"
+          ? String(x).localeCompare(String(y))
+          : x - y;
+      return cmp === 0 ? a.i - b.i : desc ? -cmp : cmp;
+    });
+
+    mount.innerHTML = "";
+    const table = document.createElement("table");
+    const thead = document.createElement("thead");
+    const hr = document.createElement("tr");
+    columns.forEach((c, index) => {
+      const th = document.createElement("th");
+      if (c.numeric !== false) th.className = "num";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "sort";
+      // The arrow is decoration; aria-sort on the cell is what a screen reader
+      // reads, so the two must not disagree.
+      button.textContent = c.name;
+      const caret = document.createElement("span");
+      caret.setAttribute("aria-hidden", "true");
+      caret.textContent = index === active ? (desc ? " ▼" : " ▲") : " ↕";
+      caret.className = index === active ? "on" : "off";
+      button.appendChild(caret);
+      th.setAttribute(
+        "aria-sort",
+        index === active ? (desc ? "descending" : "ascending") : "none",
+      );
+      button.addEventListener("click", () => {
+        // Re-clicking the active column reverses it; a new column starts in its
+        // own natural direction, ascending for text and descending for figures.
+        if (index === active) desc = !desc;
+        else {
+          active = index;
+          desc = c.descendingFirst ?? c.numeric !== false;
+        }
+        paint();
+      });
+      th.appendChild(button);
+      hr.appendChild(th);
+    });
+    thead.appendChild(hr);
+
+    const tbody = document.createElement("tbody");
+    for (const { row } of decorated) {
+      const tr = document.createElement("tr");
+      for (const c of columns) {
+        const td = document.createElement("td");
+        td.textContent = c.get(row);
+        if (c.numeric !== false) td.className = "num";
+        if (c.cellStyle) {
+          const style = c.cellStyle(row);
+          if (style) td.setAttribute("style", style);
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+
+    table.append(thead, tbody);
+    mount.appendChild(table);
+  };
+
+  paint();
 };
 
 /** Wire a "Show data table" button to a table container. */
