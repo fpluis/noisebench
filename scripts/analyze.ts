@@ -45,7 +45,6 @@ interface MarketMeta {
   marketId: number;
   slug: string;
   question: string;
-  negatedQuestion: string | null;
   eventTitle: string;
   midpoint: number | null;
 }
@@ -111,7 +110,7 @@ async function main(): Promise<void> {
     const run = runResult.rows[0];
 
     const marketRows = await client.query(
-      `SELECT m.id AS market_id, m.slug, m.question, m.negated_question,
+      `SELECT m.id AS market_id, m.slug, m.question,
               e.title AS event_title, s.midpoint
          FROM public.benchmark_run_market brm
          JOIN public.market m ON m.id = brm.market_id
@@ -126,7 +125,6 @@ async function main(): Promise<void> {
       marketId: r.market_id,
       slug: r.slug,
       question: r.question,
-      negatedQuestion: r.negated_question,
       eventTitle: r.event_title,
       midpoint: r.midpoint === null ? null : Number(r.midpoint),
     }));
@@ -284,7 +282,6 @@ async function main(): Promise<void> {
           marketId,
           slug: meta?.slug ?? String(marketId),
           question: meta?.question ?? "",
-          negatedQuestion: meta?.negatedQuestion ?? "",
           midpoint: meta?.midpoint ?? null,
           base: round(meanOf(rows.map((r) => r.base))),
           negated: round(meanOf(rows.map((r) => r.negated))),

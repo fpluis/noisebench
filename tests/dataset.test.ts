@@ -120,36 +120,35 @@ describe("validateDataset", () => {
     assert.deepEqual(result.warnings, []);
   });
 
-  it("REJECTS a market with no negatedQuestion", () => {
-    // The highest-stakes check in the file. Without it the negated phrasing
-    // asks the BASE question, and the answer is stored as is_negated = true and
-    // published on-chain as that market's "No" — wrong data that every
-    // structural check downstream accepts.
+  it("ACCEPTS a market with no negatedQuestion — nothing reads it", () => {
+    // It used to be the highest-stakes check in the file, back when the "No"
+    // side was asked by substituting this field for the question. That design
+    // was the bug: only the question was ever negated, so it was asked against
+    // rules and research still describing "Yes". The field is now unused
+    // metadata, and validating an unused field only rejects usable datasets.
     const dataset = build();
     delete dataset.events[1].markets[0].negatedQuestion;
-    assert.throws(
-      () => validateDataset(dataset),
-      /negatedQuestion is required/,
-    );
+    const result = validateDataset(dataset);
+    assert.equal(result.markets, 8);
+    assert.deepEqual(result.warnings, []);
   });
 
-  it("REJECTS a negatedQuestion identical to the question", () => {
+  it("WARNS when a market and its event both lack rules", () => {
+    // The rules are what the "No" side is now the complement OF. With neither,
+    // both outcomes are asked against "Market Rules: N/A" and nothing pins down
+    // what "No" means — recoverable, unlike the errors, so it warns.
     const dataset = build();
-    dataset.events[0].markets[0].negatedQuestion =
-      dataset.events[0].markets[0].question;
-    assert.throws(
-      () => validateDataset(dataset),
-      /negatedQuestion is identical to question/,
-    );
+    delete dataset.events[0].markets[0].description;
+    const result = validateDataset(dataset);
+    assert.equal(result.warnings.length, 1);
+    assert.match(result.warnings[0], /nothing pins down what "No" means/);
   });
 
-  it("treats whitespace-only negation as missing", () => {
+  it("does not warn when the market falls back to its event's rules", () => {
     const dataset = build();
-    dataset.events[0].markets[0].negatedQuestion = "   ";
-    assert.throws(
-      () => validateDataset(dataset),
-      /negatedQuestion is required/,
-    );
+    delete dataset.events[0].markets[0].description;
+    dataset.events[0].description = "Event-level resolution rules.";
+    assert.deepEqual(validateDataset(dataset).warnings, []);
   });
 
   it("rejects a duplicate market externalId — the upsert would merge them", () => {
@@ -182,8 +181,8 @@ describe("validateDataset", () => {
 
   it("reports every error at once, not just the first", () => {
     const dataset = build();
-    delete dataset.events[0].markets[0].negatedQuestion;
-    delete dataset.events[1].markets[1].negatedQuestion;
+    dataset.events[0].markets[0].slug = "";
+    dataset.events[1].markets[1].externalId = "";
     dataset.events[2].markets[0].question = "";
     assert.throws(
       () => validateDataset(dataset),

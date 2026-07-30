@@ -118,11 +118,13 @@ export const parsePairwiseChoice = (
 // ---------------------------------------------------------------------------
 
 /**
- * The market outcome a phrasing corresponds to, as recorded on-chain.
+ * The market outcome a request corresponds to, as put to the model and as
+ * recorded on-chain.
  *
- * The negated question asks whether the market FAILS to resolve Yes, so a "Yes"
- * answer to it is the market's "No". Both the direct and the pairwise path map
- * phrasing to outcome through here, so the two can never drift apart.
+ * `isNegated` means "ask for the No side", so this is the single place that
+ * fixes what that side IS: the market resolving "No" under its own unmodified
+ * rules. The prompt builders, the DB row and the on-chain record all name the
+ * outcome through here, so the three can never drift apart.
  */
 export const outcomeForPhrasing = (isNegated: boolean): string =>
   isNegated ? "No" : "Yes";
@@ -346,13 +348,14 @@ export interface DatasetValidation {
  * Check a dataset for the authoring mistakes that produce WRONG data rather
  * than missing data, and report every one of them at once.
  *
- * The load-bearing check is `negatedQuestion`. When it is absent the inference
- * path silently falls back to the base question, but the row is still written
- * with `is_negated = true` and `outcome = 'No'` — and published on-chain as
- * that market's "No" at the probability the model gave for its "Yes". Nothing
- * downstream can tell: every structural check passes, and it surfaces only as
- * a coherence mean near 1.0, which is indistinguishable from a global
- * inversion bug. It has to be caught here, before anything is written.
+ * `negatedQuestion` is deliberately NOT checked. It used to be the load-bearing
+ * field — the "No" side was asked by substituting it for the question — and
+ * that turned out to be the mistake: only the question was ever negated, so it
+ * was asked against rules and research that still described the "Yes" outcome.
+ * The "No" side is now asked by naming the outcome and leaving the market
+ * untouched, so the field is unused by the inference path. It is kept on the
+ * type and in the `market` table as authoring metadata, and nothing validates it
+ * because nothing depends on it.
  *
  * Errors accumulate rather than throwing at the first one: a dataset is
  * authored in one pass, so it should be fixable in one pass.
@@ -442,19 +445,15 @@ export const validateDataset = (
       checkDate(market.startDate, at, "startDate");
       checkDate(market.endDate, at, "endDate");
 
-      // The whole negated modality depends on this one field.
-      if (!nonEmpty(market.negatedQuestion)) {
-        errors.push(
-          `${at}: negatedQuestion is required — without it the negated phrasing asks the ` +
-            `BASE question but is still recorded, and published on-chain, as this market's "No"`,
-        );
-      } else if (
-        nonEmpty(market.question) &&
-        market.negatedQuestion.trim() === market.question.trim()
-      ) {
-        errors.push(
-          `${at}: negatedQuestion is identical to question — the negated phrasing would ` +
-            `record a "Yes" answer as this market's "No"`,
+      // `description` carries the resolution rules, and the "No" side is now
+      // asked against those very rules rather than against a rewritten
+      // question. A market with no rules of its own falls back to the event's;
+      // with neither, both sides are forecast on a bare question and the "No"
+      // request has nothing concrete to be the complement OF.
+      if (!nonEmpty(market.description) && !nonEmpty(event.description)) {
+        warnings.push(
+          `${at}: no description on the market or its event — both outcomes are asked ` +
+            `with "Market Rules: N/A", so nothing pins down what "No" means`,
         );
       }
 

@@ -1,8 +1,8 @@
 // Smoke test for the inference path. Touches neither the database nor the
 // chain — it only needs OPENROUTER_API_KEY. Nothing it produces is stored.
 //
-// Sweep a whole dataset with one model — every market in both phrasings, every
-// pair in all four phrasing combinations — and report the coherence numbers:
+// Sweep a whole dataset with one model — every market in both outcomes, every
+// pair in all four outcome combinations — and report the coherence numbers:
 //
 //   npm run test-inference -- --dataset datasets/28-07-26.json \
 //       --config configs/benchmark.example.json --model <slug> --all [--verbose]
@@ -17,15 +17,16 @@
 //
 // --model defaults to the first model in the config; --event to the first event
 // in the dataset, using its first market. In --pairwise mode, --pair indexes the
-// dataset's `pairs` array and --combination selects which phrasings the two
-// sides are asked in (A then B, 1 = negated). --all ignores those selectors: it
-// runs the whole dataset.
+// dataset's `pairs` array and --combination selects which outcome each of the
+// two sides is asked about (A then B, 1 = that market's "No"). --all ignores
+// those selectors: it runs the whole dataset.
 
 import * as dotenv from "dotenv";
 import {
   loadBenchmarkConfig,
   loadDataset,
   normalizeModel,
+  outcomeForPhrasing,
   parseArgs,
   resolvePairs,
 } from "../src/utils";
@@ -92,11 +93,11 @@ const oneLine = (text: string | null, width = 300): string =>
 // --all: the whole dataset through one model
 // ---------------------------------------------------------------------------
 
-/** "00" | "10" | "01" | "11" — A's phrasing then B's, 1 = negated. */
+/** "00" | "10" | "01" | "11" — A's outcome then B's, 1 = that market's "No". */
 const comboLabel = (c: PairwiseCombination): string =>
   `${c.isANegated ? 1 : 0}${c.isBNegated ? 1 : 0}`;
 
-/** One market's two phrasings, kept together so `|Yes + No - 1|` is computable. */
+/** One market's two outcomes, kept together so `|Yes + No - 1|` is computable. */
 interface MarketOutcome {
   slug: string;
   base: number | null;
@@ -138,7 +139,7 @@ async function runWholeDataset(
     `Provider order: ${model.providerOrder?.join(", ") ?? "(default)"}`,
   );
   console.log(
-    `Plan:           ${markets.length} market(s) x 2 phrasings   = ${directCalls} direct call(s)`,
+    `Plan:           ${markets.length} market(s) x 2 outcomes   = ${directCalls} direct call(s)`,
   );
   console.log(
     `                ${pairs.length} pair(s) x 4 combinations = ${pairwiseCalls} pairwise call(s)`,
@@ -170,7 +171,7 @@ async function runWholeDataset(
     };
     for (const isNegated of [false, true]) {
       process.stdout.write(
-        `  ${market.slug.slice(0, 54).padEnd(56)}${(isNegated ? "negated" : "base").padEnd(9)}`,
+        `  ${market.slug.slice(0, 54).padEnd(56)}${(isNegated ? "No" : "Yes").padEnd(9)}`,
       );
       const result = await generateForecast({
         apiKey,
@@ -262,7 +263,7 @@ async function runWholeDataset(
   for (const m of marketOutcomes) {
     const label = `  ${m.slug.slice(0, 58).padEnd(60)}`;
     if (m.base === null || m.negated === null) {
-      console.log(`${label}incomplete — a phrasing produced no usable answer`);
+      console.log(`${label}incomplete — an outcome produced no usable answer`);
       continue;
     }
     const deviation = Math.abs(m.base + m.negated - 1);
@@ -409,16 +410,16 @@ async function main(): Promise<void> {
     console.log("=".repeat(80));
     console.log(`Pair:     #${index} of ${pairs.length}`);
     console.log(
-      `Outcome A: ${combination.isANegated ? (pair.marketA.negatedQuestion ?? pair.marketA.question) : pair.marketA.question}`,
+      `Outcome A: "${outcomeForPhrasing(combination.isANegated)}" on ${pair.marketA.question}`,
     );
     console.log(
-      `Outcome B: ${combination.isBNegated ? (pair.marketB.negatedQuestion ?? pair.marketB.question) : pair.marketB.question}`,
+      `Outcome B: "${outcomeForPhrasing(combination.isBNegated)}" on ${pair.marketB.question}`,
     );
     console.log(`Model:    ${model.slug}`);
     console.log(
       `Provider order: ${model.providerOrder?.join(", ") ?? "(default)"}`,
     );
-    console.log(`Combination: ${combo} (1 = negated phrasing)`);
+    console.log(`Combination: ${combo} (1 = that market's "No")`);
     console.log("=".repeat(80));
 
     const started = Date.now();
@@ -455,14 +456,12 @@ async function main(): Promise<void> {
 
   console.log("=".repeat(80));
   console.log(`Event:   ${event.title}  (${event.slug})`);
-  console.log(
-    `Market:  ${isNegated ? market.negatedQuestion : market.question}`,
-  );
+  console.log(`Market:  ${market.question}`);
   console.log(`Model:   ${model.slug}`);
   console.log(
     `Provider order: ${model.providerOrder?.join(", ") ?? "(default)"}`,
   );
-  console.log(`Modality: ${isNegated ? "negated" : "base"}`);
+  console.log(`Outcome asked: ${outcomeForPhrasing(isNegated)}`);
   console.log("=".repeat(80));
 
   const started = Date.now();

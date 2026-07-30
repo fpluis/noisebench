@@ -335,7 +335,7 @@
             ...withMid.map((m) => ({
               x: m.midpoint,
               y: m.negated,
-              label: m.negatedQuestion || m.slug,
+              label: m.question || m.slug,
               color: "var(--series-2)",
               raw: m,
               arm: "negated",

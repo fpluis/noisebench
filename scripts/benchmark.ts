@@ -5,10 +5,10 @@
 //
 // Two modalities run over the same dataset:
 //
-//   * DIRECT — for every event, market, model, both the base and negated
-//     phrasing, and each of `promptIterations` repetitions, ask for a
-//     probability;
-//   * PAIRWISE — for every listed pair of markets, model, all four phrasing
+//   * DIRECT — for every event, market, model, both requested outcomes ("Yes"
+//     and "No" on the same unmodified market), and each of `promptIterations`
+//     repetitions, ask for a probability;
+//   * PAIRWISE — for every listed pair of markets, model, all four outcome
 //     combinations, and each of `pairwiseIterations` repetitions, ask only
 //     which of the two is likelier.
 //
@@ -152,10 +152,9 @@ async function main(): Promise<void> {
   const fullDataset = loadDataset(datasetPath);
 
   // Validated before anything is written. Every failure here is a dataset
-  // authoring bug, and the worst of them — a market with no negatedQuestion —
-  // does not produce a missing row but a WRONG one: the negated phrasing asks
-  // the base question, and the answer is recorded and published as that
-  // market's "No". Nothing downstream can distinguish that from a real result.
+  // authoring bug, and the ones that matter produce not a missing row but a
+  // WRONG one — a duplicate external id silently merging two markets, say —
+  // which nothing downstream can distinguish from a real result.
   const validation = validateDataset(fullDataset, datasetPath);
   for (const warning of validation.warnings) console.warn(`⚠️  ${warning}`);
 
@@ -549,7 +548,7 @@ async function main(): Promise<void> {
 
   console.log(
     `Running ${forecasters.length} forecaster(s):\n` +
-      `  direct   ${marketRows.length} market(s) × 2 phrasings × ${promptIterations} iteration(s) = ${directTasksPerForecaster} task(s) each\n` +
+      `  direct   ${marketRows.length} market(s) × 2 outcomes × ${promptIterations} iteration(s) = ${directTasksPerForecaster} task(s) each\n` +
       `  pairwise ${pairRows.length} pair(s) × ${PAIRWISE_COMBINATIONS.length} combinations × ${pairwiseIterations} iteration(s) = ${pairwiseTasksPerForecaster} task(s) each`,
   );
 
@@ -806,8 +805,8 @@ async function main(): Promise<void> {
         identifier,
       });
 
-      // A side asked in its negated phrasing is asking about that market's
-      // "No", exactly as on the direct path.
+      // A negated side is asking about that market's "No", exactly as on the
+      // direct path.
       const outcomeA = outcomeForPhrasing(combination.isANegated);
       const outcomeB = outcomeForPhrasing(combination.isBNegated);
       const isALikelier = result.choice === null ? null : result.choice === "A";

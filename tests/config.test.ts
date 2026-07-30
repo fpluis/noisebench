@@ -16,7 +16,7 @@ import {
   resolveChainId,
 } from "../src/utils";
 import { taskKey } from "../src/db";
-import { buildUserPrompt } from "../src/llm";
+import { buildUserPrompt, SYSTEM_PROMPT } from "../src/llm";
 
 const CHAIN_ENV = [
   "CHAIN_ID",
@@ -102,37 +102,77 @@ test("parseArgs handles the three supported flag forms", () => {
   assert.deepEqual(parseArgs(["--resume", "42"]), { resume: "42" });
 });
 
-test("buildUserPrompt swaps in the negated phrasing", () => {
-  const event = {
+const promptFixture = () => ({
+  event: {
     externalId: "1",
     title: "T",
     slug: "t",
     description: "event rules",
     markets: [],
     research: "RESEARCH",
-  };
-  const market = {
+  },
+  market: {
     externalId: "2",
     slug: "m",
     question: "Will X happen?",
     negatedQuestion: "Will X fail to happen?",
-  };
+  },
+});
 
+test("buildUserPrompt asks for the No outcome without rewriting the question", () => {
+  // The bug this replaces: the "No" side substituted `negatedQuestion` while
+  // the rules and research beside it still described the "Yes" outcome, so the
+  // prompt contradicted itself — "Will X NOT happen?" above rules reading
+  // "resolves Yes if X happens".
+  const { event, market } = promptFixture();
   const base = buildUserPrompt(event, market, false);
   const negated = buildUserPrompt(event, market, true);
 
   assert.ok(base.includes("Will X happen?"));
-  assert.ok(negated.includes("Will X fail to happen?"));
-  // Only the question differs — same rules, same research context, so the two
-  // phrasings are genuinely comparable.
-  assert.ok(base.includes("RESEARCH") && negated.includes("RESEARCH"));
-  assert.ok(base.includes("event rules") && negated.includes("event rules"));
+  assert.ok(negated.includes("Will X happen?"));
+  assert.ok(!negated.includes("Will X fail to happen?"));
+
+  assert.ok(base.includes("Outcome you must forecast: Yes"));
+  assert.ok(negated.includes("Outcome you must forecast: No"));
+  assert.ok(base.includes('resolves to "Yes"'));
+  assert.ok(negated.includes('resolves to "No"'));
 });
 
-test("buildUserPrompt falls back to the base question without a negation", () => {
-  const event = { externalId: "1", title: "T", slug: "t", markets: [] };
-  const market = { externalId: "2", slug: "m", question: "Will X happen?" };
-  assert.ok(buildUserPrompt(event, market, true).includes("Will X happen?"));
+test("only the requested outcome differs between the two sides", () => {
+  // This is what makes |P(Yes) + P(No) - 1| a measurement rather than an
+  // artifact: the two prompts must be identical apart from the outcome named.
+  const { event, market } = promptFixture();
+  const strip = (prompt: string): string =>
+    prompt
+      .replace(/(Outcome you must forecast: |resolves to ")(Yes|No)/g, "$1OUT")
+      .replace(/Current timestamp: \S+/, "TIMESTAMP");
+
+  assert.equal(
+    strip(buildUserPrompt(event, market, false)),
+    strip(buildUserPrompt(event, market, true)),
+  );
+});
+
+test("buildUserPrompt never reads negatedQuestion", () => {
+  // A dataset with no negation authored at all must produce the same prompt as
+  // one that has it, since nothing consults the field.
+  const { event, market } = promptFixture();
+  const { negatedQuestion, ...without } = market;
+  const strip = (p: string) => p.replace(/Current timestamp: \S+/, "T");
+  for (const isNegated of [false, true]) {
+    assert.equal(
+      strip(buildUserPrompt(event, without, isNegated)),
+      strip(buildUserPrompt(event, market, isNegated)),
+    );
+  }
+});
+
+test("the system prompt states that rules are never inverted for No", () => {
+  // Without this the "No" request is ill-posed against Yes-shaped rules, and a
+  // model's guess about which one is authoritative becomes noise we injected.
+  assert.match(SYSTEM_PROMPT, /never rewritten or inverted/i);
+  assert.match(SYSTEM_PROMPT, /does NOT resolve "Yes"/);
+  assert.match(SYSTEM_PROMPT, /THE OUTCOME YOU WERE ASKED ABOUT/);
 });
 
 // ---------------------------------------------------------------------------

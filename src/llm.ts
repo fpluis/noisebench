@@ -1,11 +1,27 @@
 // All OpenRouter / LLM inference logic for noisebench lives here.
 //
-// A single forecast call takes one market (in either its base or negated
-// phrasing) plus the event's research context, asks the model for a plain-text
+// A single forecast call takes one market, the outcome being asked about ("Yes"
+// or "No") and the event's research context, asks the model for a plain-text
 // forecast ending in `Probability: X%`, and returns everything we can capture
 // about the call: the parsed odds, the raw response and reasoning, token and
 // cost accounting, timing, the resolved provider, and the payloads of any errors
 // or refusals encountered across retries.
+//
+// HOW THE "NO" SIDE IS ASKED, AND WHY IT IS NOT A REWRITTEN QUESTION
+//
+// The "No" side used to be asked by swapping `market.question` for a
+// hand-written `negatedQuestion` ("Will the U.S. NOT invade Cuba in 2026?").
+// That was wrong: only the question was negated, while the rules, the dates and
+// the research blob still described the "Yes" outcome, so the prompt contradicted
+// itself — a market asking "will X NOT happen" carried rules reading "this market
+// resolves to Yes if X happens". The model was scored on resolving an
+// inconsistency we authored, not on the noise we meant to measure.
+//
+// Now EVERYTHING stays fixed between the two sides — same question, same rules,
+// same dates, same research — and only the requested outcome changes. That is
+// what makes `|P(Yes) + P(No) - 1|` a clean measurement: the two prompts differ
+// in exactly one token of meaning, so the gap between the answers cannot be
+// attributed to anything else.
 
 import {
   DatasetEvent,
@@ -18,7 +34,12 @@ import {
   PairwiseInferenceResult,
   ResolvedPair,
 } from "./types";
-import { parseForecastProbability, parsePairwiseChoice, sleep } from "./utils";
+import {
+  outcomeForPhrasing,
+  parseForecastProbability,
+  parsePairwiseChoice,
+  sleep,
+} from "./utils";
 import { logger } from "./logger";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -53,24 +74,39 @@ const requestTimeoutMs = (): number => {
 };
 
 // The system prompt carries the generic task framing, output format and rules.
+//
+// The second paragraph is the one that makes the "No" side well-posed: it warns
+// the model up front that the question and rules it is about to read are always
+// written from the "Yes" point of view and are NOT rephrased when "No" is the
+// requested outcome. Without it, a model asked for "No" against Yes-shaped rules
+// has to guess whether the rules or the request is authoritative.
 export const SYSTEM_PROMPT = `You are a forecasting expert with the goal of providing the most accurate forecast for a single market.
+
+Every market has exactly two possible outcomes, "Yes" and "No", and you will be told which of the two you must forecast. The market's question and its rules are always written in terms of the "Yes" outcome and are never rewritten or inverted when "No" is the outcome you are asked about. So when you are asked for "No", report the probability that the market does NOT resolve "Yes" under those very same rules.
 
 Note that market consensus is that only events that happen between the market's start and end date count, regardless of whether they happened already in the past. So if the market asks whether an event will happen by a given date, only occurrences after the listed start date matter to resolve to "Yes".
 
-Your task: given a market's details, provide a forecast in plain text for the event that ends with 'Probability: X%' at the very end. Express the probability as a positive number with up to 2 decimal places, ie a number between '0.01%' and '99.99%'`;
+Your task: given a market's details and the outcome you have been asked about, provide a forecast in plain text that ends with 'Probability: X%' at the very end, where X is the probability of THE OUTCOME YOU WERE ASKED ABOUT — not always the probability of "Yes". Express the probability as a positive number with up to 2 decimal places, ie a number between '0.01%' and '99.99%'`;
 
-// The user prompt carries the specifics of the market being forecast. The
-// `question` swaps to the negated phrasing when `isNegated` is set; a coherent
-// model should assign complementary probabilities to the two phrasings, and the
-// gap between them is exactly the noise this benchmark measures.
+/**
+ * The user prompt carrying the specifics of the market being forecast.
+ *
+ * `isNegated` selects WHICH OUTCOME is requested — "No" when set, "Yes"
+ * otherwise — and changes nothing else. The question, rules, dates and research
+ * are byte-identical across the two sides; a coherent model should assign
+ * complementary probabilities to them, and the gap between the answers is
+ * exactly the noise this benchmark measures.
+ *
+ * The requested outcome appears twice, in the header block and again as the
+ * closing line. The research blob between them runs to several kilobytes, so a
+ * single mention near the top is the kind of instruction a model loses.
+ */
 export const buildUserPrompt = (
   event: DatasetEvent,
   market: DatasetMarket,
   isNegated: boolean,
 ): string => {
-  const question = isNegated
-    ? (market.negatedQuestion ?? market.question)
-    : market.question;
+  const outcome = outcomeForPhrasing(isNegated);
   const rules = market.description || event.description || "N/A";
   const startDate = market.startDate ?? event.startDate ?? "N/A";
   const endDate = market.endDate ?? event.endDate ?? "N/A";
@@ -78,9 +114,10 @@ export const buildUserPrompt = (
   return `This is the market you must forecast:
 
 - Event title: ${event.title}
-- Market question: ${question}
+- Market question: ${market.question}
 - Market Rules: ${rules}
-- Possible outcomes: Yes (reference outcome), No
+- Possible outcomes: Yes, No
+- Outcome you must forecast: ${outcome}
 - Start Date: ${startDate}
 - End Date: ${endDate}
 
@@ -89,7 +126,9 @@ Current timestamp: ${new Date().toISOString()}
 This is some recent context we have gathered to help understand the event, provided between "===" blocks below:
 ===
 ${event.research ?? "No additional context available."}
-===`;
+===
+
+Remember: the question and rules above are written in terms of this market's "Yes" outcome. Give the probability that this market resolves to "${outcome}".`;
 };
 
 // The pairwise system prompt asks for a RANK, not a probability. Nothing is
@@ -101,6 +140,8 @@ ${event.research ?? "No additional context available."}
 // likely", so a model that declines to choose produces no data point at all.
 export const PAIRWISE_SYSTEM_PROMPT = `You are a forecasting expert with the goal of ranking two outcomes by how likely they are.
 
+Each of the two outcomes is presented as a market question, that market's rules, and which of that market's two possible resolutions ("Yes" or "No") the outcome refers to. A question and its rules are always written in terms of that market's "Yes" resolution and are never rewritten or inverted — so an outcome given as "No" is the event of that market NOT resolving "Yes" under those very same rules.
+
 Note that market consensus is that only events that happen between a market's start and end date count, regardless of whether they happened already in the past. So if a market asks whether an event will happen by a given date, only occurrences after that market's listed start date matter to resolve to "Yes".
 
 The two outcomes come from separate markets and are not alternatives to one another: both may happen, or neither. You are not being asked how likely either one is, only which of the two is MORE likely.
@@ -109,26 +150,26 @@ Your task: given the details of outcome A and outcome B, reason in plain text an
 
 You must pick one. Do not answer that they are equally likely, and do not give probabilities instead of a choice — if they seem close, choose the one you would bet on.`;
 
-// One side of a pair, in whichever phrasing this combination calls for. The
-// negated phrasing is swapped in exactly as it is for a direct forecast, so a
-// side asked negated is asking about that market's "No".
+// One side of a pair, presented exactly as a direct forecast presents its
+// market: the market's own question and rules, plus the outcome this
+// combination asks about. Nothing is rewritten for the "No" side here either —
+// the identity that flipping both sides must invert the answer only holds if
+// the two sides differ in the requested outcome and in nothing else.
 const buildPairwiseSide = (
   label: "A" | "B",
   event: DatasetEvent,
   market: DatasetMarket,
   isNegated: boolean,
 ): string => {
-  const question = isNegated
-    ? (market.negatedQuestion ?? market.question)
-    : market.question;
   const rules = market.description || event.description || "N/A";
   const startDate = market.startDate ?? event.startDate ?? "N/A";
   const endDate = market.endDate ?? event.endDate ?? "N/A";
 
-  return `Outcome ${label}:
+  return `Outcome ${label}: the market below resolving to "${outcomeForPhrasing(isNegated)}".
 - Event title: ${event.title}
-- Question: ${question}
+- Market question: ${market.question}
 - Market Rules: ${rules}
+- Outcome ${label} refers to: this market resolving to "${outcomeForPhrasing(isNegated)}"
 - Start Date: ${startDate}
 - End Date: ${endDate}`;
 };
@@ -186,6 +227,8 @@ export interface GenerateForecastOptions {
   providerOrder?: string[];
   event: DatasetEvent;
   market: DatasetMarket;
+  // Which of the market's two outcomes to ask for: "No" when set, "Yes"
+  // otherwise. It selects the request, not a rewording of the market.
   isNegated: boolean;
   reasoningEffort?: "low" | "medium" | "high";
   verbosity?: "low" | "medium" | "high";
@@ -407,8 +450,8 @@ async function runInference<T>(
 }
 
 /**
- * Run one forecast inference for a single {market, isNegated}. A valid forecast
- * MUST end with `Probability: X%`; anything else is retried. Never throws —
+ * Run one forecast inference for a single {market, requested outcome}. A valid
+ * forecast MUST end with `Probability: X%`; anything else is retried. Never throws —
  * `parsedOdds` is null when no usable forecast was obtained, and `errors`
  * records every attempt that failed.
  */

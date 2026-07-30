@@ -7,7 +7,7 @@
   "promptIterations": 4,
   "pairwiseIterations": 2,
   "startedAt": "2026-07-28T17:44:12.748Z",
-  "endedAt": "2026-07-28T20:51:31.350Z",
+  "endedAt": "2026-07-29T16:17:53.909Z",
   "models": [
     {
       "model": "anthropic/claude-fable-5",
@@ -24,8 +24,8 @@
     {
       "model": "anthropic/claude-sonnet-5",
       "attempted": 800,
-      "parsed": 712,
-      "parseFailureRate": 0.11
+      "parsed": 797,
+      "parseFailureRate": 0.00375
     },
     {
       "model": "deepseek/deepseek-v4-flash",
@@ -36,8 +36,8 @@
     {
       "model": "deepseek/deepseek-v4-pro",
       "attempted": 800,
-      "parsed": 800,
-      "parseFailureRate": 0
+      "parsed": 775,
+      "parseFailureRate": 0.03125
     },
     {
       "model": "google/gemini-3.1-pro-preview",
@@ -60,20 +60,20 @@
     {
       "model": "mistralai/mistral-large-2512",
       "attempted": 800,
-      "parsed": 797,
-      "parseFailureRate": 0.00375
+      "parsed": 800,
+      "parseFailureRate": 0
     },
     {
       "model": "moonshotai/kimi-k3",
       "attempted": 800,
-      "parsed": 768,
-      "parseFailureRate": 0.04
+      "parsed": 761,
+      "parseFailureRate": 0.04875
     },
     {
       "model": "nvidia/nemotron-3-ultra-550b-a55b",
       "attempted": 800,
-      "parsed": 800,
-      "parseFailureRate": 0
+      "parsed": 798,
+      "parseFailureRate": 0.0025
     },
     {
       "model": "openai/gpt-5-nano",
@@ -108,8 +108,8 @@
     {
       "model": "qwen/qwen3.5-plus-20260420",
       "attempted": 800,
-      "parsed": 793,
-      "parseFailureRate": 0.00875
+      "parsed": 797,
+      "parseFailureRate": 0.00375
     },
     {
       "model": "x-ai/grok-4.5",
@@ -120,8 +120,8 @@
     {
       "model": "xiaomi/mimo-v2.5",
       "attempted": 800,
-      "parsed": 800,
-      "parseFailureRate": 0
+      "parsed": 797,
+      "parseFailureRate": 0.00375
     },
     {
       "model": "z-ai/glm-5.2",
@@ -131,5 +131,5 @@
     }
   ],
   "markets": 100,
-  "generatedAt": "2026-07-29T10:33:12.996Z"
+  "generatedAt": "2026-07-29T16:18:21.935Z"
 }

@@ -1,192 +1,192 @@
 {
   "runId": 1,
   "overall": {
-    "gap": -0.383093,
-    "absGap": 0.45244,
-    "logOddsGap": -2.875645,
-    "base": 0.264812,
-    "negated": 0.352095,
-    "cells": 1988
+    "gap": 0.004085,
+    "absGap": 0.035795,
+    "logOddsGap": -0.060846,
+    "base": 0.264721,
+    "negated": 0.739365,
+    "cells": 1990
   },
   "byModel": [
     {
-      "model": "google/gemini-3.1-pro-preview",
-      "gap": -0.502812,
-      "absGap": 0.562687,
-      "logOddsGap": -3.868219,
-      "base": 0.255539,
-      "negated": 0.241649,
-      "markets": 100
-    },
-    {
       "model": "anthropic/claude-sonnet-5",
-      "gap": -0.500498,
-      "absGap": 0.569098,
-      "logOddsGap": -3.936662,
-      "base": 0.253419,
-      "negated": 0.246082,
-      "markets": 94
-    },
-    {
-      "model": "openai/gpt-5.5",
-      "gap": -0.464655,
-      "absGap": 0.52938,
-      "logOddsGap": -3.492931,
-      "base": 0.269866,
-      "negated": 0.265479,
-      "markets": 100
-    },
-    {
-      "model": "openai/gpt-5.6-sol-pro",
-      "gap": -0.447248,
-      "absGap": 0.516033,
-      "logOddsGap": -3.264577,
-      "base": 0.284655,
-      "negated": 0.268098,
-      "markets": 100
-    },
-    {
-      "model": "openai/gpt-5-nano",
-      "gap": -0.432164,
-      "absGap": 0.456802,
-      "logOddsGap": -3.409869,
-      "base": 0.222963,
-      "negated": 0.344873,
+      "gap": -0.028587,
+      "absGap": 0.04572,
+      "logOddsGap": -0.253666,
+      "base": 0.255765,
+      "negated": 0.715649,
       "markets": 100
     },
     {
       "model": "anthropic/claude-fable-5",
-      "gap": -0.416411,
-      "absGap": 0.475249,
-      "logOddsGap": -3.145136,
+      "gap": -0.022699,
+      "absGap": 0.031558,
+      "logOddsGap": -0.267877,
       "base": 0.245647,
-      "negated": 0.337942,
+      "negated": 0.731653,
       "markets": 99
-    },
-    {
-      "model": "qwen/qwen3.5-plus-20260420",
-      "gap": -0.415676,
-      "absGap": 0.547654,
-      "logOddsGap": -3.003956,
-      "base": 0.284062,
-      "negated": 0.300262,
-      "markets": 99
-    },
-    {
-      "model": "google/gemini-3.6-flash",
-      "gap": -0.41246,
-      "absGap": 0.5087,
-      "logOddsGap": -3.276969,
-      "base": 0.269478,
-      "negated": 0.318062,
-      "markets": 100
-    },
-    {
-      "model": "xiaomi/mimo-v2.5",
-      "gap": -0.412368,
-      "absGap": 0.518771,
-      "logOddsGap": -3.218381,
-      "base": 0.26882,
-      "negated": 0.318812,
-      "markets": 100
-    },
-    {
-      "model": "openai/gpt-5.6-terra-pro",
-      "gap": -0.411132,
-      "absGap": 0.467222,
-      "logOddsGap": -2.872808,
-      "base": 0.266023,
-      "negated": 0.322846,
-      "markets": 100
-    },
-    {
-      "model": "nvidia/nemotron-3-ultra-550b-a55b",
-      "gap": -0.401759,
-      "absGap": 0.495182,
-      "logOddsGap": -3.207059,
-      "base": 0.264431,
-      "negated": 0.33381,
-      "markets": 100
     },
     {
       "model": "z-ai/glm-5.2",
-      "gap": -0.401086,
-      "absGap": 0.421606,
-      "logOddsGap": -2.577289,
+      "gap": -0.019806,
+      "absGap": 0.033541,
+      "logOddsGap": -0.209909,
       "base": 0.249233,
-      "negated": 0.349681,
+      "negated": 0.730961,
       "markets": 100
     },
     {
-      "model": "x-ai/grok-4.5",
-      "gap": -0.398204,
-      "absGap": 0.44693,
-      "logOddsGap": -2.620257,
-      "base": 0.266153,
-      "negated": 0.335642,
-      "markets": 100
-    },
-    {
-      "model": "deepseek/deepseek-v4-flash",
-      "gap": -0.376049,
-      "absGap": 0.44296,
-      "logOddsGap": -2.78582,
-      "base": 0.259659,
-      "negated": 0.364292,
-      "markets": 100
-    },
-    {
-      "model": "google/gemini-3.5-flash-lite",
-      "gap": -0.343044,
-      "absGap": 0.453869,
-      "logOddsGap": -2.652913,
-      "base": 0.297816,
-      "negated": 0.35914,
-      "markets": 100
-    },
-    {
-      "model": "moonshotai/kimi-k3",
-      "gap": -0.321994,
-      "absGap": 0.364333,
-      "logOddsGap": -2.225821,
-      "base": 0.274514,
-      "negated": 0.403492,
-      "markets": 96
-    },
-    {
-      "model": "deepseek/deepseek-v4-pro",
-      "gap": -0.314837,
-      "absGap": 0.397063,
-      "logOddsGap": -2.808625,
-      "base": 0.250586,
-      "negated": 0.434576,
-      "markets": 100
-    },
-    {
-      "model": "openai/gpt-5.6-luna-pro",
-      "gap": -0.236585,
-      "absGap": 0.286795,
-      "logOddsGap": -1.704732,
-      "base": 0.282857,
-      "negated": 0.480558,
-      "markets": 100
-    },
-    {
-      "model": "mistralai/mistral-large-2512",
-      "gap": -0.230961,
-      "absGap": 0.330491,
-      "logOddsGap": -1.678758,
-      "base": 0.300089,
-      "negated": 0.46895,
+      "model": "openai/gpt-5-nano",
+      "gap": -0.014219,
+      "absGap": 0.043256,
+      "logOddsGap": -0.357527,
+      "base": 0.222963,
+      "negated": 0.762818,
       "markets": 100
     },
     {
       "model": "anthropic/claude-opus-5",
-      "gap": -0.227179,
-      "absGap": 0.262634,
-      "logOddsGap": -1.803768,
+      "gap": -0.008537,
+      "absGap": 0.022737,
+      "logOddsGap": -0.060452,
       "base": 0.230138,
-      "negated": 0.542683,
+      "negated": 0.761325,
+      "markets": 100
+    },
+    {
+      "model": "openai/gpt-5.6-terra-pro",
+      "gap": -0.007452,
+      "absGap": 0.039832,
+      "logOddsGap": -0.122229,
+      "base": 0.266023,
+      "negated": 0.726525,
+      "markets": 100
+    },
+    {
+      "model": "openai/gpt-5.6-sol-pro",
+      "gap": -0.005754,
+      "absGap": 0.026462,
+      "logOddsGap": -0.092118,
+      "base": 0.284655,
+      "negated": 0.709591,
+      "markets": 100
+    },
+    {
+      "model": "x-ai/grok-4.5",
+      "gap": -0.004277,
+      "absGap": 0.026227,
+      "logOddsGap": -0.165063,
+      "base": 0.266153,
+      "negated": 0.72957,
+      "markets": 100
+    },
+    {
+      "model": "moonshotai/kimi-k3",
+      "gap": -0.003845,
+      "absGap": 0.039461,
+      "logOddsGap": -0.161784,
+      "base": 0.274514,
+      "negated": 0.721641,
+      "markets": 96
+    },
+    {
+      "model": "openai/gpt-5.5",
+      "gap": -0.001656,
+      "absGap": 0.020799,
+      "logOddsGap": -0.110318,
+      "base": 0.269866,
+      "negated": 0.728478,
+      "markets": 100
+    },
+    {
+      "model": "xiaomi/mimo-v2.5",
+      "gap": 0.003967,
+      "absGap": 0.038668,
+      "logOddsGap": -0.134682,
+      "base": 0.26882,
+      "negated": 0.735147,
+      "markets": 100
+    },
+    {
+      "model": "nvidia/nemotron-3-ultra-550b-a55b",
+      "gap": 0.009854,
+      "absGap": 0.035901,
+      "logOddsGap": -0.151999,
+      "base": 0.264431,
+      "negated": 0.745424,
+      "markets": 100
+    },
+    {
+      "model": "google/gemini-3.1-pro-preview",
+      "gap": 0.011378,
+      "absGap": 0.027484,
+      "logOddsGap": 0.010587,
+      "base": 0.255539,
+      "negated": 0.755839,
+      "markets": 100
+    },
+    {
+      "model": "openai/gpt-5.6-luna-pro",
+      "gap": 0.011482,
+      "absGap": 0.037173,
+      "logOddsGap": -0.023633,
+      "base": 0.282857,
+      "negated": 0.728625,
+      "markets": 100
+    },
+    {
+      "model": "deepseek/deepseek-v4-flash",
+      "gap": 0.014627,
+      "absGap": 0.029292,
+      "logOddsGap": 0.16948,
+      "base": 0.259659,
+      "negated": 0.754968,
+      "markets": 100
+    },
+    {
+      "model": "qwen/qwen3.5-plus-20260420",
+      "gap": 0.019338,
+      "absGap": 0.037599,
+      "logOddsGap": 0.107423,
+      "base": 0.281199,
+      "negated": 0.738139,
+      "markets": 100
+    },
+    {
+      "model": "deepseek/deepseek-v4-pro",
+      "gap": 0.02058,
+      "absGap": 0.033601,
+      "logOddsGap": 0.128971,
+      "base": 0.248512,
+      "negated": 0.772069,
+      "markets": 95
+    },
+    {
+      "model": "google/gemini-3.5-flash-lite",
+      "gap": 0.020595,
+      "absGap": 0.039418,
+      "logOddsGap": 0.031547,
+      "base": 0.297816,
+      "negated": 0.722779,
+      "markets": 100
+    },
+    {
+      "model": "google/gemini-3.6-flash",
+      "gap": 0.03043,
+      "absGap": 0.036456,
+      "logOddsGap": 0.042813,
+      "base": 0.269478,
+      "negated": 0.760952,
+      "markets": 100
+    },
+    {
+      "model": "mistralai/mistral-large-2512",
+      "gap": 0.056523,
+      "absGap": 0.070704,
+      "logOddsGap": 0.406893,
+      "base": 0.300535,
+      "negated": 0.755988,
       "markets": 100
     }
   ],
@@ -195,1057 +195,957 @@
       "band": "0.00–0.05",
       "markets": 18,
       "meanMidpoint": 0.032472,
-      "base": 0.056848,
-      "negated": 0.220018,
-      "gap": -0.723135,
-      "logOddsGap": -6.511665
+      "base": 0.056746,
+      "negated": 0.941275,
+      "gap": -0.001979,
+      "logOddsGap": -0.215591
     },
     {
       "band": "0.05–0.10",
       "markets": 18,
       "meanMidpoint": 0.071472,
-      "base": 0.066934,
-      "negated": 0.233628,
-      "gap": -0.699438,
-      "logOddsGap": -4.915745
+      "base": 0.06723,
+      "negated": 0.920168,
+      "gap": -0.012602,
+      "logOddsGap": -0.233966
     },
     {
       "band": "0.10–0.25",
       "markets": 20,
       "meanMidpoint": 0.1582,
-      "base": 0.146594,
-      "negated": 0.369601,
-      "gap": -0.483805,
-      "logOddsGap": -3.083464
+      "base": 0.14687,
+      "negated": 0.846714,
+      "gap": -0.006415,
+      "logOddsGap": -0.138117
     },
     {
       "band": "0.25–0.50",
       "markets": 17,
       "meanMidpoint": 0.365,
-      "base": 0.378033,
-      "negated": 0.448114,
-      "gap": -0.173853,
-      "logOddsGap": -1.056679
+      "base": 0.377555,
+      "negated": 0.637521,
+      "gap": 0.015076,
+      "logOddsGap": 0.041871
     },
     {
       "band": "0.50–0.75",
       "markets": 17,
       "meanMidpoint": 0.601059,
-      "base": 0.465832,
-      "negated": 0.530962,
-      "gap": -0.003207,
-      "logOddsGap": -0.116683
+      "base": 0.466322,
+      "negated": 0.545435,
+      "gap": 0.011756,
+      "logOddsGap": 0.065246
     },
     {
       "band": "0.75–1.00",
       "markets": 10,
       "meanMidpoint": 0.86865,
-      "base": 0.691462,
-      "negated": 0.299745,
-      "gap": -0.008793,
-      "logOddsGap": -0.085998
+      "base": 0.691535,
+      "negated": 0.342611,
+      "gap": 0.034146,
+      "logOddsGap": 0.29207
     }
   ],
   "byMarket": [
     {
-      "marketId": 95,
-      "slug": "xi-jinping-out-before-2027",
-      "question": "Xi Jinping out before 2027?",
-      "negatedQuestion": "Xi Jinping still in power through 2026?",
-      "midpoint": 0.0465,
-      "base": 0.015736,
-      "negated": 0.017799,
-      "gap": -0.966465
-    },
-    {
-      "marketId": 102,
-      "slug": "will-jesus-christ-return-before-2027",
-      "question": "Will Jesus Christ return before 2027?",
-      "negatedQuestion": "Will Jesus Christ not return before 2027?",
-      "midpoint": 0.0195,
-      "base": 0.000376,
-      "negated": 0.049077,
-      "gap": -0.950546
-    },
-    {
-      "marketId": 72,
-      "slug": "putin-out-as-president-of-russia-by-august-31-2026",
-      "question": "Putin out as President of Russia by August 31, 2026?",
-      "negatedQuestion": "Putin still President of Russia as of August 31, 2026?",
-      "midpoint": 0.0165,
-      "base": 0.013928,
-      "negated": 0.037739,
-      "gap": -0.948334
-    },
-    {
-      "marketId": 71,
-      "slug": "putin-out-as-president-of-russia-by-september-30-2026",
-      "question": "Putin out as President of Russia by September 30, 2026?",
-      "negatedQuestion": "Putin still President of Russia as of September 30, 2026?",
-      "midpoint": 0.0365,
-      "base": 0.019144,
-      "negated": 0.032906,
-      "gap": -0.94795
-    },
-    {
-      "marketId": 89,
-      "slug": "trump-out-as-president-before-2027",
-      "question": "Trump out as President before 2027?",
-      "negatedQuestion": "Trump remains President through 2026?",
-      "midpoint": 0.075,
-      "base": 0.021344,
-      "negated": 0.03321,
-      "gap": -0.945446
-    },
-    {
-      "marketId": 70,
-      "slug": "putin-out-before-2027-346",
-      "question": "Putin out as President of Russia by December 31, 2026?",
-      "negatedQuestion": "Putin still President of Russia as of December 31, 2026?",
-      "midpoint": 0.085,
-      "base": 0.043487,
-      "negated": 0.074673,
-      "gap": -0.88184
-    },
-    {
-      "marketId": 69,
-      "slug": "putin-out-as-president-of-russia-by-june-30-2027",
-      "question": "Putin out as President of Russia by June 30, 2027?",
-      "negatedQuestion": "Putin still President of Russia as of June 30, 2027?",
-      "midpoint": 0.155,
-      "base": 0.054719,
-      "negated": 0.068675,
-      "gap": -0.876606
-    },
-    {
-      "marketId": 87,
-      "slug": "will-the-iranian-regime-fall-by-the-end-of-2026",
-      "question": "Will the Iranian regime fall before 2027?",
-      "negatedQuestion": "Will the Iranian regime survive through 2026?",
-      "midpoint": 0.085,
-      "base": 0.066931,
-      "negated": 0.076823,
-      "gap": -0.856246
-    },
-    {
-      "marketId": 100,
-      "slug": "iran-invades-kuwait-by-august-31-20260720015031546",
-      "question": "Iran invades Kuwait by August 31?",
-      "negatedQuestion": "Iran does not invade Kuwait by August 31?",
-      "midpoint": 0.033,
-      "base": 0.012566,
-      "negated": 0.137344,
-      "gap": -0.85009
-    },
-    {
-      "marketId": 48,
-      "slug": "iran-leadership-change-by-august-31",
-      "question": "Iran leadership change by August 31?",
-      "negatedQuestion": "Iran leadership unchanged by August 31?",
-      "midpoint": 0.0365,
-      "base": 0.073419,
-      "negated": 0.079044,
-      "gap": -0.847537
-    },
-    {
-      "marketId": 99,
-      "slug": "will-china-invade-taiwan-before-2027",
-      "question": "Will China invade Taiwan by end of 2026?",
-      "negatedQuestion": "Will China not invade Taiwan by end of 2026?",
-      "midpoint": 0.0375,
-      "base": 0.041384,
-      "negated": 0.141263,
-      "gap": -0.817353
-    },
-    {
-      "marketId": 97,
-      "slug": "will-trump-acquire-greenland-before-2027",
-      "question": "Will Trump acquire Greenland before 2027?",
-      "negatedQuestion": "Will Trump fail to acquire Greenland before 2027?",
-      "midpoint": 0.0445,
-      "base": 0.006464,
-      "negated": 0.19252,
-      "gap": -0.801016
-    },
-    {
-      "marketId": 75,
-      "slug": "will-gamestop-acquire-ebay",
-      "question": "Will GameStop acquire eBay?",
-      "negatedQuestion": "Will GameStop not acquire eBay by December 31, 2026?",
-      "midpoint": 0.135,
-      "base": 0.052542,
-      "negated": 0.163875,
-      "gap": -0.783583
-    },
-    {
-      "marketId": 73,
-      "slug": "strait-of-hormuz-traffic-returns-to-normal-by-august-31-20260702154212320",
-      "question": "Strait of Hormuz traffic returns to normal by August 31?",
-      "negatedQuestion": "Strait of Hormuz traffic does not return to normal by August 31?",
-      "midpoint": 0.125,
-      "base": 0.021116,
-      "negated": 0.20419,
-      "gap": -0.774694
-    },
-    {
-      "marketId": 80,
-      "slug": "iran-agrees-to-surrender-enriched-uranium-stockpile-by-august-31-2026",
-      "question": "Iran agrees to surrender enriched uranium stockpile by August 31, 2026?",
-      "negatedQuestion": "Iran does not agree to surrender enriched uranium stockpile by August 31, 2026?",
-      "midpoint": 0.031,
-      "base": 0.055735,
-      "negated": 0.18717,
-      "gap": -0.757095
-    },
-    {
-      "marketId": 85,
-      "slug": "will-china-invade-taiwan-by-june-30-2027",
-      "question": "Will China invade Taiwan by June 30, 2027?",
-      "negatedQuestion": "Will China not invade Taiwan by June 30, 2027?",
-      "midpoint": 0.105,
-      "base": 0.062776,
-      "negated": 0.185191,
-      "gap": -0.752033
-    },
-    {
-      "marketId": 101,
-      "slug": "hantavirus-pandemic-in-2026",
-      "question": "Hantavirus pandemic in 2026?",
-      "negatedQuestion": "No hantavirus pandemic in 2026?",
-      "midpoint": 0.0325,
-      "base": 0.0027,
-      "negated": 0.248411,
-      "gap": -0.748889
-    },
-    {
-      "marketId": 88,
-      "slug": "china-x-japan-military-clash-before-2027",
-      "question": "China x Japan military clash before 2027?",
-      "negatedQuestion": "No China x Japan military clash before 2027?",
-      "midpoint": 0.065,
-      "base": 0.033212,
-      "negated": 0.230556,
-      "gap": -0.736231
-    },
-    {
-      "marketId": 103,
-      "slug": "will-china-invade-taiwan-by-september-30-2026",
-      "question": "Will China invade Taiwan by September 30, 2026?",
-      "negatedQuestion": "Will China not invade Taiwan by September 30, 2026?",
-      "midpoint": 0.0145,
-      "base": 0.017012,
-      "negated": 0.249735,
-      "gap": -0.733252
-    },
-    {
-      "marketId": 96,
-      "slug": "ukraine-signs-peace-deal-with-russia-by-august-31-20260619003108240",
-      "question": "Ukraine signs peace deal with Russia by August 31?",
-      "negatedQuestion": "Ukraine does not sign peace deal with Russia by August 31?",
-      "midpoint": 0.045,
-      "base": 0.051562,
-      "negated": 0.216512,
-      "gap": -0.731925
-    },
-    {
-      "marketId": 91,
-      "slug": "will-russia-capture-sumy-by-march-31-2027",
-      "question": "Will Russia capture Sumy by March 31, 2027?",
-      "negatedQuestion": "Will Russia fail to capture Sumy by March 31, 2027?",
-      "midpoint": 0.065,
-      "base": 0.040848,
-      "negated": 0.229665,
-      "gap": -0.729488
-    },
-    {
-      "marketId": 98,
-      "slug": "major-volcano-eruption-vei-6-in-2026",
-      "question": "Major volcano eruption (VEI ≥6) in 2026?",
-      "negatedQuestion": "No major volcano eruption (VEI ≥6) in 2026?",
-      "midpoint": 0.044,
-      "base": 0.00749,
-      "negated": 0.265172,
-      "gap": -0.727338
-    },
-    {
-      "marketId": 86,
-      "slug": "zelenskyy-out-as-ukraine-president-before-2027",
-      "question": "Zelenskyy out as Ukraine president by end of 2026?",
-      "negatedQuestion": "Zelenskyy remains as Ukraine president through end of 2026?",
-      "midpoint": 0.075,
-      "base": 0.125506,
-      "negated": 0.150669,
-      "gap": -0.723825
-    },
-    {
-      "marketId": 79,
-      "slug": "iran-agrees-to-surrender-enriched-uranium-stockpile-by-october-31-2026",
-      "question": "Iran agrees to surrender enriched uranium stockpile by October 31, 2026?",
-      "negatedQuestion": "Iran does not agree to surrender enriched uranium stockpile by October 31, 2026?",
-      "midpoint": 0.055,
-      "base": 0.091063,
-      "negated": 0.185969,
-      "gap": -0.722969
-    },
-    {
-      "marketId": 51,
-      "slug": "russia-x-ukraine-ceasefire-agreement-by-august-31-2026",
-      "question": "Russia x Ukraine ceasefire agreement by August 31, 2026?",
-      "negatedQuestion": "No Russia x Ukraine ceasefire agreement by August 31, 2026?",
-      "midpoint": 0.065,
-      "base": 0.049059,
-      "negated": 0.229961,
-      "gap": -0.72098
-    },
-    {
-      "marketId": 47,
-      "slug": "iran-leadership-change-by-september-30-20260629144005163",
-      "question": "Iran leadership change by September 30?",
-      "negatedQuestion": "No Iran leadership change by September 30?",
-      "midpoint": 0.085,
-      "base": 0.100937,
-      "negated": 0.182971,
-      "gap": -0.716092
-    },
-    {
-      "marketId": 30,
-      "slug": "strait-of-hormuz-traffic-returns-to-normal-by-december-31",
-      "question": "Strait of Hormuz traffic returns to normal by December 31?",
-      "negatedQuestion": "Strait of Hormuz traffic fails to return to normal by December 31?",
-      "midpoint": 0.555,
-      "base": 0.095889,
-      "negated": 0.19485,
-      "gap": -0.709261
-    },
-    {
-      "marketId": 84,
-      "slug": "will-ukraine-recapture-crimean-territory-by-december-31-2026",
-      "question": "Will Ukraine recapture Crimean territory by December 31, 2026?",
-      "negatedQuestion": "Will Ukraine fail to recapture Crimean territory by December 31, 2026?",
-      "midpoint": 0.095,
-      "base": 0.03292,
-      "negated": 0.26694,
-      "gap": -0.70014
-    },
-    {
-      "marketId": 90,
-      "slug": "will-the-us-acquire-any-part-of-greenland-in-2026",
-      "question": "Will the US acquire part of Greenland in 2026?",
-      "negatedQuestion": "Will the US NOT acquire part of Greenland in 2026?",
-      "midpoint": 0.07,
-      "base": 0.012497,
-      "negated": 0.289569,
-      "gap": -0.697934
-    },
-    {
-      "marketId": 83,
-      "slug": "gta-6-launch-postponed-again",
-      "question": "GTA 6 launch postponed again?",
-      "negatedQuestion": "GTA 6 launch not postponed again?",
-      "midpoint": 0.095,
-      "base": 0.129562,
-      "negated": 0.173094,
-      "gap": -0.697344
-    },
-    {
-      "marketId": 92,
-      "slug": "china-x-taiwan-military-clash-before-2027",
-      "question": "China x Taiwan military clash before 2027?",
-      "negatedQuestion": "No China x Taiwan military clash before 2027?",
-      "midpoint": 0.0665,
-      "base": 0.05095,
-      "negated": 0.254656,
-      "gap": -0.694394
-    },
-    {
-      "marketId": 93,
-      "slug": "will-the-us-confirm-that-aliens-exist-before-2027-789-924-249",
-      "question": "Will the US confirm that aliens exist before 2027?",
-      "negatedQuestion": "Will the US fail to confirm that aliens exist before 2027?",
-      "midpoint": 0.055,
-      "base": 0.01464,
-      "negated": 0.292904,
-      "gap": -0.692456
-    },
-    {
-      "marketId": 94,
-      "slug": "will-the-us-confirm-that-aliens-exist-by-september-30-396",
-      "question": "Will the US confirm that aliens exist by September 30?",
-      "negatedQuestion": "Will the US fail to confirm that aliens exist by September 30?",
-      "midpoint": 0.0265,
-      "base": 0.008346,
-      "negated": 0.300772,
-      "gap": -0.690881
-    },
-    {
-      "marketId": 78,
-      "slug": "iran-agrees-to-surrender-enriched-uranium-stockpile-by-december-31-2026-752-299",
-      "question": "Iran agrees to surrender enriched uranium stockpile by December 31, 2026?",
-      "negatedQuestion": "Iran does not agree to surrender enriched uranium stockpile by December 31, 2026?",
-      "midpoint": 0.125,
-      "base": 0.116913,
-      "negated": 0.197794,
-      "gap": -0.685294
-    },
-    {
-      "marketId": 46,
-      "slug": "iran-leadership-change-by-december-31-974-976-658-482-568-685",
-      "question": "Iran leadership change by December 31?",
-      "negatedQuestion": "Iran leadership unchanged by December 31?",
-      "midpoint": 0.205,
-      "base": 0.151831,
-      "negated": 0.163688,
-      "gap": -0.684481
-    },
-    {
-      "marketId": 74,
-      "slug": "will-china-invade-taiwan-by-december-31-2027",
-      "question": "Will China invade Taiwan by December 31, 2027?",
-      "negatedQuestion": "Will China not invade Taiwan by December 31, 2027?",
-      "midpoint": 0.135,
-      "base": 0.091555,
-      "negated": 0.239776,
-      "gap": -0.668668
-    },
-    {
-      "marketId": 81,
-      "slug": "will-the-us-invade-cuba-in-2026",
-      "question": "Will the U.S. invade Cuba in 2026?",
-      "negatedQuestion": "Will the U.S. NOT invade Cuba in 2026?",
-      "midpoint": 0.125,
-      "base": 0.030494,
-      "negated": 0.318812,
-      "gap": -0.650694
-    },
-    {
-      "marketId": 50,
-      "slug": "russia-x-ukraine-ceasefire-agreement-by-october-31-2026",
-      "question": "Russia x Ukraine ceasefire agreement by October 31, 2026?",
-      "negatedQuestion": "No Russia x Ukraine ceasefire agreement by October 31, 2026?",
-      "midpoint": 0.165,
-      "base": 0.107303,
-      "negated": 0.247757,
-      "gap": -0.644941
-    },
-    {
-      "marketId": 77,
-      "slug": "us-obtains-iranian-enriched-uranium-by-september-30",
-      "question": "US obtains Iranian enriched uranium by September 30?",
-      "negatedQuestion": "US does not obtain Iranian enriched uranium by September 30?",
-      "midpoint": 0.065,
-      "base": 0.04279,
-      "negated": 0.319037,
-      "gap": -0.638172
-    },
-    {
-      "marketId": 54,
-      "slug": "us-strike-on-cuba-by-december-31",
-      "question": "US strike on Cuba by December 31?",
-      "negatedQuestion": "No US strike on Cuba by December 31?",
-      "midpoint": 0.305,
-      "base": 0.04811,
-      "negated": 0.31435,
-      "gap": -0.63754
-    },
-    {
-      "marketId": 76,
-      "slug": "us-obtains-iranian-enriched-uranium-by-december-31-725-733-123-574",
-      "question": "US obtains Iranian enriched uranium by December 31?",
-      "negatedQuestion": "US does not obtain Iranian enriched uranium by December 31?",
-      "midpoint": 0.115,
-      "base": 0.071077,
-      "negated": 0.295187,
-      "gap": -0.633735
-    },
-    {
-      "marketId": 59,
-      "slug": "us-iran-final-nuclear-deal-by-august-13-2026-20260621201255152",
-      "question": "US-Iran Final Nuclear Deal by August 13, 2026?",
-      "negatedQuestion": "No US-Iran Final Nuclear Deal by August 13, 2026?",
-      "midpoint": 0.018,
-      "base": 0.014253,
-      "negated": 0.353974,
-      "gap": -0.631774
-    },
-    {
-      "marketId": 44,
-      "slug": "will-samuel-alito-announce-his-retirement-by-september-30-2026-20260630151901966",
-      "question": "Will Samuel Alito announce his retirement by September 30, 2026?",
-      "negatedQuestion": "Will Samuel Alito not announce his retirement by September 30, 2026?",
-      "midpoint": 0.065,
-      "base": 0.035806,
-      "negated": 0.333531,
-      "gap": -0.630663
-    },
-    {
-      "marketId": 43,
-      "slug": "will-samuel-alito-announce-his-retirement-by-december-31-2026-573-343-622",
-      "question": "Will Samuel Alito announce his retirement by December 31, 2026?",
-      "negatedQuestion": "Will Samuel Alito NOT announce his retirement by December 31, 2026?",
-      "midpoint": 0.145,
-      "base": 0.055769,
-      "negated": 0.314713,
-      "gap": -0.629519
-    },
-    {
-      "marketId": 57,
-      "slug": "us-iran-final-nuclear-deal-by-august-31-2026-20260621201255154",
-      "question": "US-Iran Final Nuclear Deal by August 31, 2026?",
-      "negatedQuestion": "No US-Iran Final Nuclear Deal by August 31, 2026?",
-      "midpoint": 0.065,
-      "base": 0.017809,
-      "negated": 0.365139,
-      "gap": -0.617053
-    },
-    {
-      "marketId": 55,
-      "slug": "us-iran-final-nuclear-deal-by-december-31-2026",
-      "question": "US-Iran Final Nuclear Deal by December 31, 2026?",
-      "negatedQuestion": "No US-Iran Final Nuclear Deal by December 31, 2026?",
-      "midpoint": 0.315,
-      "base": 0.033,
-      "negated": 0.353375,
-      "gap": -0.613625
-    },
-    {
-      "marketId": 56,
-      "slug": "us-iran-final-nuclear-deal-by-september-30-2026",
-      "question": "US-Iran Final Nuclear Deal by September 30, 2026?",
-      "negatedQuestion": "US-Iran Final Nuclear Deal not reached by September 30, 2026?",
-      "midpoint": 0.155,
-      "base": 0.022326,
-      "negated": 0.368429,
-      "gap": -0.609245
-    },
-    {
-      "marketId": 49,
-      "slug": "russia-x-ukraine-ceasefire-agreement-by-december-31-2026",
-      "question": "Russia x Ukraine ceasefire agreement by December 31, 2026?",
-      "negatedQuestion": "No Russia x Ukraine ceasefire agreement by December 31, 2026?",
-      "midpoint": 0.355,
-      "base": 0.143338,
-      "negated": 0.268346,
-      "gap": -0.588316
-    },
-    {
-      "marketId": 45,
-      "slug": "iran-leadership-change-by-june-30-2027-674",
-      "question": "Iran leadership change by June 30, 2027?",
-      "negatedQuestion": "Iran leadership unchanged by June 30, 2027?",
-      "midpoint": 0.37,
-      "base": 0.204875,
-      "negated": 0.232906,
-      "gap": -0.562219
-    },
-    {
-      "marketId": 58,
-      "slug": "us-iran-final-nuclear-deal-by-august-18-2026-20260621201255153",
-      "question": "US-Iran Final Nuclear Deal by August 18, 2026?",
-      "negatedQuestion": "No US-Iran Final Nuclear Deal by August 18, 2026?",
-      "midpoint": 0.0465,
-      "base": 0.01455,
-      "negated": 0.433325,
-      "gap": -0.552125
-    },
-    {
       "marketId": 66,
       "slug": "will-the-us-invade-iran-before-2027",
       "question": "Will the U.S. invade Iran before 2027?",
-      "negatedQuestion": "Will the U.S. NOT invade Iran before 2027?",
       "midpoint": 0.215,
       "base": 0.109725,
-      "negated": 0.375713,
-      "gap": -0.514563
-    },
-    {
-      "marketId": 42,
-      "slug": "will-samuel-alito-announce-his-retirement-by-june-30-2027-20260630164636932-777-232",
-      "question": "Will Samuel Alito announce his retirement by June 30, 2027?",
-      "negatedQuestion": "Will Samuel Alito not announce his retirement by June 30, 2027?",
-      "midpoint": 0.43,
-      "base": 0.17435,
-      "negated": 0.326937,
-      "gap": -0.498713
-    },
-    {
-      "marketId": 38,
-      "slug": "us-announces-end-of-iranian-blockade-by-august-15-2026-20260713152715083-347",
-      "question": "US announces end of Iranian blockade by August 15, 2026?",
-      "negatedQuestion": "US does not announce end of Iranian blockade by August 15, 2026?",
-      "midpoint": 0.355,
-      "base": 0.11345,
-      "negated": 0.459362,
-      "gap": -0.427187
+      "negated": 0.843344,
+      "gap": -0.046931
     },
     {
       "marketId": 37,
       "slug": "us-announces-end-of-iranian-blockade-by-august-31-2026-20260713152715084-642",
       "question": "US announces end of Iranian blockade by August 31, 2026?",
-      "negatedQuestion": "US does not announce end of Iranian blockade by August 31, 2026?",
       "midpoint": 0.565,
       "base": 0.181812,
-      "negated": 0.467219,
-      "gap": -0.350969
+      "negated": 0.789656,
+      "gap": -0.028531
     },
     {
-      "marketId": 68,
-      "slug": "will-gavin-newsom-win-the-2028-democratic-presidential-nomination-568",
-      "question": "Will Gavin Newsom win the 2028 Democratic presidential nomination?",
-      "negatedQuestion": "Will Gavin Newsom fail to win the 2028 Democratic presidential nomination?",
-      "midpoint": 0.1935,
-      "base": 0.176744,
-      "negated": 0.481464,
-      "gap": -0.341793
+      "marketId": 86,
+      "slug": "zelenskyy-out-as-ukraine-president-before-2027",
+      "question": "Zelenskyy out as Ukraine president by end of 2026?",
+      "midpoint": 0.075,
+      "base": 0.125506,
+      "negated": 0.850469,
+      "gap": -0.024025
     },
     {
-      "marketId": 34,
-      "slug": "will-the-doge-1-lunar-mission-launch-before-2027",
-      "question": "Will the Doge-1 Lunar Mission launch by December 31, 2026?",
-      "negatedQuestion": "Will the Doge-1 Lunar Mission fail to launch by December 31, 2026?",
-      "midpoint": 0.119,
-      "base": 0.306678,
-      "negated": 0.376064,
-      "gap": -0.317258
+      "marketId": 83,
+      "slug": "gta-6-launch-postponed-again",
+      "question": "GTA 6 launch postponed again?",
+      "midpoint": 0.095,
+      "base": 0.129563,
+      "negated": 0.846979,
+      "gap": -0.023458
     },
     {
-      "marketId": 22,
-      "slug": "will-trump-be-impeached-before-his-term-ends",
-      "question": "Will Trump be impeached before his term ends?",
-      "negatedQuestion": "Will Trump not be impeached before his term ends?",
-      "midpoint": 0.655,
-      "base": 0.345219,
-      "negated": 0.380406,
-      "gap": -0.274375
+      "marketId": 74,
+      "slug": "will-china-invade-taiwan-by-december-31-2027",
+      "question": "Will China invade Taiwan by December 31, 2027?",
+      "midpoint": 0.135,
+      "base": 0.088665,
+      "negated": 0.888738,
+      "gap": -0.022598
     },
     {
-      "marketId": 64,
-      "slug": "iran-full-airspace-closure-by-august-15",
-      "question": "Iran full airspace closure by August 15?",
-      "negatedQuestion": "Iran no full airspace closure by August 15?",
-      "midpoint": 0.165,
-      "base": 0.332581,
-      "negated": 0.405253,
-      "gap": -0.262166
+      "marketId": 46,
+      "slug": "iran-leadership-change-by-december-31-974-976-658-482-568-685",
+      "question": "Iran leadership change by December 31?",
+      "midpoint": 0.205,
+      "base": 0.151831,
+      "negated": 0.825994,
+      "gap": -0.022175
     },
     {
-      "marketId": 17,
-      "slug": "will-anthropic-ipo-by-september-15-2026-415",
-      "question": "Will Anthropic IPO by September 15, 2026?",
-      "negatedQuestion": "Will Anthropic NOT IPO by September 15, 2026?",
-      "midpoint": 0.011,
-      "base": 0.227975,
-      "negated": 0.525588,
-      "gap": -0.246438
+      "marketId": 49,
+      "slug": "russia-x-ukraine-ceasefire-agreement-by-december-31-2026",
+      "question": "Russia x Ukraine ceasefire agreement by December 31, 2026?",
+      "midpoint": 0.355,
+      "base": 0.146588,
+      "negated": 0.831813,
+      "gap": -0.0216
     },
     {
-      "marketId": 21,
-      "slug": "fed-rate-hike-in-2026",
-      "question": "Fed rate hike in 2026?",
-      "negatedQuestion": "No Fed rate hike in 2026?",
-      "midpoint": 0.775,
-      "base": 0.337833,
-      "negated": 0.429856,
-      "gap": -0.23231
+      "marketId": 99,
+      "slug": "will-china-invade-taiwan-before-2027",
+      "question": "Will China invade Taiwan by end of 2026?",
+      "midpoint": 0.0375,
+      "base": 0.041388,
+      "negated": 0.937039,
+      "gap": -0.021572
+    },
+    {
+      "marketId": 47,
+      "slug": "iran-leadership-change-by-september-30-20260629144005163",
+      "question": "Iran leadership change by September 30?",
+      "midpoint": 0.085,
+      "base": 0.10175,
+      "negated": 0.876887,
+      "gap": -0.021363
+    },
+    {
+      "marketId": 76,
+      "slug": "us-obtains-iranian-enriched-uranium-by-december-31-725-733-123-574",
+      "question": "US obtains Iranian enriched uranium by December 31?",
+      "midpoint": 0.115,
+      "base": 0.071306,
+      "negated": 0.9085,
+      "gap": -0.020194
+    },
+    {
+      "marketId": 38,
+      "slug": "us-announces-end-of-iranian-blockade-by-august-15-2026-20260713152715083-347",
+      "question": "US announces end of Iranian blockade by August 15, 2026?",
+      "midpoint": 0.355,
+      "base": 0.113825,
+      "negated": 0.867844,
+      "gap": -0.018331
+    },
+    {
+      "marketId": 91,
+      "slug": "will-russia-capture-sumy-by-march-31-2027",
+      "question": "Will Russia capture Sumy by March 31, 2027?",
+      "midpoint": 0.065,
+      "base": 0.040848,
+      "negated": 0.941419,
+      "gap": -0.017734
+    },
+    {
+      "marketId": 75,
+      "slug": "will-gamestop-acquire-ebay",
+      "question": "Will GameStop acquire eBay?",
+      "midpoint": 0.135,
+      "base": 0.052438,
+      "negated": 0.9314,
+      "gap": -0.016163
+    },
+    {
+      "marketId": 69,
+      "slug": "putin-out-as-president-of-russia-by-june-30-2027",
+      "question": "Putin out as President of Russia by June 30, 2027?",
+      "midpoint": 0.155,
+      "base": 0.054719,
+      "negated": 0.9292,
+      "gap": -0.016081
+    },
+    {
+      "marketId": 87,
+      "slug": "will-the-iranian-regime-fall-by-the-end-of-2026",
+      "question": "Will the Iranian regime fall before 2027?",
+      "midpoint": 0.085,
+      "base": 0.066931,
+      "negated": 0.91718,
+      "gap": -0.015889
+    },
+    {
+      "marketId": 92,
+      "slug": "china-x-taiwan-military-clash-before-2027",
+      "question": "China x Taiwan military clash before 2027?",
+      "midpoint": 0.0665,
+      "base": 0.05095,
+      "negated": 0.933219,
+      "gap": -0.015831
+    },
+    {
+      "marketId": 45,
+      "slug": "iran-leadership-change-by-june-30-2027-674",
+      "question": "Iran leadership change by June 30, 2027?",
+      "midpoint": 0.37,
+      "base": 0.204875,
+      "negated": 0.77975,
+      "gap": -0.015375
+    },
+    {
+      "marketId": 77,
+      "slug": "us-obtains-iranian-enriched-uranium-by-september-30",
+      "question": "US obtains Iranian enriched uranium by September 30?",
+      "midpoint": 0.065,
+      "base": 0.042978,
+      "negated": 0.941875,
+      "gap": -0.015148
+    },
+    {
+      "marketId": 43,
+      "slug": "will-samuel-alito-announce-his-retirement-by-december-31-2026-573-343-622",
+      "question": "Will Samuel Alito announce his retirement by December 31, 2026?",
+      "midpoint": 0.145,
+      "base": 0.05505,
+      "negated": 0.930281,
+      "gap": -0.014669
+    },
+    {
+      "marketId": 80,
+      "slug": "iran-agrees-to-surrender-enriched-uranium-stockpile-by-august-31-2026",
+      "question": "Iran agrees to surrender enriched uranium stockpile by August 31, 2026?",
+      "midpoint": 0.031,
+      "base": 0.056006,
+      "negated": 0.929519,
+      "gap": -0.014475
     },
     {
       "marketId": 33,
       "slug": "will-the-doge-1-lunar-mission-launch-by-december-31-2027",
       "question": "Will the Doge-1 Lunar Mission launch by December 31, 2027?",
-      "negatedQuestion": "Will the Doge-1 Lunar Mission fail to launch by December 31, 2027?",
       "midpoint": 0.525,
-      "base": 0.413651,
-      "negated": 0.379276,
-      "gap": -0.207072
+      "base": 0.413719,
+      "negated": 0.571825,
+      "gap": -0.014456
     },
     {
-      "marketId": 16,
-      "slug": "will-anthropic-ipo-by-september-30-2026-733",
-      "question": "Will Anthropic IPO by September 30, 2026?",
-      "negatedQuestion": "Will Anthropic NOT IPO by September 30, 2026?",
-      "midpoint": 0.055,
-      "base": 0.294563,
-      "negated": 0.51575,
-      "gap": -0.189687
-    },
-    {
-      "marketId": 63,
-      "slug": "iran-full-airspace-closure-by-august-31-20260625195254151-668",
-      "question": "Iran full airspace closure by August 31?",
-      "negatedQuestion": "Iran will not have a full airspace closure by August 31?",
-      "midpoint": 0.295,
-      "base": 0.412753,
-      "negated": 0.485,
-      "gap": -0.102248
-    },
-    {
-      "marketId": 62,
-      "slug": "nato-x-russia-military-clash-by-august-31-2026",
-      "question": "NATO x Russia military clash by August 31, 2026?",
-      "negatedQuestion": "No NATO x Russia military clash by August 31, 2026?",
-      "midpoint": 0.045,
-      "base": 0.43303,
-      "negated": 0.469225,
-      "gap": -0.097745
-    },
-    {
-      "marketId": 20,
-      "slug": "will-paramount-close-warner-bros-acquisition",
-      "question": "Will Paramount close Warner Bros acquisition?",
-      "negatedQuestion": "Will Paramount fail to close Warner Bros acquisition?",
-      "midpoint": 0.66,
-      "base": 0.262706,
-      "negated": 0.693812,
-      "gap": -0.043481
-    },
-    {
-      "marketId": 29,
-      "slug": "will-united-russia-er-gain-the-most-seats-in-the-next-russian-parliamentary-election",
-      "question": "Will United Russia (ER) gain the most seats in the next Russian parliamentary election?",
-      "negatedQuestion": "Will United Russia (ER) fail to gain the most seats in the next Russian parliamentary election?",
-      "midpoint": 0.575,
-      "base": 0.188689,
-      "negated": 0.78368,
-      "gap": -0.027631
-    },
-    {
-      "marketId": 67,
-      "slug": "will-jd-vance-win-the-2028-us-presidential-election",
-      "question": "Will JD Vance win the 2028 US Presidential Election?",
-      "negatedQuestion": "Will JD Vance fail to win the 2028 US Presidential Election?",
-      "midpoint": 0.2015,
-      "base": 0.222705,
-      "negated": 0.754737,
-      "gap": -0.022557
-    },
-    {
-      "marketId": 82,
-      "slug": "will-yulia-navalnaya-win-the-nobel-peace-prize-in-2026-261",
-      "question": "Will Yulia Navalnaya win the Nobel Peace Prize in 2026?",
-      "negatedQuestion": "Will Yulia Navalnaya fail to win the Nobel Peace Prize in 2026?",
-      "midpoint": 0.105,
-      "base": 0.109428,
-      "negated": 0.868586,
-      "gap": -0.021987
-    },
-    {
-      "marketId": 53,
-      "slug": "billionaire-one-time-wealth-tax-passes-in-california-election-2026",
-      "question": "Billionaire one-time wealth tax passes in California election 2026?",
-      "negatedQuestion": "Billionaire one-time wealth tax fails to pass in California election 2026?",
-      "midpoint": 0.335,
-      "base": 0.486125,
-      "negated": 0.495219,
-      "gap": -0.018656
-    },
-    {
-      "marketId": 15,
-      "slug": "will-anthropic-ipo-by-october-31-2026",
-      "question": "Will Anthropic IPO by October 31, 2026?",
-      "negatedQuestion": "Will Anthropic NOT IPO by October 31, 2026?",
-      "midpoint": 0.355,
-      "base": 0.44225,
-      "negated": 0.540281,
-      "gap": -0.017469
+      "marketId": 78,
+      "slug": "iran-agrees-to-surrender-enriched-uranium-stockpile-by-december-31-2026-752-299",
+      "question": "Iran agrees to surrender enriched uranium stockpile by December 31, 2026?",
+      "midpoint": 0.125,
+      "base": 0.116913,
+      "negated": 0.87033,
+      "gap": -0.012757
     },
     {
       "marketId": 65,
       "slug": "will-the-republican-party-hold-47-or-fewer-senate-seats-after-the-2026-midterm-elections",
       "question": "Will the Republican Party hold 47 or fewer Senate seats after the 2026 midterm elections?",
-      "negatedQuestion": "Will the Republican Party hold 48 or more Senate seats after the 2026 midterm elections?",
       "midpoint": 0.235,
-      "base": 0.203927,
-      "negated": 0.782156,
-      "gap": -0.013917
+      "base": 0.203656,
+      "negated": 0.783625,
+      "gap": -0.012719
     },
     {
-      "marketId": 52,
-      "slug": "will-nicols-maduro-be-sentenced-to-no-prison-time-974",
-      "question": "Will Nicolás Maduro be sentenced to no prison time?",
-      "negatedQuestion": "Will Nicolás Maduro be sentenced to some prison time?",
-      "midpoint": 0.365,
-      "base": 0.7391,
-      "negated": 0.24821,
-      "gap": -0.01269
+      "marketId": 79,
+      "slug": "iran-agrees-to-surrender-enriched-uranium-stockpile-by-october-31-2026",
+      "question": "Iran agrees to surrender enriched uranium stockpile by October 31, 2026?",
+      "midpoint": 0.055,
+      "base": 0.091063,
+      "negated": 0.896906,
+      "gap": -0.012031
     },
     {
-      "marketId": 1,
-      "slug": "will-united-russia-er-win-the-most-seats-in-the-next-russian-parliamentary-election",
-      "question": "Will United Russia (ER) win the most seats in the next Russian parliamentary election?",
-      "negatedQuestion": "Will United Russia (ER) fail to win the most seats in the next Russian parliamentary election?",
-      "midpoint": 0.9585,
-      "base": 0.980058,
-      "negated": 0.014485,
-      "gap": -0.005458
+      "marketId": 56,
+      "slug": "us-iran-final-nuclear-deal-by-september-30-2026",
+      "question": "US-Iran Final Nuclear Deal by September 30, 2026?",
+      "midpoint": 0.155,
+      "base": 0.022326,
+      "negated": 0.965975,
+      "gap": -0.011699
     },
     {
-      "marketId": 26,
-      "slug": "will-luiz-incio-lula-da-silva-win-the-2026-brazilian-presidential-election",
-      "question": "Will Luiz Inácio Lula da Silva win the 2026 Brazilian presidential election?",
-      "negatedQuestion": "Will Luiz Inácio Lula da Silva fail to win the 2026 Brazilian presidential election?",
-      "midpoint": 0.635,
-      "base": 0.599187,
-      "negated": 0.396875,
-      "gap": -0.003937
+      "marketId": 81,
+      "slug": "will-the-us-invade-cuba-in-2026",
+      "question": "Will the U.S. invade Cuba in 2026?",
+      "midpoint": 0.125,
+      "base": 0.030494,
+      "negated": 0.958163,
+      "gap": -0.011344
     },
     {
-      "marketId": 2,
-      "slug": "will-nigel-farage-win-the-clacton-by-election-20260707144027825",
-      "question": "Will Nigel Farage win the Clacton by-election?",
-      "negatedQuestion": "Will Nigel Farage fail to win the Clacton by-election?",
-      "midpoint": 0.962,
-      "base": 0.847438,
-      "negated": 0.149125,
-      "gap": -0.003438
+      "marketId": 16,
+      "slug": "will-anthropic-ipo-by-september-30-2026-733",
+      "question": "Will Anthropic IPO by September 30, 2026?",
+      "midpoint": 0.055,
+      "base": 0.293313,
+      "negated": 0.695406,
+      "gap": -0.011281
     },
     {
-      "marketId": 9,
-      "slug": "will-spacex-have-the-highest-ipo-market-cap-2026-516",
-      "question": "Will SpaceX have the highest IPO Market Cap 2026?",
-      "negatedQuestion": "Will SpaceX not have the highest IPO Market Cap 2026?",
-      "midpoint": 0.865,
-      "base": 0.988953,
-      "negated": 0.009471,
-      "gap": -0.001576
+      "marketId": 51,
+      "slug": "russia-x-ukraine-ceasefire-agreement-by-august-31-2026",
+      "question": "Russia x Ukraine ceasefire agreement by August 31, 2026?",
+      "midpoint": 0.065,
+      "base": 0.054914,
+      "negated": 0.933908,
+      "gap": -0.011178
     },
     {
-      "marketId": 13,
-      "slug": "will-mojtaba-khamenei-be-head-of-state-in-iran-end-of-2026",
-      "question": "Will Mojtaba Khamenei be head of state in Iran end of 2026?",
-      "negatedQuestion": "Will Mojtaba Khamenei NOT be head of state in Iran end of 2026?",
-      "midpoint": 0.8005,
-      "base": 0.374594,
-      "negated": 0.6243,
-      "gap": -0.001106
+      "marketId": 70,
+      "slug": "putin-out-before-2027-346",
+      "question": "Putin out as President of Russia by December 31, 2026?",
+      "midpoint": 0.085,
+      "base": 0.043487,
+      "negated": 0.945481,
+      "gap": -0.011031
     },
     {
-      "marketId": 27,
-      "slug": "will-the-democrats-win-the-2028-us-presidential-election",
-      "question": "Will the Democrats win the 2028 US Presidential Election?",
-      "negatedQuestion": "Will the Democrats fail to win the 2028 US Presidential Election?",
-      "midpoint": 0.585,
-      "base": 0.567231,
-      "negated": 0.432969,
-      "gap": 0.0002
+      "marketId": 48,
+      "slug": "iran-leadership-change-by-august-31",
+      "question": "Iran leadership change by August 31?",
+      "midpoint": 0.0365,
+      "base": 0.073419,
+      "negated": 0.915594,
+      "gap": -0.010987
     },
     {
-      "marketId": 32,
-      "slug": "will-javier-milei-win-the-2027-argentina-presidential-election",
-      "question": "Will Javier Milei win the 2027 Argentina presidential election?",
-      "negatedQuestion": "Will Javier Milei fail to win the 2027 Argentina presidential election?",
-      "midpoint": 0.525,
-      "base": 0.421312,
-      "negated": 0.579944,
-      "gap": 0.001256
+      "marketId": 88,
+      "slug": "china-x-japan-military-clash-before-2027",
+      "question": "China x Japan military clash before 2027?",
+      "midpoint": 0.065,
+      "base": 0.033212,
+      "negated": 0.955987,
+      "gap": -0.0108
     },
     {
-      "marketId": 7,
-      "slug": "will-xavier-becerra-win-the-california-governor-election-in-2026",
-      "question": "Will Xavier Becerra win the California Governor Election in 2026?",
-      "negatedQuestion": "Will Xavier Becerra fail to win the California Governor Election in 2026?",
-      "midpoint": 0.927,
-      "base": 0.941769,
-      "negated": 0.059781,
-      "gap": 0.00155
+      "marketId": 85,
+      "slug": "will-china-invade-taiwan-by-june-30-2027",
+      "question": "Will China invade Taiwan by June 30, 2027?",
+      "midpoint": 0.105,
+      "base": 0.062816,
+      "negated": 0.926711,
+      "gap": -0.010474
     },
     {
-      "marketId": 36,
-      "slug": "will-the-fed-increase-interest-rates-by-25-bps-after-the-september-2026-meeting-649",
-      "question": "Will the Fed increase interest rates by 25 bps after the September 2026 meeting?",
-      "negatedQuestion": "Will the Fed NOT increase interest rates by 25 bps after the September 2026 meeting?",
-      "midpoint": 0.575,
-      "base": 0.504756,
-      "negated": 0.497625,
-      "gap": 0.002381
+      "marketId": 50,
+      "slug": "russia-x-ukraine-ceasefire-agreement-by-october-31-2026",
+      "question": "Russia x Ukraine ceasefire agreement by October 31, 2026?",
+      "midpoint": 0.165,
+      "base": 0.112928,
+      "negated": 0.876645,
+      "gap": -0.010428
     },
     {
-      "marketId": 60,
-      "slug": "will-marine-le-pen-win-the-2027-french-presidential-election",
-      "question": "Will Marine Le Pen win the 2027 French presidential election?",
-      "negatedQuestion": "Will Marine Le Pen fail to win the 2027 French presidential election?",
-      "midpoint": 0.3205,
-      "base": 0.491871,
-      "negated": 0.513375,
-      "gap": 0.005246
+      "marketId": 96,
+      "slug": "ukraine-signs-peace-deal-with-russia-by-august-31-20260619003108240",
+      "question": "Ukraine signs peace deal with Russia by August 31?",
+      "midpoint": 0.045,
+      "base": 0.05175,
+      "negated": 0.939515,
+      "gap": -0.008735
     },
     {
-      "marketId": 39,
-      "slug": "2026-balance-of-power-d-senate-d-house-949",
-      "question": "2026 Balance of Power: D Senate, D House",
-      "negatedQuestion": "\"2026 Balance of Power: NOT (D Senate, D House)\"",
-      "midpoint": 0.435,
-      "base": 0.228806,
-      "negated": 0.779438,
-      "gap": 0.008244
+      "marketId": 57,
+      "slug": "us-iran-final-nuclear-deal-by-august-31-2026-20260621201255154",
+      "question": "US-Iran Final Nuclear Deal by August 31, 2026?",
+      "midpoint": 0.065,
+      "base": 0.017809,
+      "negated": 0.973512,
+      "gap": -0.008679
     },
     {
-      "marketId": 11,
-      "slug": "will-no-fed-rate-cuts-happen-in-2026",
-      "question": "Will no Fed rate cuts happen in 2026?",
-      "negatedQuestion": "Will at least one Fed rate cut happen in 2026?",
-      "midpoint": 0.8525,
-      "base": 0.82325,
-      "negated": 0.187837,
-      "gap": 0.011087
+      "marketId": 55,
+      "slug": "us-iran-final-nuclear-deal-by-december-31-2026",
+      "question": "US-Iran Final Nuclear Deal by December 31, 2026?",
+      "midpoint": 0.315,
+      "base": 0.033,
+      "negated": 0.958702,
+      "gap": -0.008298
     },
     {
-      "marketId": 35,
-      "slug": "will-gadi-eizenkot-be-the-next-prime-minister-of-israel",
-      "question": "Will Gadi Eizenkot be the next Prime Minister of Israel?",
-      "negatedQuestion": "Will Gadi Eizenkot not be the next Prime Minister of Israel?",
-      "midpoint": 0.518,
-      "base": 0.335537,
-      "negated": 0.678125,
-      "gap": 0.013662
+      "marketId": 58,
+      "slug": "us-iran-final-nuclear-deal-by-august-18-2026-20260621201255153",
+      "question": "US-Iran Final Nuclear Deal by August 18, 2026?",
+      "midpoint": 0.0465,
+      "base": 0.01455,
+      "negated": 0.97739,
+      "gap": -0.00806
     },
     {
-      "marketId": 12,
-      "slug": "will-nicols-maduro-be-the-leader-of-venezuela-end-of-2026",
-      "question": "Will Nicolás Maduro be the leader of Venezuela end of 2026?",
-      "negatedQuestion": "Will Nicolás Maduro not be the leader of Venezuela end of 2026?",
-      "midpoint": 0.826,
-      "base": 0.054174,
-      "negated": 0.959689,
-      "gap": 0.013862
-    },
-    {
-      "marketId": 31,
-      "slug": "will-the-republican-party-control-the-senate-after-the-2026-midterm-elections",
-      "question": "Will the Republican Party control the Senate after the 2026 Midterm elections?",
-      "negatedQuestion": "Will the Republican Party fail to control the Senate after the 2026 Midterm elections?",
-      "midpoint": 0.555,
-      "base": 0.578553,
-      "negated": 0.446053,
-      "gap": 0.024605
-    },
-    {
-      "marketId": 104,
-      "slug": "will-giorgia-meloni-be-the-next-prime-minister-of-italy",
-      "question": "Will Giorgia Meloni be the next Prime Minister of Italy?",
-      "negatedQuestion": "Will someone other than Giorgia Meloni be the next Prime Minister of Italy?",
-      "midpoint": 0.405,
-      "base": 0.659844,
-      "negated": 0.372156,
-      "gap": 0.032
-    },
-    {
-      "marketId": 28,
-      "slug": "will-nvidia-be-the-largest-company-in-the-world-by-market-cap-on-december-31-244",
-      "question": "Will NVIDIA be the largest company in the world by market cap on December 31?",
-      "negatedQuestion": "Will NVIDIA not be the largest company in the world by market cap on December 31?",
-      "midpoint": 0.485,
-      "base": 0.460812,
-      "negated": 0.573725,
-      "gap": 0.034537
-    },
-    {
-      "marketId": 40,
-      "slug": "netanyahu-out-before-2027-684-719-226-657",
-      "question": "Netanyahu out by end of 2026?",
-      "negatedQuestion": "Netanyahu still in by end of 2026?",
-      "midpoint": 0.375,
-      "base": 0.526794,
-      "negated": 0.518887,
-      "gap": 0.045681
-    },
-    {
-      "marketId": 10,
-      "slug": "will-the-democratic-party-control-the-house-after-the-2026-midterm-elections",
-      "question": "Will the Democratic Party control the House after the 2026 Midterm elections?",
-      "negatedQuestion": "Will the Democratic Party fail to control the House after the 2026 Midterm elections?",
-      "midpoint": 0.855,
-      "base": 0.784406,
-      "negated": 0.268896,
-      "gap": 0.053302
-    },
-    {
-      "marketId": 8,
-      "slug": "will-there-be-two-uk-prime-ministers-by-end-of-2027-20260706201826010",
-      "question": "Will there be two UK Prime Ministers by end of 2027?",
-      "negatedQuestion": "Will there not be two UK Prime Ministers by end of 2027?",
-      "midpoint": 0.865,
-      "base": 0.782149,
-      "negated": 0.294006,
-      "gap": 0.076155
-    },
-    {
-      "marketId": 14,
-      "slug": "will-anthropic-ipo-by-december-31-2026-546-128",
-      "question": "Will Anthropic IPO by December 31, 2026?",
-      "negatedQuestion": "Will Anthropic NOT IPO by December 31, 2026?",
-      "midpoint": 0.71,
-      "base": 0.610575,
-      "negated": 0.485187,
-      "gap": 0.095763
+      "marketId": 54,
+      "slug": "us-strike-on-cuba-by-december-31",
+      "question": "US strike on Cuba by December 31?",
+      "midpoint": 0.305,
+      "base": 0.048855,
+      "negated": 0.943191,
+      "gap": -0.007954
     },
     {
       "marketId": 41,
       "slug": "will-jd-vance-win-the-2028-republican-presidential-nomination",
       "question": "Will J.D. Vance win the 2028 Republican presidential nomination?",
-      "negatedQuestion": "Will J.D. Vance fail to win the 2028 Republican presidential nomination?",
       "midpoint": 0.4295,
-      "base": 0.608244,
-      "negated": 0.538025,
-      "gap": 0.146269
+      "base": 0.607744,
+      "negated": 0.384412,
+      "gap": -0.007844
     },
     {
-      "marketId": 25,
-      "slug": "iran-charges-hormuz-fees-by-august-31-20260625175039062-177",
-      "question": "Iran charges Hormuz fees by August 31?",
-      "negatedQuestion": "Iran does not charge Hormuz fees by August 31?",
-      "midpoint": 0.24,
-      "base": 0.628912,
-      "negated": 0.583437,
-      "gap": 0.21235
+      "marketId": 44,
+      "slug": "will-samuel-alito-announce-his-retirement-by-september-30-2026-20260630151901966",
+      "question": "Will Samuel Alito announce his retirement by September 30, 2026?",
+      "midpoint": 0.065,
+      "base": 0.035806,
+      "negated": 0.956494,
+      "gap": -0.0077
     },
     {
-      "marketId": 61,
-      "slug": "nato-x-russia-military-clash-by-december-31-2026-244-538-582",
-      "question": "NATO x Russia military clash by December 31, 2026?",
-      "negatedQuestion": "No NATO x Russia military clash by December 31, 2026?",
-      "midpoint": 0.275,
-      "base": 0.652836,
-      "negated": 0.598353,
-      "gap": 0.251189
+      "marketId": 30,
+      "slug": "strait-of-hormuz-traffic-returns-to-normal-by-december-31",
+      "question": "Strait of Hormuz traffic returns to normal by December 31?",
+      "midpoint": 0.555,
+      "base": 0.095889,
+      "negated": 0.896962,
+      "gap": -0.007149
+    },
+    {
+      "marketId": 67,
+      "slug": "will-jd-vance-win-the-2028-us-presidential-election",
+      "question": "Will JD Vance win the 2028 US Presidential Election?",
+      "midpoint": 0.2015,
+      "base": 0.221143,
+      "negated": 0.771744,
+      "gap": -0.007114
+    },
+    {
+      "marketId": 82,
+      "slug": "will-yulia-navalnaya-win-the-nobel-peace-prize-in-2026-261",
+      "question": "Will Yulia Navalnaya win the Nobel Peace Prize in 2026?",
+      "midpoint": 0.105,
+      "base": 0.109428,
+      "negated": 0.883592,
+      "gap": -0.00698
+    },
+    {
+      "marketId": 71,
+      "slug": "putin-out-as-president-of-russia-by-september-30-2026",
+      "question": "Putin out as President of Russia by September 30, 2026?",
+      "midpoint": 0.0365,
+      "base": 0.019144,
+      "negated": 0.9742,
+      "gap": -0.006656
+    },
+    {
+      "marketId": 84,
+      "slug": "will-ukraine-recapture-crimean-territory-by-december-31-2026",
+      "question": "Will Ukraine recapture Crimean territory by December 31, 2026?",
+      "midpoint": 0.095,
+      "base": 0.03292,
+      "negated": 0.96045,
+      "gap": -0.00663
     },
     {
       "marketId": 19,
       "slug": "us-x-iran-effective-ceasfire-by-august-14-20260715194822046",
       "question": "US x Iran Effective Ceasefire by August 14?",
-      "negatedQuestion": "US x Iran Effective Ceasefire NOT achieved by August 14?",
       "midpoint": 0.645,
       "base": 0.653713,
-      "negated": 0.638458,
-      "gap": 0.29217
+      "negated": 0.339687,
+      "gap": -0.0066
     },
     {
-      "marketId": 23,
-      "slug": "iran-charges-hormuz-fees-by-december-31-20260706203029175",
-      "question": "Iran charges Hormuz fees by December 31?",
-      "negatedQuestion": "Iran does not charge Hormuz fees by December 31?",
-      "midpoint": 0.665,
-      "base": 0.743494,
-      "negated": 0.616625,
-      "gap": 0.360119
+      "marketId": 42,
+      "slug": "will-samuel-alito-announce-his-retirement-by-june-30-2027-20260630164636932-777-232",
+      "question": "Will Samuel Alito announce his retirement by June 30, 2027?",
+      "midpoint": 0.43,
+      "base": 0.17435,
+      "negated": 0.819062,
+      "gap": -0.006587
     },
     {
-      "marketId": 24,
-      "slug": "iran-charges-hormuz-fees-by-october-31",
-      "question": "Iran charges Hormuz fees by October 31?",
-      "negatedQuestion": "Iran does not charge Hormuz fees by October 31?",
-      "midpoint": 0.555,
-      "base": 0.720962,
-      "negated": 0.640781,
-      "gap": 0.361744
+      "marketId": 90,
+      "slug": "will-the-us-acquire-any-part-of-greenland-in-2026",
+      "question": "Will the US acquire part of Greenland in 2026?",
+      "midpoint": 0.07,
+      "base": 0.012497,
+      "negated": 0.981258,
+      "gap": -0.006245
+    },
+    {
+      "marketId": 93,
+      "slug": "will-the-us-confirm-that-aliens-exist-before-2027-789-924-249",
+      "question": "Will the US confirm that aliens exist before 2027?",
+      "midpoint": 0.055,
+      "base": 0.01464,
+      "negated": 0.97943,
+      "gap": -0.00593
+    },
+    {
+      "marketId": 59,
+      "slug": "us-iran-final-nuclear-deal-by-august-13-2026-20260621201255152",
+      "question": "US-Iran Final Nuclear Deal by August 13, 2026?",
+      "midpoint": 0.018,
+      "base": 0.014252,
+      "negated": 0.980159,
+      "gap": -0.005589
+    },
+    {
+      "marketId": 72,
+      "slug": "putin-out-as-president-of-russia-by-august-31-2026",
+      "question": "Putin out as President of Russia by August 31, 2026?",
+      "midpoint": 0.0165,
+      "base": 0.013928,
+      "negated": 0.980599,
+      "gap": -0.005474
+    },
+    {
+      "marketId": 94,
+      "slug": "will-the-us-confirm-that-aliens-exist-by-september-30-396",
+      "question": "Will the US confirm that aliens exist by September 30?",
+      "midpoint": 0.0265,
+      "base": 0.008346,
+      "negated": 0.986211,
+      "gap": -0.005443
+    },
+    {
+      "marketId": 100,
+      "slug": "iran-invades-kuwait-by-august-31-20260720015031546",
+      "question": "Iran invades Kuwait by August 31?",
+      "midpoint": 0.033,
+      "base": 0.012566,
+      "negated": 0.982172,
+      "gap": -0.005261
+    },
+    {
+      "marketId": 103,
+      "slug": "will-china-invade-taiwan-by-september-30-2026",
+      "question": "Will China invade Taiwan by September 30, 2026?",
+      "midpoint": 0.0145,
+      "base": 0.017012,
+      "negated": 0.979019,
+      "gap": -0.003969
+    },
+    {
+      "marketId": 95,
+      "slug": "xi-jinping-out-before-2027",
+      "question": "Xi Jinping out before 2027?",
+      "midpoint": 0.0465,
+      "base": 0.01548,
+      "negated": 0.981362,
+      "gap": -0.003158
+    },
+    {
+      "marketId": 101,
+      "slug": "hantavirus-pandemic-in-2026",
+      "question": "Hantavirus pandemic in 2026?",
+      "midpoint": 0.0325,
+      "base": 0.002726,
+      "negated": 0.994892,
+      "gap": -0.002382
+    },
+    {
+      "marketId": 73,
+      "slug": "strait-of-hormuz-traffic-returns-to-normal-by-august-31-20260702154212320",
+      "question": "Strait of Hormuz traffic returns to normal by August 31?",
+      "midpoint": 0.125,
+      "base": 0.021116,
+      "negated": 0.97702,
+      "gap": -0.001864
+    },
+    {
+      "marketId": 89,
+      "slug": "trump-out-as-president-before-2027",
+      "question": "Trump out as President before 2027?",
+      "midpoint": 0.075,
+      "base": 0.021344,
+      "negated": 0.976853,
+      "gap": -0.001804
+    },
+    {
+      "marketId": 97,
+      "slug": "will-trump-acquire-greenland-before-2027",
+      "question": "Will Trump acquire Greenland before 2027?",
+      "midpoint": 0.0445,
+      "base": 0.006464,
+      "negated": 0.991839,
+      "gap": -0.001698
+    },
+    {
+      "marketId": 1,
+      "slug": "will-united-russia-er-win-the-most-seats-in-the-next-russian-parliamentary-election",
+      "question": "Will United Russia (ER) win the most seats in the next Russian parliamentary election?",
+      "midpoint": 0.9585,
+      "base": 0.980058,
+      "negated": 0.018251,
+      "gap": -0.001691
     },
     {
       "marketId": 18,
       "slug": "us-x-iran-effective-ceasfire-by-august-31-20260715194822047",
       "question": "US x Iran Effective Ceasefire by August 31?",
-      "negatedQuestion": "US x Iran Effective Ceasefire NOT reached by August 31?",
       "midpoint": 0.715,
       "base": 0.698875,
-      "negated": 0.702638,
-      "gap": 0.401513
+      "negated": 0.300063,
+      "gap": -0.001062
+    },
+    {
+      "marketId": 102,
+      "slug": "will-jesus-christ-return-before-2027",
+      "question": "Will Jesus Christ return before 2027?",
+      "midpoint": 0.0195,
+      "base": 0.000376,
+      "negated": 0.999256,
+      "gap": -0.000368
+    },
+    {
+      "marketId": 98,
+      "slug": "major-volcano-eruption-vei-6-in-2026",
+      "question": "Major volcano eruption (VEI ≥6) in 2026?",
+      "midpoint": 0.044,
+      "base": 0.00749,
+      "negated": 0.992153,
+      "gap": -0.000358
+    },
+    {
+      "marketId": 2,
+      "slug": "will-nigel-farage-win-the-clacton-by-election-20260707144027825",
+      "question": "Will Nigel Farage win the Clacton by-election?",
+      "midpoint": 0.962,
+      "base": 0.847438,
+      "negated": 0.155581,
+      "gap": 0.003019
+    },
+    {
+      "marketId": 21,
+      "slug": "fed-rate-hike-in-2026",
+      "question": "Fed rate hike in 2026?",
+      "midpoint": 0.775,
+      "base": 0.338875,
+      "negated": 0.665375,
+      "gap": 0.00425
+    },
+    {
+      "marketId": 32,
+      "slug": "will-javier-milei-win-the-2027-argentina-presidential-election",
+      "question": "Will Javier Milei win the 2027 Argentina presidential election?",
+      "midpoint": 0.525,
+      "base": 0.421312,
+      "negated": 0.583208,
+      "gap": 0.004521
+    },
+    {
+      "marketId": 68,
+      "slug": "will-gavin-newsom-win-the-2028-democratic-presidential-nomination-568",
+      "question": "Will Gavin Newsom win the 2028 Democratic presidential nomination?",
+      "midpoint": 0.1935,
+      "base": 0.176744,
+      "negated": 0.828219,
+      "gap": 0.004962
+    },
+    {
+      "marketId": 23,
+      "slug": "iran-charges-hormuz-fees-by-december-31-20260706203029175",
+      "question": "Iran charges Hormuz fees by December 31?",
+      "midpoint": 0.665,
+      "base": 0.743494,
+      "negated": 0.262094,
+      "gap": 0.005588
+    },
+    {
+      "marketId": 27,
+      "slug": "will-the-democrats-win-the-2028-us-presidential-election",
+      "question": "Will the Democrats win the 2028 US Presidential Election?",
+      "midpoint": 0.585,
+      "base": 0.567231,
+      "negated": 0.439245,
+      "gap": 0.006476
+    },
+    {
+      "marketId": 11,
+      "slug": "will-no-fed-rate-cuts-happen-in-2026",
+      "question": "Will no Fed rate cuts happen in 2026?",
+      "midpoint": 0.8525,
+      "base": 0.82325,
+      "negated": 0.183406,
+      "gap": 0.006656
+    },
+    {
+      "marketId": 7,
+      "slug": "will-xavier-becerra-win-the-california-governor-election-in-2026",
+      "question": "Will Xavier Becerra win the California Governor Election in 2026?",
+      "midpoint": 0.927,
+      "base": 0.941831,
+      "negated": 0.065147,
+      "gap": 0.006979
+    },
+    {
+      "marketId": 39,
+      "slug": "2026-balance-of-power-d-senate-d-house-949",
+      "question": "2026 Balance of Power: D Senate, D House",
+      "midpoint": 0.435,
+      "base": 0.228806,
+      "negated": 0.780562,
+      "gap": 0.009369
+    },
+    {
+      "marketId": 53,
+      "slug": "billionaire-one-time-wealth-tax-passes-in-california-election-2026",
+      "question": "Billionaire one-time wealth tax passes in California election 2026?",
+      "midpoint": 0.335,
+      "base": 0.48375,
+      "negated": 0.525921,
+      "gap": 0.009671
+    },
+    {
+      "marketId": 60,
+      "slug": "will-marine-le-pen-win-the-2027-french-presidential-election",
+      "question": "Will Marine Le Pen win the 2027 French presidential election?",
+      "midpoint": 0.3205,
+      "base": 0.491496,
+      "negated": 0.522394,
+      "gap": 0.01389
+    },
+    {
+      "marketId": 36,
+      "slug": "will-the-fed-increase-interest-rates-by-25-bps-after-the-september-2026-meeting-649",
+      "question": "Will the Fed increase interest rates by 25 bps after the September 2026 meeting?",
+      "midpoint": 0.575,
+      "base": 0.504756,
+      "negated": 0.509275,
+      "gap": 0.014031
+    },
+    {
+      "marketId": 35,
+      "slug": "will-gadi-eizenkot-be-the-next-prime-minister-of-israel",
+      "question": "Will Gadi Eizenkot be the next Prime Minister of Israel?",
+      "midpoint": 0.518,
+      "base": 0.335704,
+      "negated": 0.678625,
+      "gap": 0.014329
+    },
+    {
+      "marketId": 26,
+      "slug": "will-luiz-incio-lula-da-silva-win-the-2026-brazilian-presidential-election",
+      "question": "Will Luiz Inácio Lula da Silva win the 2026 Brazilian presidential election?",
+      "midpoint": 0.635,
+      "base": 0.599187,
+      "negated": 0.416906,
+      "gap": 0.016094
+    },
+    {
+      "marketId": 34,
+      "slug": "will-the-doge-1-lunar-mission-launch-before-2027",
+      "question": "Will the Doge-1 Lunar Mission launch by December 31, 2026?",
+      "midpoint": 0.119,
+      "base": 0.306844,
+      "negated": 0.709625,
+      "gap": 0.016469
+    },
+    {
+      "marketId": 104,
+      "slug": "will-giorgia-meloni-be-the-next-prime-minister-of-italy",
+      "question": "Will Giorgia Meloni be the next Prime Minister of Italy?",
+      "midpoint": 0.405,
+      "base": 0.659844,
+      "negated": 0.357594,
+      "gap": 0.017437
+    },
+    {
+      "marketId": 29,
+      "slug": "will-united-russia-er-gain-the-most-seats-in-the-next-russian-parliamentary-election",
+      "question": "Will United Russia (ER) gain the most seats in the next Russian parliamentary election?",
+      "midpoint": 0.575,
+      "base": 0.188689,
+      "negated": 0.829194,
+      "gap": 0.017882
+    },
+    {
+      "marketId": 17,
+      "slug": "will-anthropic-ipo-by-september-15-2026-415",
+      "question": "Will Anthropic IPO by September 15, 2026?",
+      "midpoint": 0.011,
+      "base": 0.227975,
+      "negated": 0.795531,
+      "gap": 0.023506
+    },
+    {
+      "marketId": 31,
+      "slug": "will-the-republican-party-control-the-senate-after-the-2026-midterm-elections",
+      "question": "Will the Republican Party control the Senate after the 2026 Midterm elections?",
+      "midpoint": 0.555,
+      "base": 0.583625,
+      "negated": 0.440781,
+      "gap": 0.024406
+    },
+    {
+      "marketId": 20,
+      "slug": "will-paramount-close-warner-bros-acquisition",
+      "question": "Will Paramount close Warner Bros acquisition?",
+      "midpoint": 0.66,
+      "base": 0.262706,
+      "negated": 0.763719,
+      "gap": 0.026425
+    },
+    {
+      "marketId": 64,
+      "slug": "iran-full-airspace-closure-by-august-15",
+      "question": "Iran full airspace closure by August 15?",
+      "midpoint": 0.165,
+      "base": 0.332581,
+      "negated": 0.694024,
+      "gap": 0.026605
+    },
+    {
+      "marketId": 13,
+      "slug": "will-mojtaba-khamenei-be-head-of-state-in-iran-end-of-2026",
+      "question": "Will Mojtaba Khamenei be head of state in Iran end of 2026?",
+      "midpoint": 0.8005,
+      "base": 0.374594,
+      "negated": 0.652406,
+      "gap": 0.027
+    },
+    {
+      "marketId": 63,
+      "slug": "iran-full-airspace-closure-by-august-31-20260625195254151-668",
+      "question": "Iran full airspace closure by August 31?",
+      "midpoint": 0.295,
+      "base": 0.412752,
+      "negated": 0.615437,
+      "gap": 0.02819
+    },
+    {
+      "marketId": 24,
+      "slug": "iran-charges-hormuz-fees-by-october-31",
+      "question": "Iran charges Hormuz fees by October 31?",
+      "midpoint": 0.555,
+      "base": 0.720962,
+      "negated": 0.30875,
+      "gap": 0.029712
+    },
+    {
+      "marketId": 28,
+      "slug": "will-nvidia-be-the-largest-company-in-the-world-by-market-cap-on-december-31-244",
+      "question": "Will NVIDIA be the largest company in the world by market cap on December 31?",
+      "midpoint": 0.485,
+      "base": 0.460813,
+      "negated": 0.578794,
+      "gap": 0.039606
+    },
+    {
+      "marketId": 22,
+      "slug": "will-trump-be-impeached-before-his-term-ends",
+      "question": "Will Trump be impeached before his term ends?",
+      "midpoint": 0.655,
+      "base": 0.345219,
+      "negated": 0.695313,
+      "gap": 0.040531
+    },
+    {
+      "marketId": 12,
+      "slug": "will-nicols-maduro-be-the-leader-of-venezuela-end-of-2026",
+      "question": "Will Nicolás Maduro be the leader of Venezuela end of 2026?",
+      "midpoint": 0.826,
+      "base": 0.054174,
+      "negated": 0.986528,
+      "gap": 0.040701
+    },
+    {
+      "marketId": 10,
+      "slug": "will-the-democratic-party-control-the-house-after-the-2026-midterm-elections",
+      "question": "Will the Democratic Party control the House after the 2026 Midterm elections?",
+      "midpoint": 0.855,
+      "base": 0.784031,
+      "negated": 0.256812,
+      "gap": 0.040844
+    },
+    {
+      "marketId": 15,
+      "slug": "will-anthropic-ipo-by-october-31-2026",
+      "question": "Will Anthropic IPO by October 31, 2026?",
+      "midpoint": 0.355,
+      "base": 0.444625,
+      "negated": 0.597,
+      "gap": 0.041625
+    },
+    {
+      "marketId": 62,
+      "slug": "nato-x-russia-military-clash-by-august-31-2026",
+      "question": "NATO x Russia military clash by August 31, 2026?",
+      "midpoint": 0.045,
+      "base": 0.43303,
+      "negated": 0.610969,
+      "gap": 0.043999
+    },
+    {
+      "marketId": 40,
+      "slug": "netanyahu-out-before-2027-684-719-226-657",
+      "question": "Netanyahu out by end of 2026?",
+      "midpoint": 0.375,
+      "base": 0.526794,
+      "negated": 0.519744,
+      "gap": 0.046537
+    },
+    {
+      "marketId": 14,
+      "slug": "will-anthropic-ipo-by-december-31-2026-546-128",
+      "question": "Will Anthropic IPO by December 31, 2026?",
+      "midpoint": 0.71,
+      "base": 0.610575,
+      "negated": 0.447083,
+      "gap": 0.057658
+    },
+    {
+      "marketId": 61,
+      "slug": "nato-x-russia-military-clash-by-december-31-2026-244-538-582",
+      "question": "NATO x Russia military clash by December 31, 2026?",
+      "midpoint": 0.275,
+      "base": 0.652836,
+      "negated": 0.4054,
+      "gap": 0.058236
+    },
+    {
+      "marketId": 25,
+      "slug": "iran-charges-hormuz-fees-by-august-31-20260625175039062-177",
+      "question": "Iran charges Hormuz fees by August 31?",
+      "midpoint": 0.24,
+      "base": 0.628913,
+      "negated": 0.4385,
+      "gap": 0.067413
+    },
+    {
+      "marketId": 8,
+      "slug": "will-there-be-two-uk-prime-ministers-by-end-of-2027-20260706201826010",
+      "question": "Will there be two UK Prime Ministers by end of 2027?",
+      "midpoint": 0.865,
+      "base": 0.782149,
+      "negated": 0.295441,
+      "gap": 0.07759
+    },
+    {
+      "marketId": 52,
+      "slug": "will-nicols-maduro-be-sentenced-to-no-prison-time-974",
+      "question": "Will Nicolás Maduro be sentenced to no prison time?",
+      "midpoint": 0.365,
+      "base": 0.734184,
+      "negated": 0.345329,
+      "gap": 0.079513
+    },
+    {
+      "marketId": 9,
+      "slug": "will-spacex-have-the-highest-ipo-market-cap-2026-516",
+      "question": "Will SpaceX have the highest IPO Market Cap 2026?",
+      "midpoint": 0.865,
+      "base": 0.988953,
+      "negated": 0.147157,
+      "gap": 0.13611
     }
   ]
 }

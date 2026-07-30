@@ -62,169 +62,83 @@
   ],
   "models": [
     {
-      "model": "anthropic/claude-opus-5",
-      "consistency": 0.8302,
-      "reliability": 0.7885,
-      "negationCoherence": 0.7374,
-      "pairRepeat": 0.95,
-      "pairNegation": 0.86,
-      "selfAgreement": 0.815,
-      "aRate": 0.52,
-      "withinSd": 0.1349,
-      "rankAgreement": 0.68,
-      "sumAgreement": 0.95,
+      "model": "openai/gpt-5.6-sol-pro",
+      "consistency": 0.9603,
+      "reliability": 0.9855,
+      "negationCoherence": 0.9735,
+      "pairRepeat": 0.945,
+      "pairNegation": 0.955,
+      "selfAgreement": 0.9425,
+      "aRate": 0.4875,
+      "withinSd": 0.0339,
+      "rankAgreement": 0.925,
+      "sumAgreement": 0.96,
       "judgments": 400,
       "repeatComparisons": 200,
       "coherenceChecks": 200,
       "byMargin": [
         {
           "label": "0–5 pts",
-          "agreement": 0.7692,
-          "n": 52
-        },
-        {
-          "label": "5–15 pts",
-          "agreement": 0.6458,
-          "n": 48
-        },
-        {
-          "label": "15–30 pts",
-          "agreement": 0.6154,
-          "n": 52
-        },
-        {
-          "label": "30–50 pts",
-          "agreement": 0.5833,
-          "n": 36
-        },
-        {
-          "label": "50+ pts",
-          "agreement": 1,
-          "n": 12
-        }
-      ]
-    },
-    {
-      "model": "openai/gpt-5.6-luna-pro",
-      "consistency": 0.729,
-      "reliability": 0.7266,
-      "negationCoherence": 0.7132,
-      "pairRepeat": 0.89,
-      "pairNegation": 0.62,
-      "selfAgreement": 0.695,
-      "aRate": 0.56,
-      "withinSd": 0.1368,
-      "rankAgreement": 0.575,
-      "sumAgreement": 0.815,
-      "judgments": 400,
-      "repeatComparisons": 200,
-      "coherenceChecks": 200,
-      "byMargin": [
-        {
-          "label": "0–5 pts",
-          "agreement": 0.4333,
+          "agreement": 0.8667,
           "n": 60
         },
         {
           "label": "5–15 pts",
-          "agreement": 0.6389,
-          "n": 36
+          "agreement": 0.9219,
+          "n": 64
         },
         {
           "label": "15–30 pts",
-          "agreement": 0.7692,
-          "n": 52
+          "agreement": 1,
+          "n": 44
         },
         {
           "label": "30–50 pts",
-          "agreement": 0.5,
-          "n": 52
+          "agreement": 0.9286,
+          "n": 28
         },
         {
           "label": "50+ pts",
-          "agreement": 0,
-          "n": 0
+          "agreement": 1,
+          "n": 4
         }
       ]
     },
     {
-      "model": "openai/gpt-5.5",
-      "consistency": 0.7103,
-      "reliability": 0.9461,
-      "negationCoherence": 0.4706,
-      "pairRepeat": 0.89,
-      "pairNegation": 0.61,
-      "selfAgreement": 0.635,
-      "aRate": 0.48,
-      "withinSd": 0.0339,
-      "rankAgreement": 0.555,
-      "sumAgreement": 0.715,
+      "model": "google/gemini-3.6-flash",
+      "consistency": 0.958,
+      "reliability": 0.9812,
+      "negationCoherence": 0.9635,
+      "pairRepeat": 0.97,
+      "pairNegation": 0.96,
+      "selfAgreement": 0.915,
+      "aRate": 0.515,
+      "withinSd": 0.0396,
+      "rankAgreement": 0.85,
+      "sumAgreement": 0.98,
       "judgments": 400,
       "repeatComparisons": 200,
       "coherenceChecks": 200,
       "byMargin": [
         {
           "label": "0–5 pts",
-          "agreement": 0.4853,
-          "n": 136
-        },
-        {
-          "label": "5–15 pts",
-          "agreement": 0.55,
-          "n": 20
-        },
-        {
-          "label": "15–30 pts",
-          "agreement": 0.7857,
-          "n": 28
-        },
-        {
-          "label": "30–50 pts",
-          "agreement": 0.75,
-          "n": 16
-        },
-        {
-          "label": "50+ pts",
-          "agreement": 0,
-          "n": 0
-        }
-      ]
-    },
-    {
-      "model": "anthropic/claude-fable-5",
-      "consistency": 0.7027,
-      "reliability": 0.6775,
-      "negationCoherence": 0.5248,
-      "pairRepeat": 0.8878,
-      "pairNegation": 0.7347,
-      "selfAgreement": 0.6888,
-      "aRate": 0.4796,
-      "withinSd": 0.1334,
-      "rankAgreement": 0.6224,
-      "sumAgreement": 0.7551,
-      "judgments": 392,
-      "repeatComparisons": 196,
-      "coherenceChecks": 196,
-      "byMargin": [
-        {
-          "label": "0–5 pts",
-          "agreement": 0.4474,
+          "agreement": 0.6842,
           "n": 76
         },
         {
           "label": "5–15 pts",
-          "agreement": 0.7292,
-          "n": 48
+          "agreement": 0.9423,
+          "n": 52
         },
         {
           "label": "15–30 pts",
-          "agreement": 0.8214,
-          "n": 28
+          "agreement": 0.9318,
+          "n": 44
         },
         {
           "label": "30–50 pts",
-          "agreement": 0.6111,
-          "n": 36
+          "agreement": 1,
+          "n": 20
         },
         {
           "label": "50+ pts",
@@ -234,39 +148,211 @@
       ]
     },
     {
-      "model": "openai/gpt-5.6-terra-pro",
-      "consistency": 0.6966,
-      "reliability": 0.6952,
-      "negationCoherence": 0.5328,
-      "pairRepeat": 0.89,
-      "pairNegation": 0.71,
-      "selfAgreement": 0.655,
-      "aRate": 0.54,
-      "withinSd": 0.1111,
-      "rankAgreement": 0.615,
-      "sumAgreement": 0.695,
+      "model": "openai/gpt-5.5",
+      "consistency": 0.9542,
+      "reliability": 0.982,
+      "negationCoherence": 0.9792,
+      "pairRepeat": 0.95,
+      "pairNegation": 0.93,
+      "selfAgreement": 0.93,
+      "aRate": 0.495,
+      "withinSd": 0.037,
+      "rankAgreement": 0.86,
+      "sumAgreement": 1,
       "judgments": 400,
       "repeatComparisons": 200,
       "coherenceChecks": 200,
       "byMargin": [
         {
           "label": "0–5 pts",
-          "agreement": 0.48,
-          "n": 100
+          "agreement": 0.675,
+          "n": 80
         },
         {
           "label": "5–15 pts",
-          "agreement": 0.8438,
-          "n": 32
+          "agreement": 0.95,
+          "n": 40
         },
         {
           "label": "15–30 pts",
-          "agreement": 0.675,
+          "agreement": 1,
+          "n": 52
+        },
+        {
+          "label": "30–50 pts",
+          "agreement": 1,
+          "n": 28
+        },
+        {
+          "label": "50+ pts",
+          "agreement": 0,
+          "n": 0
+        }
+      ]
+    },
+    {
+      "model": "anthropic/claude-opus-5",
+      "consistency": 0.9527,
+      "reliability": 0.9938,
+      "negationCoherence": 0.9773,
+      "pairRepeat": 0.945,
+      "pairNegation": 0.945,
+      "selfAgreement": 0.9025,
+      "aRate": 0.4925,
+      "withinSd": 0.0229,
+      "rankAgreement": 0.825,
+      "sumAgreement": 0.98,
+      "judgments": 400,
+      "repeatComparisons": 200,
+      "coherenceChecks": 200,
+      "byMargin": [
+        {
+          "label": "0–5 pts",
+          "agreement": 0.6944,
+          "n": 108
+        },
+        {
+          "label": "5–15 pts",
+          "agreement": 0.9545,
+          "n": 44
+        },
+        {
+          "label": "15–30 pts",
+          "agreement": 1,
+          "n": 24
+        },
+        {
+          "label": "30–50 pts",
+          "agreement": 1,
+          "n": 8
+        },
+        {
+          "label": "50+ pts",
+          "agreement": 1,
+          "n": 16
+        }
+      ]
+    },
+    {
+      "model": "google/gemini-3.1-pro-preview",
+      "consistency": 0.946,
+      "reliability": 0.9849,
+      "negationCoherence": 0.9725,
+      "pairRepeat": 0.945,
+      "pairNegation": 0.925,
+      "selfAgreement": 0.9025,
+      "aRate": 0.4975,
+      "withinSd": 0.035,
+      "rankAgreement": 0.82,
+      "sumAgreement": 0.985,
+      "judgments": 400,
+      "repeatComparisons": 200,
+      "coherenceChecks": 200,
+      "byMargin": [
+        {
+          "label": "0–5 pts",
+          "agreement": 0.7125,
+          "n": 80
+        },
+        {
+          "label": "5–15 pts",
+          "agreement": 0.8462,
+          "n": 52
+        },
+        {
+          "label": "15–30 pts",
+          "agreement": 0.975,
           "n": 40
         },
         {
           "label": "30–50 pts",
-          "agreement": 0.7083,
+          "agreement": 0.8333,
+          "n": 24
+        },
+        {
+          "label": "50+ pts",
+          "agreement": 1,
+          "n": 4
+        }
+      ]
+    },
+    {
+      "model": "anthropic/claude-fable-5",
+      "consistency": 0.9448,
+      "reliability": 0.9851,
+      "negationCoherence": 0.9684,
+      "pairRepeat": 0.9286,
+      "pairNegation": 0.9184,
+      "selfAgreement": 0.9235,
+      "aRate": 0.5,
+      "withinSd": 0.0352,
+      "rankAgreement": 0.8724,
+      "sumAgreement": 0.9745,
+      "judgments": 392,
+      "repeatComparisons": 196,
+      "coherenceChecks": 196,
+      "byMargin": [
+        {
+          "label": "0–5 pts",
+          "agreement": 0.75,
+          "n": 92
+        },
+        {
+          "label": "5–15 pts",
+          "agreement": 0.95,
+          "n": 40
+        },
+        {
+          "label": "15–30 pts",
+          "agreement": 1,
+          "n": 32
+        },
+        {
+          "label": "30–50 pts",
+          "agreement": 1,
+          "n": 16
+        },
+        {
+          "label": "50+ pts",
+          "agreement": 1,
+          "n": 16
+        }
+      ]
+    },
+    {
+      "model": "z-ai/glm-5.2",
+      "consistency": 0.9361,
+      "reliability": 0.9565,
+      "negationCoherence": 0.9665,
+      "pairRepeat": 0.945,
+      "pairNegation": 0.925,
+      "selfAgreement": 0.8875,
+      "aRate": 0.5225,
+      "withinSd": 0.0534,
+      "rankAgreement": 0.8,
+      "sumAgreement": 0.975,
+      "judgments": 400,
+      "repeatComparisons": 200,
+      "coherenceChecks": 200,
+      "byMargin": [
+        {
+          "label": "0–5 pts",
+          "agreement": 0.5417,
+          "n": 72
+        },
+        {
+          "label": "5–15 pts",
+          "agreement": 0.9107,
+          "n": 56
+        },
+        {
+          "label": "15–30 pts",
+          "agreement": 0.9545,
+          "n": 44
+        },
+        {
+          "label": "30–50 pts",
+          "agreement": 1,
           "n": 24
         },
         {
@@ -278,82 +364,39 @@
     },
     {
       "model": "x-ai/grok-4.5",
-      "consistency": 0.6946,
-      "reliability": 0.5425,
-      "negationCoherence": 0.5531,
-      "pairRepeat": 0.885,
-      "pairNegation": 0.725,
-      "selfAgreement": 0.7675,
-      "aRate": 0.5475,
-      "withinSd": 0.1341,
-      "rankAgreement": 0.68,
-      "sumAgreement": 0.855,
+      "consistency": 0.9359,
+      "reliability": 0.9706,
+      "negationCoherence": 0.9738,
+      "pairRepeat": 0.94,
+      "pairNegation": 0.9,
+      "selfAgreement": 0.895,
+      "aRate": 0.525,
+      "withinSd": 0.0437,
+      "rankAgreement": 0.82,
+      "sumAgreement": 0.97,
       "judgments": 400,
       "repeatComparisons": 200,
       "coherenceChecks": 200,
       "byMargin": [
         {
           "label": "0–5 pts",
-          "agreement": 0.5833,
-          "n": 72
+          "agreement": 0.5588,
+          "n": 68
         },
         {
           "label": "5–15 pts",
-          "agreement": 0.5714,
+          "agreement": 0.8929,
           "n": 56
         },
         {
           "label": "15–30 pts",
-          "agreement": 0.875,
-          "n": 48
+          "agreement": 1,
+          "n": 40
         },
         {
           "label": "30–50 pts",
-          "agreement": 0.8333,
-          "n": 24
-        },
-        {
-          "label": "50+ pts",
-          "agreement": 0,
-          "n": 0
-        }
-      ]
-    },
-    {
-      "model": "openai/gpt-5.6-sol-pro",
-      "consistency": 0.6928,
-      "reliability": 0.9327,
-      "negationCoherence": 0.484,
-      "pairRepeat": 0.875,
-      "pairNegation": 0.545,
-      "selfAgreement": 0.6275,
-      "aRate": 0.4675,
-      "withinSd": 0.0394,
-      "rankAgreement": 0.58,
-      "sumAgreement": 0.675,
-      "judgments": 400,
-      "repeatComparisons": 200,
-      "coherenceChecks": 200,
-      "byMargin": [
-        {
-          "label": "0–5 pts",
-          "agreement": 0.4792,
-          "n": 144
-        },
-        {
-          "label": "5–15 pts",
-          "agreement": 0.85,
-          "n": 20
-        },
-        {
-          "label": "15–30 pts",
-          "agreement": 0.6875,
-          "n": 16
-        },
-        {
-          "label": "30–50 pts",
-          "agreement": 0.9375,
-          "n": 16
+          "agreement": 1,
+          "n": 32
         },
         {
           "label": "50+ pts",
@@ -363,212 +406,126 @@
       ]
     },
     {
-      "model": "google/gemini-3.1-pro-preview",
-      "consistency": 0.674,
-      "reliability": 0.84,
-      "negationCoherence": 0.4373,
-      "pairRepeat": 0.855,
-      "pairNegation": 0.605,
-      "selfAgreement": 0.6325,
-      "aRate": 0.4925,
-      "withinSd": 0.0659,
-      "rankAgreement": 0.62,
-      "sumAgreement": 0.645,
+      "model": "openai/gpt-5.6-terra-pro",
+      "consistency": 0.9286,
+      "reliability": 0.9578,
+      "negationCoherence": 0.9602,
+      "pairRepeat": 0.93,
+      "pairNegation": 0.91,
+      "selfAgreement": 0.885,
+      "aRate": 0.495,
+      "withinSd": 0.0536,
+      "rankAgreement": 0.835,
+      "sumAgreement": 0.935,
       "judgments": 400,
       "repeatComparisons": 200,
       "coherenceChecks": 200,
       "byMargin": [
         {
           "label": "0–5 pts",
-          "agreement": 0.4922,
-          "n": 128
+          "agreement": 0.5938,
+          "n": 64
         },
         {
           "label": "5–15 pts",
-          "agreement": 0.7917,
-          "n": 24
+          "agreement": 0.9531,
+          "n": 64
         },
         {
           "label": "15–30 pts",
           "agreement": 0.9167,
-          "n": 24
-        },
-        {
-          "label": "30–50 pts",
-          "agreement": 0.8333,
-          "n": 24
-        },
-        {
-          "label": "50+ pts",
-          "agreement": 0,
-          "n": 0
-        }
-      ]
-    },
-    {
-      "model": "deepseek/deepseek-v4-pro",
-      "consistency": 0.6589,
-      "reliability": 0.4967,
-      "negationCoherence": 0.6029,
-      "pairRepeat": 0.78,
-      "pairNegation": 0.66,
-      "selfAgreement": 0.755,
-      "aRate": 0.545,
-      "withinSd": 0.2176,
-      "rankAgreement": 0.74,
-      "sumAgreement": 0.77,
-      "judgments": 400,
-      "repeatComparisons": 200,
-      "coherenceChecks": 200,
-      "byMargin": [
-        {
-          "label": "0–5 pts",
-          "agreement": 0.625,
-          "n": 16
-        },
-        {
-          "label": "5–15 pts",
-          "agreement": 0.6765,
-          "n": 68
-        },
-        {
-          "label": "15–30 pts",
-          "agreement": 0.7708,
           "n": 48
         },
         {
           "label": "30–50 pts",
-          "agreement": 0.7969,
-          "n": 64
+          "agreement": 1,
+          "n": 16
         },
         {
           "label": "50+ pts",
           "agreement": 1,
-          "n": 4
-        }
-      ]
-    },
-    {
-      "model": "anthropic/claude-sonnet-5",
-      "consistency": 0.6504,
-      "reliability": 0.8812,
-      "negationCoherence": 0.4309,
-      "pairRepeat": 0.85,
-      "pairNegation": 0.54,
-      "selfAgreement": 0.55,
-      "aRate": 0.58,
-      "withinSd": 0.0646,
-      "rankAgreement": 0.565,
-      "sumAgreement": 0.535,
-      "judgments": 400,
-      "repeatComparisons": 200,
-      "coherenceChecks": 200,
-      "byMargin": [
-        {
-          "label": "0–5 pts",
-          "agreement": 0.5735,
-          "n": 68
-        },
-        {
-          "label": "5–15 pts",
-          "agreement": 0.5,
-          "n": 44
-        },
-        {
-          "label": "15–30 pts",
-          "agreement": 0.65,
-          "n": 40
-        },
-        {
-          "label": "30–50 pts",
-          "agreement": 0.5,
-          "n": 40
-        },
-        {
-          "label": "50+ pts",
-          "agreement": 0.75,
           "n": 8
         }
       ]
     },
     {
-      "model": "moonshotai/kimi-k3",
-      "consistency": 0.6374,
-      "reliability": 0.49,
-      "negationCoherence": 0.6357,
-      "pairRepeat": 0.8138,
-      "pairNegation": 0.5798,
-      "selfAgreement": 0.6676,
-      "aRate": 0.5399,
-      "withinSd": 0.1892,
-      "rankAgreement": 0.633,
-      "sumAgreement": 0.7021,
-      "judgments": 376,
-      "repeatComparisons": 188,
-      "coherenceChecks": 188,
+      "model": "deepseek/deepseek-v4-pro",
+      "consistency": 0.9215,
+      "reliability": 0.9208,
+      "negationCoherence": 0.9664,
+      "pairRepeat": 0.9082,
+      "pairNegation": 0.9082,
+      "selfAgreement": 0.9038,
+      "aRate": 0.4987,
+      "withinSd": 0.089,
+      "rankAgreement": 0.85,
+      "sumAgreement": 0.959,
+      "judgments": 395,
+      "repeatComparisons": 196,
+      "coherenceChecks": 196,
       "byMargin": [
         {
           "label": "0–5 pts",
-          "agreement": 0.5,
-          "n": 40
+          "agreement": 0.7917,
+          "n": 96
         },
         {
           "label": "5–15 pts",
-          "agreement": 0.5833,
-          "n": 60
+          "agreement": 0.8125,
+          "n": 32
         },
         {
           "label": "15–30 pts",
-          "agreement": 0.7167,
-          "n": 60
+          "agreement": 0.8889,
+          "n": 36
         },
         {
           "label": "30–50 pts",
-          "agreement": 0.75,
-          "n": 28
+          "agreement": 1,
+          "n": 16
         },
         {
           "label": "50+ pts",
-          "agreement": 0,
-          "n": 0
+          "agreement": 1,
+          "n": 20
         }
       ]
     },
     {
-      "model": "deepseek/deepseek-v4-flash",
-      "consistency": 0.6331,
-      "reliability": 0.471,
-      "negationCoherence": 0.557,
-      "pairRepeat": 0.865,
-      "pairNegation": 0.575,
-      "selfAgreement": 0.6975,
-      "aRate": 0.5275,
-      "withinSd": 0.1919,
-      "rankAgreement": 0.66,
-      "sumAgreement": 0.735,
+      "model": "openai/gpt-5.6-luna-pro",
+      "consistency": 0.9201,
+      "reliability": 0.9504,
+      "negationCoherence": 0.9628,
+      "pairRepeat": 0.935,
+      "pairNegation": 0.875,
+      "selfAgreement": 0.8775,
+      "aRate": 0.5175,
+      "withinSd": 0.059,
+      "rankAgreement": 0.8,
+      "sumAgreement": 0.955,
       "judgments": 400,
       "repeatComparisons": 200,
       "coherenceChecks": 200,
       "byMargin": [
         {
           "label": "0–5 pts",
-          "agreement": 0.575,
-          "n": 40
+          "agreement": 0.5625,
+          "n": 64
         },
         {
           "label": "5–15 pts",
-          "agreement": 0.6176,
-          "n": 68
+          "agreement": 0.8472,
+          "n": 72
         },
         {
           "label": "15–30 pts",
-          "agreement": 0.75,
-          "n": 52
+          "agreement": 0.9722,
+          "n": 36
         },
         {
           "label": "30–50 pts",
-          "agreement": 0.6667,
-          "n": 36
+          "agreement": 1,
+          "n": 24
         },
         {
           "label": "50+ pts",
@@ -578,121 +535,78 @@
       ]
     },
     {
-      "model": "nvidia/nemotron-3-ultra-550b-a55b",
-      "consistency": 0.6179,
-      "reliability": 0.6872,
-      "negationCoherence": 0.5048,
-      "pairRepeat": 0.805,
-      "pairNegation": 0.435,
-      "selfAgreement": 0.6575,
-      "aRate": 0.5425,
-      "withinSd": 0.1187,
-      "rankAgreement": 0.63,
-      "sumAgreement": 0.685,
-      "judgments": 400,
-      "repeatComparisons": 200,
-      "coherenceChecks": 200,
+      "model": "moonshotai/kimi-k3",
+      "consistency": 0.917,
+      "reliability": 0.9552,
+      "negationCoherence": 0.9605,
+      "pairRepeat": 0.8871,
+      "pairNegation": 0.8973,
+      "selfAgreement": 0.8847,
+      "aRate": 0.5013,
+      "withinSd": 0.0586,
+      "rankAgreement": 0.8564,
+      "sumAgreement": 0.9135,
+      "judgments": 373,
+      "repeatComparisons": 186,
+      "coherenceChecks": 185,
       "byMargin": [
         {
           "label": "0–5 pts",
-          "agreement": 0.5357,
-          "n": 84
-        },
-        {
-          "label": "5–15 pts",
-          "agreement": 0.5909,
-          "n": 44
-        },
-        {
-          "label": "15–30 pts",
-          "agreement": 0.75,
-          "n": 48
-        },
-        {
-          "label": "30–50 pts",
-          "agreement": 0.7917,
-          "n": 24
-        },
-        {
-          "label": "50+ pts",
-          "agreement": 0,
-          "n": 0
-        }
-      ]
-    },
-    {
-      "model": "z-ai/glm-5.2",
-      "consistency": 0.6142,
-      "reliability": 0.5168,
-      "negationCoherence": 0.5784,
-      "pairRepeat": 0.8593,
-      "pairNegation": 0.4472,
-      "selfAgreement": 0.6692,
-      "aRate": 0.5313,
-      "withinSd": 0.1568,
-      "rankAgreement": 0.6482,
-      "sumAgreement": 0.69,
-      "judgments": 399,
-      "repeatComparisons": 199,
-      "coherenceChecks": 199,
-      "byMargin": [
-        {
-          "label": "0–5 pts",
-          "agreement": 0.45,
-          "n": 60
-        },
-        {
-          "label": "5–15 pts",
-          "agreement": 0.625,
-          "n": 64
-        },
-        {
-          "label": "15–30 pts",
-          "agreement": 0.8333,
-          "n": 36
-        },
-        {
-          "label": "30–50 pts",
-          "agreement": 0.8205,
-          "n": 39
-        },
-        {
-          "label": "50+ pts",
-          "agreement": 0,
-          "n": 0
-        }
-      ]
-    },
-    {
-      "model": "google/gemini-3.5-flash-lite",
-      "consistency": 0.61,
-      "reliability": 0.5312,
-      "negationCoherence": 0.5461,
-      "pairRepeat": 0.835,
-      "pairNegation": 0.455,
-      "selfAgreement": 0.6825,
-      "aRate": 0.5675,
-      "withinSd": 0.1414,
-      "rankAgreement": 0.655,
-      "sumAgreement": 0.71,
-      "judgments": 400,
-      "repeatComparisons": 200,
-      "coherenceChecks": 200,
-      "byMargin": [
-        {
-          "label": "0–5 pts",
-          "agreement": 0.4868,
+          "agreement": 0.7763,
           "n": 76
         },
         {
           "label": "5–15 pts",
-          "agreement": 0.8036,
-          "n": 56
+          "agreement": 0.8636,
+          "n": 44
         },
         {
           "label": "15–30 pts",
-          "agreement": 0.65,
-          "n": 40
+          "agreement": 0.9063,
+          "n": 32
+        },
+        {
+          "label": "30–50 pts",
+          "agreement": 0.9688,
+          "n": 32
+        },
+        {
+          "label": "50+ pts",
+          "agreement": 1,
+          "n": 4
+        }
+      ]
+    },
+    {
+      "model": "deepseek/deepseek-v4-flash",
+      "consistency": 0.9164,
+      "reliability": 0.9365,
+      "negationCoherence": 0.9707,
+      "pairRepeat": 0.9,
+      "pairNegation": 0.89,
+      "selfAgreement": 0.885,
+      "aRate": 0.495,
+      "withinSd": 0.0751,
+      "rankAgreement": 0.815,
+      "sumAgreement": 0.955,
+      "judgments": 400,
+      "repeatComparisons": 200,
+      "coherenceChecks": 200,
+      "byMargin": [
+        {
+          "label": "0–5 pts",
+          "agreement": 0.7614,
+          "n": 88
+        },
+        {
+          "label": "5–15 pts",
+          "agreement": 0.8409,
+          "n": 44
+        },
+        {
+          "label": "15–30 pts",
+          "agreement": 0.8333,
+          "n": 24
         },
         {
           "label": "30–50 pts",
@@ -701,223 +615,309 @@
         },
         {
           "label": "50+ pts",
-          "agreement": 0,
-          "n": 0
+          "agreement": 1,
+          "n": 16
         }
       ]
     },
     {
-      "model": "google/gemini-3.6-flash",
-      "consistency": 0.6064,
-      "reliability": 0.5607,
-      "negationCoherence": 0.4913,
-      "pairRepeat": 0.93,
-      "pairNegation": 0.4,
-      "selfAgreement": 0.65,
-      "aRate": 0.48,
-      "withinSd": 0.1422,
-      "rankAgreement": 0.645,
-      "sumAgreement": 0.655,
+      "model": "google/gemini-3.5-flash-lite",
+      "consistency": 0.9163,
+      "reliability": 0.9609,
+      "negationCoherence": 0.9606,
+      "pairRepeat": 0.9,
+      "pairNegation": 0.88,
+      "selfAgreement": 0.88,
+      "aRate": 0.52,
+      "withinSd": 0.0551,
+      "rankAgreement": 0.805,
+      "sumAgreement": 0.955,
       "judgments": 400,
       "repeatComparisons": 200,
       "coherenceChecks": 200,
       "byMargin": [
         {
           "label": "0–5 pts",
-          "agreement": 0.5125,
-          "n": 80
+          "agreement": 0.7222,
+          "n": 72
         },
         {
           "label": "5–15 pts",
-          "agreement": 0.75,
+          "agreement": 0.875,
+          "n": 56
+        },
+        {
+          "label": "15–30 pts",
+          "agreement": 0.875,
+          "n": 16
+        },
+        {
+          "label": "30–50 pts",
+          "agreement": 0.7917,
+          "n": 48
+        },
+        {
+          "label": "50+ pts",
+          "agreement": 1,
+          "n": 8
+        }
+      ]
+    },
+    {
+      "model": "nvidia/nemotron-3-ultra-550b-a55b",
+      "consistency": 0.9157,
+      "reliability": 0.9598,
+      "negationCoherence": 0.9641,
+      "pairRepeat": 0.8939,
+      "pairNegation": 0.8737,
+      "selfAgreement": 0.8869,
+      "aRate": 0.5251,
+      "withinSd": 0.0575,
+      "rankAgreement": 0.8191,
+      "sumAgreement": 0.9548,
+      "judgments": 398,
+      "repeatComparisons": 198,
+      "coherenceChecks": 198,
+      "byMargin": [
+        {
+          "label": "0–5 pts",
+          "agreement": 0.6765,
+          "n": 68
+        },
+        {
+          "label": "5–15 pts",
+          "agreement": 0.8182,
+          "n": 55
+        },
+        {
+          "label": "15–30 pts",
+          "agreement": 0.9091,
+          "n": 44
+        },
+        {
+          "label": "30–50 pts",
+          "agreement": 1,
+          "n": 24
+        },
+        {
+          "label": "50+ pts",
+          "agreement": 1,
+          "n": 8
+        }
+      ]
+    },
+    {
+      "model": "anthropic/claude-sonnet-5",
+      "consistency": 0.902,
+      "reliability": 0.9609,
+      "negationCoherence": 0.9543,
+      "pairRepeat": 0.9,
+      "pairNegation": 0.82,
+      "selfAgreement": 0.875,
+      "aRate": 0.5,
+      "withinSd": 0.058,
+      "rankAgreement": 0.825,
+      "sumAgreement": 0.925,
+      "judgments": 400,
+      "repeatComparisons": 200,
+      "coherenceChecks": 200,
+      "byMargin": [
+        {
+          "label": "0–5 pts",
+          "agreement": 0.6563,
+          "n": 64
+        },
+        {
+          "label": "5–15 pts",
+          "agreement": 0.8833,
           "n": 60
         },
         {
           "label": "15–30 pts",
-          "agreement": 0.675,
-          "n": 40
+          "agreement": 0.9545,
+          "n": 44
         },
         {
           "label": "30–50 pts",
-          "agreement": 0.8,
-          "n": 20
+          "agreement": 0.9375,
+          "n": 16
         },
         {
           "label": "50+ pts",
-          "agreement": 0,
-          "n": 0
-        }
-      ]
-    },
-    {
-      "model": "mistralai/mistral-large-2512",
-      "consistency": 0.5726,
-      "reliability": 0.4686,
-      "negationCoherence": 0.6695,
-      "pairRepeat": 0.75,
-      "pairNegation": 0.37,
-      "selfAgreement": 0.605,
-      "aRate": 0.495,
-      "withinSd": 0.2032,
-      "rankAgreement": 0.575,
-      "sumAgreement": 0.635,
-      "judgments": 400,
-      "repeatComparisons": 200,
-      "coherenceChecks": 200,
-      "byMargin": [
-        {
-          "label": "0–5 pts",
-          "agreement": 0.5357,
-          "n": 28
-        },
-        {
-          "label": "5–15 pts",
-          "agreement": 0.5,
-          "n": 48
-        },
-        {
-          "label": "15–30 pts",
-          "agreement": 0.575,
-          "n": 80
-        },
-        {
-          "label": "30–50 pts",
-          "agreement": 0.7,
-          "n": 40
-        },
-        {
-          "label": "50+ pts",
-          "agreement": 0.5,
-          "n": 4
+          "agreement": 0.8125,
+          "n": 16
         }
       ]
     },
     {
       "model": "qwen/qwen3.5-plus-20260420",
-      "consistency": 0.5601,
-      "reliability": 0.5789,
-      "negationCoherence": 0.4523,
-      "pairRepeat": 0.8,
-      "pairNegation": 0.3862,
-      "selfAgreement": 0.5829,
-      "aRate": 0.5207,
-      "withinSd": 0.1328,
-      "rankAgreement": 0.5907,
-      "sumAgreement": 0.5751,
+      "consistency": 0.8994,
+      "reliability": 0.9433,
+      "negationCoherence": 0.9624,
+      "pairRepeat": 0.8579,
+      "pairNegation": 0.8579,
+      "selfAgreement": 0.8756,
+      "aRate": 0.5181,
+      "withinSd": 0.0732,
+      "rankAgreement": 0.8051,
+      "sumAgreement": 0.9476,
       "judgments": 386,
       "repeatComparisons": 190,
-      "coherenceChecks": 189,
+      "coherenceChecks": 190,
       "byMargin": [
         {
           "label": "0–5 pts",
-          "agreement": 0.5227,
+          "agreement": 0.7045,
           "n": 88
         },
         {
           "label": "5–15 pts",
-          "agreement": 0.52,
-          "n": 50
-        },
-        {
-          "label": "15–30 pts",
           "agreement": 0.75,
-          "n": 36
-        },
-        {
-          "label": "30–50 pts",
-          "agreement": 0.7895,
-          "n": 19
-        },
-        {
-          "label": "50+ pts",
-          "agreement": 0,
-          "n": 0
-        }
-      ]
-    },
-    {
-      "model": "openai/gpt-5-nano",
-      "consistency": 0.5531,
-      "reliability": 0.5198,
-      "negationCoherence": 0.5432,
-      "pairRepeat": 0.795,
-      "pairNegation": 0.325,
-      "selfAgreement": 0.5825,
-      "aRate": 0.5375,
-      "withinSd": 0.1697,
-      "rankAgreement": 0.55,
-      "sumAgreement": 0.615,
-      "judgments": 400,
-      "repeatComparisons": 200,
-      "coherenceChecks": 200,
-      "byMargin": [
-        {
-          "label": "0–5 pts",
-          "agreement": 0.4333,
-          "n": 60
-        },
-        {
-          "label": "5–15 pts",
-          "agreement": 0.5,
-          "n": 52
+          "n": 32
         },
         {
           "label": "15–30 pts",
-          "agreement": 0.6842,
-          "n": 76
+          "agreement": 0.9032,
+          "n": 31
         },
         {
           "label": "30–50 pts",
-          "agreement": 0.5,
-          "n": 12
+          "agreement": 0.9583,
+          "n": 24
         },
         {
           "label": "50+ pts",
-          "agreement": 0,
-          "n": 0
+          "agreement": 1,
+          "n": 20
         }
       ]
     },
     {
       "model": "xiaomi/mimo-v2.5",
-      "consistency": 0.5524,
-      "reliability": 0.4307,
-      "negationCoherence": 0.4812,
-      "pairRepeat": 0.77,
-      "pairNegation": 0.45,
-      "selfAgreement": 0.63,
-      "aRate": 0.495,
-      "withinSd": 0.1833,
-      "rankAgreement": 0.585,
-      "sumAgreement": 0.675,
+      "consistency": 0.8951,
+      "reliability": 0.9518,
+      "negationCoherence": 0.9613,
+      "pairRepeat": 0.865,
+      "pairNegation": 0.845,
+      "selfAgreement": 0.8525,
+      "aRate": 0.5125,
+      "withinSd": 0.0686,
+      "rankAgreement": 0.77,
+      "sumAgreement": 0.935,
       "judgments": 400,
       "repeatComparisons": 200,
       "coherenceChecks": 200,
       "byMargin": [
         {
           "label": "0–5 pts",
-          "agreement": 0.5139,
-          "n": 72
+          "agreement": 0.65,
+          "n": 80
         },
         {
           "label": "5–15 pts",
-          "agreement": 0.625,
-          "n": 72
+          "agreement": 0.8654,
+          "n": 52
         },
         {
           "label": "15–30 pts",
-          "agreement": 0.5833,
-          "n": 36
+          "agreement": 0.9583,
+          "n": 24
         },
         {
           "label": "30–50 pts",
-          "agreement": 0.625,
+          "agreement": 0.5,
           "n": 16
         },
         {
           "label": "50+ pts",
+          "agreement": 0.9286,
+          "n": 28
+        }
+      ]
+    },
+    {
+      "model": "openai/gpt-5-nano",
+      "consistency": 0.8464,
+      "reliability": 0.8951,
+      "negationCoherence": 0.9567,
+      "pairRepeat": 0.83,
+      "pairNegation": 0.76,
+      "selfAgreement": 0.79,
+      "aRate": 0.51,
+      "withinSd": 0.0858,
+      "rankAgreement": 0.765,
+      "sumAgreement": 0.815,
+      "judgments": 400,
+      "repeatComparisons": 200,
+      "coherenceChecks": 200,
+      "byMargin": [
+        {
+          "label": "0–5 pts",
+          "agreement": 0.6705,
+          "n": 88
+        },
+        {
+          "label": "5–15 pts",
+          "agreement": 0.75,
+          "n": 52
+        },
+        {
+          "label": "15–30 pts",
+          "agreement": 0.9583,
+          "n": 24
+        },
+        {
+          "label": "30–50 pts",
+          "agreement": 0.875,
+          "n": 24
+        },
+        {
+          "label": "50+ pts",
+          "agreement": 0.9167,
+          "n": 12
+        }
+      ]
+    },
+    {
+      "model": "mistralai/mistral-large-2512",
+      "consistency": 0.825,
+      "reliability": 0.9256,
+      "negationCoherence": 0.9293,
+      "pairRepeat": 0.78,
+      "pairNegation": 0.71,
+      "selfAgreement": 0.78,
+      "aRate": 0.475,
+      "withinSd": 0.0763,
+      "rankAgreement": 0.735,
+      "sumAgreement": 0.825,
+      "judgments": 400,
+      "repeatComparisons": 200,
+      "coherenceChecks": 200,
+      "byMargin": [
+        {
+          "label": "0–5 pts",
+          "agreement": 0.6167,
+          "n": 60
+        },
+        {
+          "label": "5–15 pts",
+          "agreement": 0.7031,
+          "n": 64
+        },
+        {
+          "label": "15–30 pts",
+          "agreement": 0.8056,
+          "n": 36
+        },
+        {
+          "label": "30–50 pts",
+          "agreement": 0.8571,
+          "n": 28
+        },
+        {
+          "label": "50+ pts",
           "agreement": 1,
-          "n": 4
+          "n": 12
         }
       ]
     }

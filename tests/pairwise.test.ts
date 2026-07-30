@@ -152,9 +152,10 @@ test("a coherent forecaster's answers invert under double negation", () => {
 // ---------------------------------------------------------------------------
 
 test("a negated side is published as that market's No", () => {
-  // The same mapping the direct path uses: the negated question resolving Yes
-  // IS the market's No. Both paths go through outcomeForPhrasing so they can
-  // never disagree about which side of a market a judgment refers to.
+  // The same mapping the direct path uses, and the same one the prompt states:
+  // a negated side IS that market resolving "No". Prompt, DB row and on-chain
+  // record all go through outcomeForPhrasing so they can never disagree about
+  // which side of a market a judgment refers to.
   assert.equal(outcomeForPhrasing(false), "Yes");
   assert.equal(outcomeForPhrasing(true), "No");
 });
@@ -350,30 +351,56 @@ test("an ambiguous slug is rejected rather than resolved arbitrarily", () => {
 // Prompt construction
 // ---------------------------------------------------------------------------
 
-test("the pairwise prompt swaps in the negated phrasing per side", () => {
+test("the pairwise prompt never rewrites a question — it names the outcome", () => {
+  // The bug this replaces: the negated side substituted `negatedQuestion` while
+  // the rules beside it still described the "Yes" outcome, so the prompt
+  // contradicted itself and the model was scored on resolving that.
   const [pair] = resolvePairs(dataset);
-  const both = buildPairwiseUserPrompt(pair, {
-    isANegated: false,
-    isBNegated: false,
-  });
+  const combos = PAIRWISE_COMBINATIONS.map((c) =>
+    buildPairwiseUserPrompt(pair, c),
+  );
+
+  for (const prompt of combos) {
+    // Both markets are always presented in their own words, whichever outcome
+    // each side is asked about.
+    assert.ok(
+      prompt.includes("Will China invade Taiwan by September 30, 2026?"),
+    );
+    assert.ok(prompt.includes("Will Anthropic IPO by September 15, 2026?"));
+    // And the rewritten questions never appear anywhere.
+    assert.ok(!prompt.includes("fail to invade"));
+    assert.ok(!prompt.includes("fail to IPO"));
+  }
+});
+
+test("only the requested outcomes differ between the four combinations", () => {
+  // The identity that flipping both sides inverts the answer holds only if the
+  // sides differ in the requested outcome and in NOTHING else. Strip the two
+  // outcome declarations and the timestamp, and all four prompts must be the
+  // same bytes.
+  const [pair] = resolvePairs(dataset);
+  const strip = (prompt: string): string =>
+    prompt
+      .replace(/the market below resolving to "(Yes|No)"/g, "OUTCOME")
+      .replace(/this market resolving to "(Yes|No)"/g, "OUTCOME")
+      .replace(/Current timestamp: \S+/, "TIMESTAMP");
+
+  const stripped = PAIRWISE_COMBINATIONS.map((c) =>
+    strip(buildPairwiseUserPrompt(pair, c)),
+  );
+  for (const prompt of stripped) assert.equal(prompt, stripped[0]);
+
+  // And the declarations themselves track the combination.
   const negA = buildPairwiseUserPrompt(pair, {
     isANegated: true,
     isBNegated: false,
   });
-  const negB = buildPairwiseUserPrompt(pair, {
-    isANegated: false,
-    isBNegated: true,
-  });
-
-  assert.ok(both.includes("Will China invade Taiwan by September 30, 2026?"));
-  assert.ok(both.includes("Will Anthropic IPO by September 15, 2026?"));
-
-  // Negating one side must leave the other side's phrasing untouched, or the
-  // four combinations stop being four distinct probes.
-  assert.ok(negA.includes("Will China fail to invade Taiwan"));
-  assert.ok(negA.includes("Will Anthropic IPO by September 15, 2026?"));
-  assert.ok(negB.includes("Will China invade Taiwan by September 30, 2026?"));
-  assert.ok(negB.includes("Will Anthropic fail to IPO"));
+  assert.ok(
+    negA.includes('Outcome A refers to: this market resolving to "No"'),
+  );
+  assert.ok(
+    negA.includes('Outcome B refers to: this market resolving to "Yes"'),
+  );
 });
 
 test("both sides carry their own rules and research", () => {
@@ -419,4 +446,12 @@ test("the pairwise system prompt asks for a rank and refuses a tie", () => {
   assert.ok(PAIRWISE_SYSTEM_PROMPT.includes("More likely: B"));
   assert.match(PAIRWISE_SYSTEM_PROMPT, /equally likely/);
   assert.match(PAIRWISE_SYSTEM_PROMPT, /must pick one/i);
+});
+
+test("the pairwise system prompt explains that rules are never inverted", () => {
+  // Without this the "No" side is ill-posed: a model reading Yes-shaped rules
+  // beside a request for "No" has to guess which of the two is authoritative,
+  // and that guess is noise we injected rather than noise we measured.
+  assert.match(PAIRWISE_SYSTEM_PROMPT, /never rewritten or inverted/i);
+  assert.match(PAIRWISE_SYSTEM_PROMPT, /NOT resolving "Yes"/);
 });

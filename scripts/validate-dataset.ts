@@ -8,12 +8,12 @@
 // anything — this exists so a dataset can be checked while it is being
 // authored, without a database, an API key, or a chain.
 //
-// The check that matters most is `negatedQuestion`. A market missing it does
-// not produce a missing row: the negated phrasing silently asks the BASE
-// question, and the answer is stored with is_negated = true and published
-// on-chain as that market's "No". Every structural check downstream passes.
-// The only symptom is a coherence metric near 1.0, which looks exactly like a
-// global inversion bug — so the dataset is the only place it can be caught.
+// The checks that matter most are the ones producing WRONG rows rather than
+// missing ones — a duplicate external id merging two markets into one, an
+// unresolvable pair slug — because every structural check downstream accepts
+// their output. `negatedQuestion` is deliberately NOT among them: the "No" side
+// is asked by naming the outcome on the unmodified market, so the field is
+// unused metadata. See the header of src/llm.ts.
 //
 // Exits non-zero on failure, so it can gate a pipeline.
 

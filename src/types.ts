@@ -12,6 +12,10 @@ export interface DatasetMarket {
   endDate?: string;
   slug: string;
   question: string;
+  // Authoring metadata only. The "No" side of a market is asked by naming the
+  // outcome and leaving the question, rules and research untouched — never by
+  // substituting a rewritten question — so nothing in the inference path reads
+  // this. See the header of src/llm.ts for why.
   negatedQuestion?: string;
   description?: string;
   // Orderbook state when the dataset was prepared. Optional because a synthetic
@@ -61,7 +65,8 @@ export interface ResolvedPair {
 }
 
 /**
- * Which phrasing each side of a pair was presented in.
+ * Which outcome each side of a pair was asked about — `true` for that market's
+ * "No", `false` for its "Yes".
  *
  * Every pair is asked in all four combinations. Flipping BOTH sides must invert
  * the answer for any coherent forecaster — if A's "Yes" beats B's "Yes", then
@@ -103,7 +108,7 @@ export interface BenchmarkConfig {
   models: ModelConfigEntry[];
   // Number of times each prompt is repeated per model per modality. Default 4.
   promptIterations: number;
-  // Repetitions of each of a pair's four phrasing combinations. Separate from
+  // Repetitions of each of a pair's four outcome combinations. Separate from
   // `promptIterations` because a pair already costs 4 calls per iteration, so
   // the two dials are set independently. Default 2.
   pairwiseIterations: number;
@@ -215,8 +220,8 @@ export interface PendingForecastRecord {
  * independent platform ids because the contract allows cross-venue comparisons;
  * this benchmark only produces Polymarket-vs-Polymarket pairs today.
  *
- * `marketAOutcome`/`marketBOutcome` are the phrasing mapped onto the market's
- * own outcomes: a side asked in its negated phrasing is that market's "No".
+ * `marketAOutcome`/`marketBOutcome` are the outcome each side was asked about:
+ * a negated side is that market's "No".
  */
 export interface PendingPairwiseForecastRecord {
   pairwiseForecastId: number;

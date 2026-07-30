@@ -142,7 +142,7 @@ export async function fakeGenerateForecast(
 
   // --- The normal path. ----------------------------------------------------
   // Give the fake the shape of the real signal: a base probability per market,
-  // with the negated phrasing landing near its complement plus a per-iteration
+  // with the "No" request landing near its complement plus a per-iteration
   // wobble. That way the coherence check in verify-run.ts reports a realistic
   // non-zero noise figure instead of a suspiciously perfect 0.
   const marketBase = marketAnchor(model, market.externalId);
