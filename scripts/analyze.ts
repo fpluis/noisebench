@@ -207,9 +207,12 @@ async function main(): Promise<void> {
       const field = meanOf(scores.map((s) => s[c.key]));
       console.log(
         `    ${c.label.padEnd(28)} field ${(100 * field).toFixed(1)}%  ` +
-          `baseline ${(100 * c.baseline).toFixed(1)}%`,
+          `random ${(100 * c.baseline).toFixed(1)}%`,
       );
     }
+    console.log(
+      `    ${"direction-blind negation error".padEnd(28)} ${(100 * directionBlind).toFixed(1)}%`,
+    );
 
     // ---------------------------------------------------------------------
     // Noise decomposition, on both scales and both subsets.
@@ -334,10 +337,14 @@ async function main(): Promise<void> {
     write(outDir, "metrics.json", {
       runId,
       // The five definitions travel with the numbers, so a chart can never
-      // label a metric with a formula the code no longer computes.
-      components: METRIC_COMPONENTS,
-      randomNoise: round(RANDOM_NOISE, 4),
-      directionBlind: round(directionBlind, 4),
+      // label a metric with a formula the code no longer computes. The
+      // random-answering baselines stay behind in src/metrics.ts: they are
+      // still worth computing as a sanity check on the run (the line printed
+      // above), but the site does not show them, so the payload does not carry
+      // them either.
+      components: METRIC_COMPONENTS.map(
+        ({ baseline, baselineNote, ...rest }) => rest,
+      ),
       field: Object.fromEntries([
         ["noise", round(meanOf(scores.map((s) => s.noise)), 4)],
         ...METRIC_KEYS.map((key) => [

@@ -7,9 +7,7 @@
       "formula": "mean over cells of  ( 1/n · Σ |pᵢ − p̄| ),  one cell per {model, question, wording}",
       "unit": "probability",
       "question": "Asked the identical question four times, how far apart are the four answers?",
-      "description": "For each model, each question and each wording there are four forecasts from a byte-identical prompt. Take the mean absolute deviation of those four numbers about their own average, then average that over every such set. It is a spread, not a comparison against anything external: 0% means the four repeats were identical.",
-      "baseline": 0.20833333333333334,
-      "baselineNote": "Four independent draws from U(0,1) have an expected mean absolute deviation of exactly 5/24."
+      "description": "For each model, each question and each wording there are four forecasts from a byte-identical prompt. Take the mean absolute deviation of those four numbers about their own average, then average that over every such set. It is a spread, not a comparison against anything external: 0% means the four repeats were identical."
     },
     {
       "key": "negationError",
@@ -17,9 +15,7 @@
       "formula": "mean over {model, question} of  | avg(Yes) − (1 − avg(No)) |",
       "unit": "probability",
       "question": "Asked for the Yes side and the No side of one market, do the two answers describe the same belief?",
-      "description": "Every market is asked both ways: the outcome as the market words it, and the opposite outcome. Average the four Yes forecasts, average the four No forecasts, convert the No average onto the Yes scale as 1 − avg(No), and take the absolute difference. Direction is discarded — this is error, not tilt. 0% means the two wordings agreed exactly.",
-      "baseline": 0.1638888888888889,
-      "baselineNote": "Two four-draw averages of U(0,1) sum to an Irwin-Hall(8) variate over four, giving E|avg(Yes) + avg(No) − 1| = 59/360."
+      "description": "Every market is asked both ways: the outcome as the market words it, and the opposite outcome. Average the four Yes forecasts, average the four No forecasts, convert the No average onto the Yes scale as 1 − avg(No), and take the absolute difference. Direction is discarded — this is error, not tilt. 0% means the two wordings agreed exactly."
     },
     {
       "key": "pairwiseDisagreement",
@@ -27,9 +23,7 @@
       "formula": "flipped / comparable,  over pairs of judgments differing only in promptIteration",
       "unit": "share",
       "question": "Asked the identical head-to-head comparison a second time, does it pick the same side?",
-      "description": "Head-to-head prompts fix the pair of outcomes and the wording of each side, so two iterations of one prompt are the same question asked twice. Count every pair of iterations that can be compared and take the share that disagree. 0% means the model repeated every pick.",
-      "baseline": 0.5,
-      "baselineNote": "Two independent coin flips differ half the time, so a model choosing at random flips 50%."
+      "description": "Head-to-head prompts fix the pair of outcomes and the wording of each side, so two iterations of one prompt are the same question asked twice. Count every pair of iterations that can be compared and take the share that disagree. 0% means the model repeated every pick."
     },
     {
       "key": "negationDisagreement",
@@ -37,9 +31,7 @@
       "formula": "violations / checks,  over the couples (A,B)⇄(¬A,¬B) and (A,¬B)⇄(¬A,B)",
       "unit": "share",
       "question": "Negating both sides of a comparison must reverse the pick. Does it?",
-      "description": "Each pair is asked in all four wording combinations. Two of them are logically forced to disagree with each other: whichever outcome the model prefers in “A or B?”, it must prefer the other in “not-A or not-B?”, and the same holds for “A or not-B?” against “not-A or B?”. A violation is picking the same market in both halves of a couple. Checking those two couples is jointly necessary and sufficient for the four answers to be coherent, and needs no probabilities at all.",
-      "baseline": 0.5,
-      "baselineNote": "A coin flip satisfies a required reversal half the time, so random answering violates 50%."
+      "description": "Each pair is asked in all four wording combinations. Two of them are logically forced to disagree with each other: whichever outcome the model prefers in “A or B?”, it must prefer the other in “not-A or not-B?”, and the same holds for “A or not-B?” against “not-A or B?”. A violation is picking the same market in both halves of a couple. Checking those two couples is jointly necessary and sufficient for the four answers to be coherent, and needs no probabilities at all."
     },
     {
       "key": "individualPairDisagreement",
@@ -47,13 +39,9 @@
       "formula": "disagreeing pairs / pairs,  majority(votes) vs sign( p̄(A) − p̄(B) )",
       "unit": "share",
       "question": "Does the outcome a model prefers head-to-head match the one it gave the higher probability to on its own?",
-      "description": "Two independent readings of the same belief. On the direct side, average the model's eight forecasts for each market on the Yes scale — four asked as Yes plus four asked as No and folded over — and see which market comes out higher. On the head-to-head side, turn each of the pair's judgments into a vote for one market: picking a side as worded votes for that market, picking a negated side votes against it, so for the other. A pair disagrees when the majority vote names a different market than the probabilities do; an even split counts as half.",
-      "baseline": 0.5,
-      "baselineNote": "Random picks carry no information about the model's own probabilities, so they land on the other market half the time."
+      "description": "Two independent readings of the same belief. On the direct side, average the model's eight forecasts for each market on the Yes scale — four asked as Yes plus four asked as No and folded over — and see which market comes out higher. On the head-to-head side, turn each of the pair's judgments into a vote for one market: picking a side as worded votes for that market, picking a negated side votes against it, so for the other. A pair disagrees when the majority vote names a different market than the probabilities do; an even split counts as half."
     }
   ],
-  "randomNoise": 0.3744,
-  "directionBlind": 0.6764,
   "field": {
     "noise": 0.0865,
     "averageError": 0.025,

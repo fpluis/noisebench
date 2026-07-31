@@ -449,17 +449,25 @@ leave a points-scale measure no room to move.
 **The random baselines are derived, not asserted, and never baked into the
 scaling.** Average error's 5/24 is the MAD of four iid U(0,1) draws; negation
 error's 59/360 is E|S₈ − 4|/4 under Irwin–Hall(8); the three judgment shares are
-50% by symmetry. Details on the site carries the derivations, and
-`tests/metrics.test.ts` checks both closed forms against a seeded Monte Carlo.
-Charts state the baseline in the caption rather than drawing it, since a 50%
-reference line would flatten a field spanning 3–29%.
+50% by symmetry. `tests/metrics.test.ts` checks both closed forms against a
+seeded Monte Carlo.
 
-**Random is not the worst case, and not a floor for gaming.** A wording-blind
-model — one that answers the same number regardless of direction — scores
-**67.6%**, computed from the run as mean |2·avg(Yes) − 1|. In the other
-direction, a model that always answers 50% and always picks the first option
-scores 0/0/0/100/50 → composite **30%**, better than random. Both are stated on
-the site so the score is not read as a skill measure.
+**The baselines are not shown on the site.** They were, in captions and a
+derivation table under Details, and they were cut: a reference at 50% next to a
+field spanning 3–29% tells a reader almost nothing, and stating it everywhere
+implied the score should be read against chance rather than against zero. Zero
+is the meaningful anchor — it is attainable, and it is what a self-consistent
+forecaster scores. The baselines stay in `src/metrics.ts`, are printed by
+`analyze.ts` as a sanity check on a run, and are no longer written into
+`metrics.json`.
+
+Two things the random reference was never a bound on, kept here for the same
+reason: a wording-blind model — one that answers the same number regardless of
+direction — scores **67.6%** on negation error, computed from the run as
+mean |2·avg(Yes) − 1|, so random is not the worst case; and a model that always
+answers 50% and always picks the first option scores 0/0/0/100/50 → composite
+**30%**, better than random, so it is not a floor for gaming either. The second
+is why the composite is never shown without its five parts.
 
 **The head-to-head repeat check is gameable** — a model that always picks the
 left option scores 0% disagreement. The negation check catches exactly that
@@ -511,9 +519,8 @@ src/analysis.ts                     the decomposition + Yes/No statistics (§2, 
 src/metrics.ts                      the five site measures + composite (§9)
 scripts/analyze.ts                  SQL → TS → site/data/*.json
 site/index.html                     the noise score and its five parts (§9)
-site/noise.html                     the five measures in depth (§9)
 site/markets.html                   per-question analysis (§3, §5)
-site/details.html                   method, formulas, baselines, coverage
+site/details.html                   method, formulas, coverage
 site/data/*.json                    committed, so the site opens with no DB
 ```
 

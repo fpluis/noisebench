@@ -534,6 +534,12 @@ button.sort span.on {
   display: none !important;
 }
 
+/* `display` on an author rule beats the UA rule behind the hidden attribute,
+   so anything laid out here has to opt back in. */
+[hidden] {
+  display: none !important;
+}
+
 @media (max-width: 640px) {
   .wrap {
     padding: 20px 14px 64px;

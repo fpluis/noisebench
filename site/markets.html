@@ -11,11 +11,9 @@
       <header class="masthead">
         <div>
           <h1>Markets</h1>
-          <div class="sub" id="runline">Loading…</div>
         </div>
         <nav class="tabs">
           <a href="index.html">Overview</a>
-          <a href="noise.html">Noise</a>
           <a href="markets.html" aria-current="page">Markets</a>
           <a href="details.html">Details</a>
           <button class="link" data-theme-toggle style="margin-left: 8px">
@@ -37,26 +35,6 @@
         </p>
         <div class="tiles" id="tiles"></div>
         <p class="note" id="pairnote"></p>
-      </section>
-
-      <section>
-        <h2>Every question</h2>
-        <p class="lede">
-          Sorted by market price, longest shots first. Click any heading to sort
-          by it. <b>Model estimate</b> is the panel's own probability for the
-          question — each model's two wordings folded onto one scale, then
-          averaged over models with equal weight — and its shading is how far
-          that sits above (green) or below (red) the market, reaching full
-          strength when the gap reaches 50%.
-        </p>
-        <figure>
-          <div class="table-wrap" id="marketTable"></div>
-          <figcaption>
-            The market price is the mid of the order book at snapshot time. Two
-            questions the panel reads very differently from the market are not
-            evidence of error on either side — the questions were still open.
-          </figcaption>
-        </figure>
       </section>
 
       <section>
@@ -99,6 +77,26 @@
           <figcaption id="worstcap"></figcaption>
         </figure>
       </section>
+
+      <section>
+        <h2>Every question</h2>
+        <p class="lede">
+          Sorted by market price, longest shots first. Click any heading to sort
+          by it. <b>Model estimate</b> is the panel's own probability for the
+          question — each model's two wordings folded onto one scale, then
+          averaged over models with equal weight — and its shading is how far
+          that sits above (green) or below (red) the market, reaching full
+          strength when the gap reaches 50%. The two <b>rank</b> columns place
+          the question among all <span id="nq">—</span>, most likely first, once
+          by market price and once by that estimate: where they differ, the
+          panel and the crowd order the field differently even if the
+          probabilities are close.
+        </p>
+        <figure>
+          <div class="table-wrap" id="marketTable"></div>
+          <figcaption id="rankcap"></figcaption>
+        </figure>
+      </section>
     </div>
 
     <script type="module">
@@ -116,19 +114,28 @@
 
       initTheme();
 
-      const [run, metrics] = await Promise.all([
-        loadJson("run.json"),
-        loadJson("metrics.json"),
-      ]);
+      const metrics = await loadJson("metrics.json");
 
-      document.getElementById("runline").textContent =
-        `${run.markets} questions · ${run.models.length} models · both wordings, ${run.promptIterations} attempts each`;
+      // Rank 1 is the most likely question of the run, by whichever number is
+      // ranking. Unpriced questions get no market rank rather than a last-place
+      // one, so a missing snapshot never reads as "the crowd thought this was
+      // impossible".
+      const rankBy = (pick) => {
+        const order = metrics.byMarket
+          .filter((m) => pick(m) !== null)
+          .sort((a, b) => pick(b) - pick(a));
+        return new Map(order.map((m, i) => [m.marketId, i + 1]));
+      };
+      const marketRanks = rankBy((m) => m.midpoint);
+      const modelRanks = rankBy((m) => m.modelEstimate);
 
       const rows = metrics.byMarket.map((m) => ({
         ...m,
         // Null when the run never recorded a snapshot price, which sorts to the
         // end rather than to zero.
         delta: m.midpoint === null ? null : m.modelEstimate - m.midpoint,
+        marketRank: marketRanks.get(m.marketId) ?? null,
+        modelRank: modelRanks.get(m.marketId) ?? null,
       }));
       const priced = rows.filter((r) => r.delta !== null);
 
@@ -228,10 +235,20 @@
             sortValue: (r) => r.midpoint,
           },
           {
+            name: "Market rank",
+            get: (r) => (r.marketRank === null ? "—" : String(r.marketRank)),
+            sortValue: (r) => r.marketRank,
+          },
+          {
             name: "Model estimate",
             get: (r) => pct(r.modelEstimate, 1),
             sortValue: (r) => r.modelEstimate,
             cellStyle: estimateStyle,
+          },
+          {
+            name: "Model rank",
+            get: (r) => (r.modelRank === null ? "—" : String(r.modelRank)),
+            sortValue: (r) => r.modelRank,
           },
           {
             name: "vs market",
@@ -254,6 +271,26 @@
         sortColumn: 1,
         descending: false,
       });
+
+      document.getElementById("nq").textContent = `${rows.length} questions`;
+
+      const ordinal = (n) => {
+        const suffix = ["th", "st", "nd", "rd"];
+        const v = n % 100;
+        return `${n}${suffix[(v - 20) % 10] ?? suffix[v] ?? suffix[0]}`;
+      };
+
+      const ranked = rows.filter((r) => r.marketRank !== null);
+      const gaps = ranked.map((r) => Math.abs(r.marketRank - r.modelRank));
+      const close = gaps.filter((g) => g <= 5).length;
+      const median = [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 2)];
+      const moved = ranked[gaps.indexOf(Math.max(...gaps))];
+      document.getElementById("rankcap").textContent =
+        `The market price is the mid of the order book at snapshot time. The two orderings agree far less than the two probability ` +
+        `columns suggest: the median question moves ${median} places between them and only ${close} of ${ranked.length} land within five, ` +
+        `because most of the run is packed into the bottom of the price range where a fraction of a point separates neighbours. ` +
+        `The widest gap is "${moved.question || moved.slug}", ${ordinal(moved.marketRank)} by market price against ` +
+        `${ordinal(moved.modelRank)} by the panel's estimate — which is not evidence of error on either side, since every question was still open.`;
 
       let view = "averageError";
       const label = () =>

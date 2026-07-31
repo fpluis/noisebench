@@ -11,11 +11,9 @@
       <header class="masthead">
         <div>
           <h1>Details</h1>
-          <div class="sub" id="runline">Loading…</div>
         </div>
         <nav class="tabs">
           <a href="index.html">Overview</a>
-          <a href="noise.html">Noise</a>
           <a href="markets.html">Markets</a>
           <a href="details.html" aria-current="page">Details</a>
           <button class="link" data-theme-toggle style="margin-left: 8px">
@@ -95,7 +93,6 @@
                 <tr>
                   <th style="text-align: left">Measure</th>
                   <th style="text-align: left">What it asks, and how</th>
-                  <th class="num">Random</th>
                   <th class="num">Field</th>
                   <th class="num">Best</th>
                 </tr>
@@ -110,142 +107,6 @@
             so the components travel with it everywhere.
           </figcaption>
         </figure>
-      </section>
-
-      <section>
-        <h2>Where the baselines come from</h2>
-        <p class="lede">
-          One reference point runs through the whole site: what a measure would
-          read for a forecaster answering <b>at random</b> — every direct
-          forecast an independent draw from a uniform distribution over 0–100%,
-          every head-to-head pick an independent coin flip. Nothing about these
-          particular questions enters, so each baseline is a property of the
-          measure and can be derived on paper rather than fitted.
-        </p>
-        <figure>
-          <div class="table-wrap">
-            <table class="prose">
-              <thead>
-                <tr>
-                  <th style="text-align: left">Measure</th>
-                  <th class="num">Random</th>
-                  <th style="text-align: left">Why that number</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style="text-align: left"><b>Average error</b></td>
-                  <td class="num">20.8%</td>
-                  <td style="text-align: left">
-                    The mean absolute deviation of four independent
-                    <code>U(0,1)</code> draws about their own mean. Writing
-                    <code>Σ|Xᵢ − X̄| = 2 Σ (Xᵢ − X̄)⁺</code> and folding the four
-                    symmetric terms into one gives
-                    <code>E[(3X₁ − X₂ − X₃ − X₄)⁺] / 2 = 5/24</code>. For two
-                    draws the same argument gives the familiar
-                    <code>E|X − Y| / 2 = 1/6</code>.
-                  </td>
-                </tr>
-                <tr>
-                  <td style="text-align: left"><b>Negation error</b></td>
-                  <td class="num">16.4%</td>
-                  <td style="text-align: left">
-                    Each arm is an average of four draws, so the two arms sum to
-                    an Irwin–Hall(8) variate over four:
-                    <code
-                      >E|avg(Yes) + avg(No) − 1| = E|S₈ − 4| / 4 = (59/90)/4 =
-                      59/360</code
-                    >. Smaller than the average-error baseline because averaging
-                    four draws pulls each arm toward 50%, where the two happen
-                    to be coherent.
-                  </td>
-                </tr>
-                <tr>
-                  <td style="text-align: left">
-                    <b>Pairwise disagreement</b>
-                  </td>
-                  <td class="num">50%</td>
-                  <td style="text-align: left">
-                    Two independent coin flips come back different half the
-                    time.
-                  </td>
-                </tr>
-                <tr>
-                  <td style="text-align: left">
-                    <b>Negation disagreement</b>
-                  </td>
-                  <td class="num">50%</td>
-                  <td style="text-align: left">
-                    A couple requires its two halves to name different markets.
-                    Two independent flips do that half the time — and this is
-                    the one check whose baseline needs no assumption about the
-                    forecaster's beliefs, because the requirement holds whatever
-                    it believes.
-                  </td>
-                </tr>
-                <tr>
-                  <td style="text-align: left">
-                    <b>Individual-pair disagreement</b>
-                  </td>
-                  <td class="num">50%</td>
-                  <td style="text-align: left">
-                    Random picks carry no information about the model's own
-                    probabilities, so the majority they form lands on the other
-                    market half the time. Ties count as half, which leaves the
-                    expectation at 50%.
-                  </td>
-                </tr>
-                <tr>
-                  <td style="text-align: left"><b>The composite</b></td>
-                  <td class="num" id="random-composite">—</td>
-                  <td style="text-align: left">
-                    The mean of the five above:
-                    <code>(5/24 + 59/360 + ½ + ½ + ½) / 5</code>. Every model in
-                    the run is far below it.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <figcaption>
-            Random answering is a reference, not a ceiling: the worst possible
-            score on each measure is 100%.
-          </figcaption>
-        </figure>
-
-        <p class="lede" style="margin-top: 22px">
-          Two things the random baseline is <em>not</em>.
-        </p>
-        <div class="tiles">
-          <div class="tile">
-            <div class="label">Not the worst case</div>
-            <div class="value" style="font-size: 26px" id="blind">—</div>
-            <div class="hint">
-              What negation error would read for a model that ignored the
-              requested outcome and repeated its Yes number for the No side —
-              <code>mean |2·avg(Yes) − 1|</code> over this run's own answers.
-              Unlike the others this one is data-derived: it depends on how
-              lopsided the questions are, and these are mostly long shots. It is
-              roughly what an earlier version of this benchmark measured, when
-              the No prompt was a hand-negated question fighting rules still
-              written for Yes.
-            </div>
-          </div>
-          <div class="tile">
-            <div class="label">Not a floor for cheating</div>
-            <div class="value" style="font-size: 26px">30%</div>
-            <div class="hint">
-              A model that answered 50% to everything and always picked the
-              option printed first would score 0% on average error, negation
-              error and pairwise disagreement, 100% on negation disagreement,
-              and 50% on individual-pair — a composite of 30%, better than
-              random. Nothing in this run is close: A-rates span
-              <span id="arates">—</span> and no model's average error is zero.
-              The composite is never shown without its five parts for exactly
-              this reason.
-            </div>
-          </div>
-        </div>
       </section>
 
       <section>
@@ -353,8 +214,8 @@ npm run site             # http://localhost:4321</pre>
         </figure>
         <p class="note">
           The five measures live in <code>src/metrics.ts</code>, are unit-tested
-          in <code>tests/metrics.test.ts</code> — including the two closed-form
-          baselines against a Monte-Carlo draw — and are emitted to
+          in <code>tests/metrics.test.ts</code> — including a worked example of
+          each — and are emitted to
           <code>site/data/metrics.json</code>, which with
           <code>run.json</code> is everything these pages read. The analysis
           layer also still writes <code>noise.json</code>, a fuller variance
@@ -386,8 +247,6 @@ npm run site             # http://localhost:4321</pre>
 
       const started = new Date(run.startedAt);
       const ended = new Date(run.endedAt);
-      document.getElementById("runline").textContent =
-        `${run.models.length} models · ${run.markets} questions · ${started.toISOString().slice(0, 10)}`;
 
       const attempted = run.models.reduce((s, m) => s + m.attempted, 0);
       const parsed = run.models.reduce((s, m) => s + m.parsed, 0);
@@ -433,24 +292,11 @@ npm run site             # http://localhost:4321</pre>
             ${c.question}
             <div style="margin-top:6px"><code>${c.formula}</code></div>
           </td>
-          <td class="num">${pct(c.baseline, 1)}</td>
           <td class="num">${pct(metrics.field[c.key], 1)}</td>
           <td class="num">${pct(Math.min(...models.map((m) => m[c.key])), 1)}</td>
         </tr>`,
         )
         .join("");
-
-      document.getElementById("random-composite").textContent = pct(
-        metrics.randomNoise,
-        1,
-      );
-      document.getElementById("blind").textContent = pct(
-        metrics.directionBlind,
-        1,
-      );
-      const aRates = models.map((m) => m.aRate);
-      document.getElementById("arates").textContent =
-        `${pct(Math.min(...aRates), 1)}–${pct(Math.max(...aRates), 1)}`;
 
       const failing = [...run.models]
         .filter((m) => m.parseFailureRate > 0)
