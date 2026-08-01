@@ -24,69 +24,41 @@
 
       <section>
         <p class="lede">
-          Measuring noise in AI models by forecasting real Polymarket events. <span id="scope">Loading…</span>
+          Measuring noise in AI models by forecasting real Polymarket events.
+          Noise measures focus on internal consistency, regardless of forecast accuracy.<span id="scope">Loading…</span>
         </p>
       </section>
 
       <section>
         <div class="chart-head">
           <div>
-            <h2>Noise</h2>
+            <h2>Noise Index</h2>
             <p class="lede" style="margin-bottom: 0">
-              One score per model: the unweighted mean of the five failure rates
-              below. Lower is better, and <b>0% is reachable</b> — a forecaster
-              that repeats itself, keeps its two wordings consistent and ranks
-              the same way twice scores zero on all five.
+              A single score per model that combines five noise measures.
             </p>
           </div>
         </div>
-        <p class="formula" id="composite-formula"></p>
         <figure>
           <div class="chart-scroll"><div id="composite"></div></div>
-          <figcaption>
-            Every component is internal: none of them needs to know how a market
-            resolved. Hover a bar for its five parts.
-          </figcaption>
         </figure>
+        <p class="formula" id="composite-formula"></p>
       </section>
 
       <section>
         <h2>What goes into the score</h2>
-        <p class="lede">
-          Five measures, equally weighted. Two are distances in probability —
-          how far a model's own numbers sit from each other, in percentage
-          points of probability. Three are shares of head-to-head judgments.
-          Each tile shows the field average and the formula it comes from.
-        </p>
         <div class="tiles wide" id="components"></div>
-        <p class="note">
-          Equal weight is not equal contribution: the three judgment shares run
-          several times larger than the two probability distances, so they carry
-          most of the composite. That is why the parts are never shown without
-          the whole.
-        </p>
       </section>
 
       <section>
-        <h2>Where each model gains and loses</h2>
-        <p class="lede">
-          The same five measures, per model, lowest first. Repeating yourself
-          turns out to be much easier than staying coherent across wordings, and
-          harder still is matching your own probabilities when the question is
-          put as a ranking.
-        </p>
+        <h2>Split noise metrics leaderboard</h2>
         <figure>
           <div class="chart-head">
             <div class="controls" style="margin-bottom: 0">
               <div class="seg" role="group" aria-label="Measure" id="partSeg">
-                <!-- Filled from the components in the data, so the buttons can
-                     never name a measure the analysis no longer emits. -->
               </div>
             </div>
             <button class="link" id="partTableBtn">Show data table</button>
           </div>
-          <!-- Only shown for a measure that has a signed form; the picker is
-               hidden entirely for the four that do not. -->
           <div class="controls" id="viewRow" hidden>
             <div class="seg" role="group" aria-label="View" id="viewSeg">
               <button data-view="absolute" aria-pressed="true">Absolute</button>
@@ -107,13 +79,6 @@
 
       <section>
         <h2>What consistency costs</h2>
-        <p class="lede">
-          Every answer above was bought. The field spans two hundredfold —
-          <span id="cost-span">—</span> — and the most consistent models are not
-          the cheap ones. <b>Consistency per $</b> reads the composite against
-          the price of producing it: inversely proportional to both, scaled so a
-          model sitting at the field average of each reads 1.00×.
-        </p>
         <p class="formula" id="cost-formula"></p>
         <figure>
           <div class="chart-head">
@@ -136,15 +101,6 @@
           <div class="table-wrap hidden" id="costTable"></div>
           <figcaption id="costcap"></figcaption>
         </figure>
-        <p class="note">
-          All three axes are logarithmic, because all three quantities are
-          ratios spanning more than one order of magnitude: on a linear price
-          axis the cheapest half of the field would share the first tenth of it.
-          Read a dot's position as a multiple of its neighbours', never as a
-          length from zero — which is also why these are dots and not bars,
-          since a bar drawn on a log axis states a ratio its length does not
-          have.
-        </p>
       </section>
     </div>
 

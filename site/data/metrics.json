@@ -4,42 +4,42 @@
     {
       "key": "averageError",
       "label": "Average error",
-      "formula": "mean over cells of  ( 1/n · Σ |pᵢ − p̄| ),  one cell per {model, question, wording}",
+      "formula": "mean MAD over cells of  ( 1/n · Σ |pᵢ − p̄| ),  one cell per {model, question, wording}",
       "unit": "probability",
-      "question": "Asked the identical question four times, how far apart are the four answers?",
-      "description": "For each model, each question and each wording there are four forecasts from a byte-identical prompt. Take the mean absolute deviation of those four numbers about their own average, then average that over every such set. It is a spread, not a comparison against anything external: 0% means the four repeats were identical."
+      "question": "How much do odds change on average for the same exact input?",
+      "description": "Mean absolute deviation of each question's forecasts, averaged for the whole benchmark."
     },
     {
       "key": "negationError",
       "label": "Negation error",
       "formula": "mean over {model, question} of  | avg(Yes) − (1 − avg(No)) |",
       "unit": "probability",
-      "question": "Asked for the Yes side and the No side of one market, do the two answers describe the same belief?",
-      "description": "Every market is asked both ways: the outcome as the market words it, and the opposite outcome. Average the four Yes forecasts, average the four No forecasts, convert the No average onto the Yes scale as 1 − avg(No), and take the absolute difference. Direction is discarded — this is error, not tilt. 0% means the two wordings agreed exactly."
+      "question": "How much do odds change when the forecasting the outcome as not happening?",
+      "description": "Average the Yes forecasts, average the No forecasts, convert the No average onto the Yes scale as 1 − avg(No), and take the absolute difference."
     },
     {
       "key": "pairwiseDisagreement",
       "label": "Pairwise disagreement",
-      "formula": "flipped / comparable,  over pairs of judgments differing only in promptIteration",
+      "formula": "(flipped_count / comparable_count) over pairs of judgments differing only in promptIteration",
       "unit": "share",
-      "question": "Asked the identical head-to-head comparison a second time, does it pick the same side?",
-      "description": "Head-to-head prompts fix the pair of outcomes and the wording of each side, so two iterations of one prompt are the same question asked twice. Count every pair of iterations that can be compared and take the share that disagree. 0% means the model repeated every pick."
+      "question": "How often does the model pick the same event as being likelier in a direct comparison?",
+      "description": "Percentage of question pairs where the model changed its mind on a second run while keeping exactly the same inputs."
     },
     {
       "key": "negationDisagreement",
       "label": "Negation disagreement",
-      "formula": "violations / checks,  over the couples (A,B)⇄(¬A,¬B) and (A,¬B)⇄(¬A,B)",
+      "formula": "logical violations in choices over the couples (A,B)⇄(¬A,¬B) and (A,¬B)⇄(¬A,B)",
       "unit": "share",
-      "question": "Negating both sides of a comparison must reverse the pick. Does it?",
-      "description": "Each pair is asked in all four wording combinations. Two of them are logically forced to disagree with each other: whichever outcome the model prefers in “A or B?”, it must prefer the other in “not-A or not-B?”, and the same holds for “A or not-B?” against “not-A or B?”. A violation is picking the same market in both halves of a couple. Checking those two couples is jointly necessary and sufficient for the four answers to be coherent, and needs no probabilities at all."
+      "question": "How often does negating both sides of a comparison not change the pick?",
+      "description": "If the model picks A in “A or B?”, it must pick B in “not-A or not-B?”, and the same holds for “A or not-B?” against “not-A or B?”. Picking the same in both cases means the model arrives at logically inconsistent conclusions."
     },
     {
       "key": "individualPairDisagreement",
       "label": "Individual-pair disagreement",
       "formula": "disagreeing pairs / pairs,  majority(votes) vs sign( p̄(A) − p̄(B) )",
       "unit": "share",
-      "question": "Does the outcome a model prefers head-to-head match the one it gave the higher probability to on its own?",
-      "description": "Two independent readings of the same belief. On the direct side, average the model's eight forecasts for each market on the Yes scale — four asked as Yes plus four asked as No and folded over — and see which market comes out higher. On the head-to-head side, turn each of the pair's judgments into a vote for one market: picking a side as worded votes for that market, picking a negated side votes against it, so for the other. A pair disagrees when the majority vote names a different market than the probabilities do; an even split counts as half."
+      "question": "How often do pair judgments disagree with single odds forecasts?",
+      "description": "Percentage of pairs where the model's majority pairwise picks implies a different odds absolute rank vs forecasting the two markets standalone. Eg a disagreeing pair would be the model picking A > B, but then forecasting A = 50% and B = 60%"
     }
   ],
   "field": {

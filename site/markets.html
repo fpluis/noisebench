@@ -24,14 +24,7 @@
 
       <section>
         <p class="lede">
-          The same two probability-scale measures, sliced by question instead of
-          by model. Both are averages over the twenty models: the average error
-          of one question is how far a typical model's four identical repeats
-          fell from each other on it, and its negation error is how far a
-          typical model's two wordings fell from each other. The market price is
-          what the crowd thought at the moment the question was put to the
-          models — it is context for reading the panel's estimate, never a right
-          answer.
+          Market-level analysis of noise across AI forecasters.
         </p>
         <div class="tiles" id="tiles"></div>
         <p class="note" id="pairnote"></p>
@@ -39,11 +32,6 @@
 
       <section>
         <h2>The panel against the market</h2>
-        <p class="lede">
-          Each dot is one question. On the diagonal the panel agrees with the
-          market; below it the panel thinks the outcome is less likely than the
-          crowd does, above it more.
-        </p>
         <figure>
           <div class="chart-head">
             <div class="legend" id="scatterLegend"></div>
@@ -56,12 +44,8 @@
       <section>
         <h2>The spread behind each estimate</h2>
         <p class="lede">
-          The same questions again, but with the panel taken apart. One column
-          per question, ordered by market price — the longest shots on the left,
-          the near-certainties on the right. Each tick is one model's own
-          estimate, both its wordings folded onto the Yes scale, and the cross
-          is what the market was paying. The dot on the chart above is the mean
-          of one of these columns; this is what that mean is hiding.
+          Crosses mark the market's midpoint at snapshot time, the blue lines
+          represent the model probability spreads with 1 line per avg forecast.
         </p>
         <figure>
           <div class="chart-head">
@@ -75,11 +59,8 @@
       <section>
         <h2>Noise against distance from the market</h2>
         <p class="lede">
-          Whether disagreeing with the crowd goes with being unsure. The
-          horizontal axis is how far the typical model sat from the market price
-          on a question — the mean of the twenty distances, so models missing in
-          opposite directions do not cancel the way they do in the panel's
-          average. Against it, both probability-scale measures at once.
+          Correlation between disagreement with market and overall noise.
+          Note models do not see the market prices explicitly.
         </p>
         <figure>
           <div class="chart-head">
@@ -118,16 +99,8 @@
       <section>
         <h2>Every question</h2>
         <p class="lede">
-          Sorted by market price, longest shots first. Click any heading to sort
-          by it. <b>Model estimate</b> is the panel's own probability for the
-          question — each model's two wordings folded onto one scale, then
-          averaged over models with equal weight — and its shading is how far
-          that sits above (green) or below (red) the market, reaching full
-          strength when the gap reaches 50%. The two <b>rank</b> columns place
-          the question among all <span id="nq">—</span>, most likely first, once
-          by market price and once by that estimate: where they differ, the
-          panel and the crowd order the field differently even if the
-          probabilities are close.
+          Panel-level odds and noise compared to market. Click any
+          heading to sort.
         </p>
         <figure>
           <div class="table-wrap" id="marketTable"></div>
@@ -232,12 +205,12 @@
         [
           "Questions",
           String(rows.length),
-          `${priced.length} with a recorded market price`,
+          ``,
         ],
         [
           "Typical gap to the market",
           pct(meanAbsDelta, 1),
-          `Mean |estimate − price|; ${below} of ${priced.length} sit below the market`,
+          `Mean |panel estimate − price|; ${below} of ${priced.length} sit below the market`,
         ],
         [
           "Average error",
@@ -259,10 +232,6 @@
         </div>`,
         )
         .join("");
-
-      document.getElementById("pairnote").textContent =
-        `The three head-to-head measures have no per-question form: the run's 50 pairs are not a perfect matching — one question sits in two ` +
-        `pairs and another in none — so a "per question" rate would divide by a number that changes from row to row. They are per model only.`;
 
       // Colour carries the magnitude of the gap and the neighbouring column
       // carries its number, so the wash is never the only way to read it.
@@ -340,12 +309,6 @@
         Math.floor(gaps.length / 2)
       ];
       const moved = ranked[gaps.indexOf(Math.max(...gaps))];
-      document.getElementById("rankcap").textContent =
-        `The market price is the mid of the order book at snapshot time. The two orderings agree far less than the two probability ` +
-        `columns suggest: the median question moves ${median} places between them and only ${close} of ${ranked.length} land within five, ` +
-        `because most of the run is packed into the bottom of the price range where a fraction of a point separates neighbours. ` +
-        `The widest gap is "${moved.question || moved.slug}", ${ordinal(moved.marketRank)} by market price against ` +
-        `${ordinal(moved.modelRank)} by the panel's estimate — which is not evidence of error on either side, since every question was still open.`;
 
       let view = "averageError";
       const label = () =>
@@ -584,11 +547,6 @@
             ["Negation error", pct(p.raw.negationError, 1)],
           ],
         });
-
-        document.getElementById("scattercap").textContent =
-          `The panel tracks the market across the range and sits below it more often than above — ${below} of ${priced.length} questions — ` +
-          `by ${pct(meanAbsDelta, 1)} on average. The scatter is widest in the upper half of the price range, where a question the market ` +
-          `treats as likely can still read as a long shot to the models.`;
 
         drawStrip();
         drawDistance();
