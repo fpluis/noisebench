@@ -24,12 +24,7 @@
 
       <section>
         <p class="lede">
-          Ask a language model the same forecasting question twice and you get
-          two different answers. Ask it for the opposite outcome and the two
-          answers may not add up. Ask it to rank two outcomes and the ranking
-          may not match the probabilities it just gave. This benchmark measures
-          that — <b>how far a model is from agreeing with itself</b>, never
-          whether it was right. <span id="scope">Loading…</span>
+          Measuring noise in AI models by forecasting real Polymarket events. <span id="scope">Loading…</span>
         </p>
       </section>
 
@@ -53,7 +48,6 @@
             resolved. Hover a bar for its five parts.
           </figcaption>
         </figure>
-        <div class="tiles" style="margin-top: 12px" id="topline"></div>
       </section>
 
       <section>
@@ -110,10 +104,54 @@
           <figcaption id="partcap"></figcaption>
         </figure>
       </section>
+
+      <section>
+        <h2>What consistency costs</h2>
+        <p class="lede">
+          Every answer above was bought. The field spans two hundredfold —
+          <span id="cost-span">—</span> — and the most consistent models are not
+          the cheap ones. <b>Consistency per $</b> reads the composite against
+          the price of producing it: inversely proportional to both, scaled so a
+          model sitting at the field average of each reads 1.00×.
+        </p>
+        <p class="formula" id="cost-formula"></p>
+        <figure>
+          <div class="chart-head">
+            <div class="controls" style="margin-bottom: 0">
+              <div class="seg" role="group" aria-label="Measure" id="costSeg">
+                <button data-cost="consistencyPerDollar" aria-pressed="true">
+                  Consistency per $
+                </button>
+                <button data-cost="costPerAnswer" aria-pressed="false">
+                  Cost per answer
+                </button>
+                <button data-cost="tokensOut" aria-pressed="false">
+                  Tokens out
+                </button>
+              </div>
+            </div>
+            <button class="link" id="costTableBtn">Show data table</button>
+          </div>
+          <div class="chart-scroll"><div id="cost"></div></div>
+          <div class="table-wrap hidden" id="costTable"></div>
+          <figcaption id="costcap"></figcaption>
+        </figure>
+        <p class="note">
+          All three axes are logarithmic, because all three quantities are
+          ratios spanning more than one order of magnitude: on a linear price
+          axis the cheapest half of the field would share the first tenth of it.
+          Read a dot's position as a multiple of its neighbours', never as a
+          length from zero — which is also why these are dots and not bars,
+          since a bar drawn on a log axis states a ratio its length does not
+          have.
+        </p>
+      </section>
     </div>
 
     <script type="module">
       import {
+        count,
+        dotRows,
         groupedColumns,
         horizontalBars,
         initTheme,
@@ -123,6 +161,8 @@
         renderTable,
         shortModel,
         signedPct,
+        times,
+        usd,
         wireTableToggle,
       } from "./assets/viz.js";
 
@@ -132,13 +172,8 @@
 
       const models = metrics.models;
       const components = metrics.components;
-      const quietest = models[0];
-      const noisiest = models[models.length - 1];
 
-      const answers = models.reduce(
-        (s, m) => s + m.forecasts + m.judgments,
-        0,
-      );
+      const answers = models.reduce((s, m) => s + m.forecasts + m.judgments, 0);
       document.getElementById("scope").textContent =
         `${models.length} models, ${metrics.byMarket.length} Polymarket questions, ` +
         `${answers.toLocaleString()} answers.`;
@@ -147,33 +182,6 @@
         `noise = ( ${components.map((c) => c.label.toLowerCase()).join("\n         + ")} ) / 5` +
         `<span class="unit">Each term is already a percentage of its own denominator, so the mean is a percentage too. ` +
         `A perfectly self-consistent forecaster scores 0%.</span>`;
-
-      document.getElementById("topline").innerHTML = [
-        [
-          "Quietest",
-          shortModel(quietest.model),
-          `${pct(quietest.noise, 1)} — ${pct(metrics.field.noise - quietest.noise, 1)} below the field`,
-        ],
-        [
-          "Noisiest",
-          shortModel(noisiest.model),
-          `${pct(noisiest.noise, 1)} — ${(noisiest.noise / quietest.noise).toFixed(1)}× the quietest`,
-        ],
-        [
-          "Field average",
-          pct(metrics.field.noise, 1),
-          `Across all ${models.length} models`,
-        ],
-      ]
-        .map(
-          ([label, value, hint], i) => `
-        <div class="tile${i === 0 ? " accent" : ""}">
-          <div class="label">${label}</div>
-          <div class="value" style="font-size:${i === 2 ? "30px" : "20px"}">${value}</div>
-          <div class="hint">${hint}</div>
-        </div>`,
-        )
-        .join("");
 
       document.getElementById("components").innerHTML = components
         .map(
@@ -322,11 +330,198 @@
                   get: (r) => pct(r[c.key], 1),
                 })),
               ],
-          directional
-            ? [...models].sort((a, b) => a.drift - b.drift)
-            : models,
+          directional ? [...models].sort((a, b) => a.drift - b.drift) : models,
         );
+
+        drawCost();
       };
+
+      // -----------------------------------------------------------------
+      // What consistency costs
+      // -----------------------------------------------------------------
+      //
+      // Three quantities that share a shape but not a unit — dollars, tokens
+      // and a ratio — so they take turns on one axis rather than sharing one.
+      // A second y scale would be the only way to put them together, and there
+      // is no honest one.
+      const field = metrics.field;
+      const byCost = (key) =>
+        models.filter((m) => typeof m[key] === "number" && m[key] > 0);
+      const priced = byCost("costPerAnswer");
+      const cheapest = [...priced].sort(
+        (a, b) => a.costPerAnswer - b.costPerAnswer,
+      )[0];
+      const dearest = [...priced].sort(
+        (a, b) => b.costPerAnswer - a.costPerAnswer,
+      )[0];
+      const bestValue = [...byCost("consistencyPerDollar")].sort(
+        (a, b) => b.consistencyPerDollar - a.consistencyPerDollar,
+      )[0];
+      const steadiest = models[0];
+      const noiseSpread = models[models.length - 1].noise / steadiest.noise;
+      const costSpread = dearest.costPerAnswer / cheapest.costPerAnswer;
+      const dearerToRank = models.filter(
+        (m) => m.costPerJudgment > m.costPerForecast,
+      ).length;
+
+      // Pearson r across the twenty models. Price is read on a log scale
+      // because that is the scale it varies on: the interesting question is
+      // whether paying twice as much buys consistency, not whether paying
+      // $0.04 more does.
+      const mean = (xs) => xs.reduce((s, x) => s + x, 0) / xs.length;
+      const pearson = (xs, ys) => {
+        const mx = mean(xs);
+        const my = mean(ys);
+        let sxy = 0;
+        let sx = 0;
+        let sy = 0;
+        for (let i = 0; i < xs.length; i += 1) {
+          sxy += (xs[i] - mx) * (ys[i] - my);
+          sx += (xs[i] - mx) ** 2;
+          sy += (ys[i] - my) ** 2;
+        }
+        return sxy / Math.sqrt(sx * sy);
+      };
+      const signedR = (r) => `${r < 0 ? "−" : "+"}${Math.abs(r).toFixed(2)}`;
+      const rPriceNoise = pearson(
+        priced.map((m) => Math.log10(m.costPerAnswer)),
+        priced.map((m) => m.noise),
+      );
+      const rLengthNoise = pearson(
+        byCost("tokensOut").map((m) => Math.log10(m.tokensOut)),
+        byCost("tokensOut").map((m) => m.noise),
+      );
+
+      document.getElementById("cost-span").textContent =
+        `${usd(dearest.costPerAnswer)} an answer from ${shortModel(dearest.model)}, ` +
+        `${usd(cheapest.costPerAnswer)} from ${shortModel(cheapest.model)}`;
+
+      document.getElementById("cost-formula").innerHTML =
+        `consistency per $ = ( field noise × field $/answer )\n` +
+        `                    ÷ ( noise × $/answer )` +
+        `<span class="unit">Halving either the noise or the price doubles it. ` +
+        `An answer is one call to the model, counting both the probability prompts and the head-to-head ones, ` +
+        `since the composite is built from both. Field averages: ${pct(field.noise, 1)} and ${usd(field.costPerAnswer)}.</span>`;
+
+      const COST_VIEWS = [
+        {
+          key: "consistencyPerDollar",
+          label: "Consistency per $",
+          axis: "Consistency per $, × the field average (log scale)",
+          format: (v) => times(v, 2),
+          best: "high",
+          reference: 1,
+          referenceLabel: "field average",
+          caption: () =>
+            `${shortModel(bestValue.model)} buys ${times(bestValue.consistencyPerDollar)} the field's consistency per $: ` +
+            `${pct(bestValue.noise, 1)} noise at ${usd(bestValue.costPerAnswer)} an answer. ` +
+            `${shortModel(steadiest.model)} is the most consistent model on the board and reads ${times(steadiest.consistencyPerDollar)}, ` +
+            `because it bills ${(steadiest.costPerAnswer / field.costPerAnswer).toFixed(1)}× the field average to get there. ` +
+            `The index is mostly a price ranking with a noise correction, and says so: spend spans ${costSpread.toFixed(0)}× ` +
+            `across the field where noise spans ${noiseSpread.toFixed(1)}×. It is also a real trade-off rather than a free lunch — ` +
+            `price and noise correlate ${signedR(rPriceNoise)} across the field, so the dear models are consistent for a reason.`,
+        },
+        {
+          key: "costPerAnswer",
+          label: "Cost per answer",
+          axis: "US dollars per answer (log scale)",
+          format: (v) => usd(v, 4),
+          best: "low",
+          reference: field.costPerAnswer,
+          referenceLabel: "field average",
+          caption: () =>
+            `What one call cost, averaged over every call the model made in the run — ` +
+            `${models[0].forecasts.toLocaleString()} probability prompts and ${models[0].judgments.toLocaleString()} head-to-head ones each. ` +
+            `Ranking two questions costs more than pricing one for ${dearerToRank} of ${models.length} models, which is what carrying two ` +
+            `questions in one prompt does. Prices are what the provider billed at run time, so they date faster than anything else here.`,
+        },
+        {
+          key: "tokensOut",
+          label: "Tokens out",
+          axis: "Output tokens per answer, reasoning included (log scale)",
+          format: (v) => count(v),
+          best: "low",
+          reference: field.tokensOut,
+          referenceLabel: "field average",
+          caption: () =>
+            `Length is neither price nor consistency. The field's longest answers come from models that bill a fraction of what the shortest ` +
+            `do, since a token costs what its model charges for it — and length carries no signal about the composite at all, ` +
+            `correlating ${signedR(rLengthNoise)} with it, where price correlates ${signedR(rPriceNoise)}. Thinking longer is not what ` +
+            `makes a forecaster agree with itself. Reasoning is ${pct(
+              models.reduce((s, m) => s + (m.reasoningTokens ?? 0), 0) /
+                models.reduce((s, m) => s + (m.tokensOut ?? 0), 0),
+              0,
+            )} of the field's output — the prompt asks for a short answer, and what varies is how much thinking precedes it.`,
+        },
+      ];
+
+      let costView = COST_VIEWS[0];
+
+      const drawCost = () => {
+        const rows = byCost(costView.key)
+          .map((m) => ({
+            label: shortModel(m.model),
+            v: m[costView.key],
+            raw: m,
+          }))
+          .sort((a, b) => (costView.best === "high" ? b.v - a.v : a.v - b.v));
+
+        dotRows(document.getElementById("cost"), {
+          rows,
+          logX: true,
+          labelWidth: 200,
+          valueFormat: costView.format,
+          axisLabel: costView.axis,
+          reference: costView.reference,
+          referenceLabel: costView.referenceLabel,
+          tooltip: (row) => [
+            ["Consistency per $", times(row.raw.consistencyPerDollar)],
+            ["Noise", pct(row.raw.noise, 1)],
+            ["Cost per answer", usd(row.raw.costPerAnswer)],
+            ["— asked for a probability", usd(row.raw.costPerForecast)],
+            ["— asked to rank two", usd(row.raw.costPerJudgment)],
+            ["Tokens out", count(row.raw.tokensOut)],
+            ["— of which reasoning", count(row.raw.reasoningTokens)],
+          ],
+        });
+
+        document.getElementById("costcap").textContent = costView.caption();
+      };
+
+      renderTable(
+        document.getElementById("costTable"),
+        [
+          { name: "Model", get: (r) => r.model, numeric: false },
+          { name: "Noise", get: (r) => pct(r.noise, 1) },
+          { name: "$ / answer", get: (r) => usd(r.costPerAnswer) },
+          { name: "$ / probability", get: (r) => usd(r.costPerForecast) },
+          { name: "$ / ranking", get: (r) => usd(r.costPerJudgment) },
+          { name: "Tokens out", get: (r) => count(r.tokensOut) },
+          { name: "Reasoning", get: (r) => count(r.reasoningTokens) },
+          {
+            name: "Consistency per $",
+            get: (r) => times(r.consistencyPerDollar),
+          },
+        ],
+        [...models].sort(
+          (a, b) =>
+            (b.consistencyPerDollar ?? 0) - (a.consistencyPerDollar ?? 0),
+        ),
+      );
+
+      for (const button of document.querySelectorAll("[data-cost]")) {
+        button.addEventListener("click", () => {
+          costView = COST_VIEWS.find((v) => v.key === button.dataset.cost);
+          for (const b of document.querySelectorAll("[data-cost]"))
+            b.setAttribute("aria-pressed", String(b === button));
+          drawCost();
+        });
+      }
+
+      wireTableToggle(
+        document.getElementById("costTableBtn"),
+        document.getElementById("costTable"),
+      );
 
       document.addEventListener("click", (event) => {
         const button = event.target.closest("[data-part], [data-view]");

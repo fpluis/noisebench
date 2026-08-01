@@ -212,6 +212,15 @@ The site's market table is therefore sortable on "most contested" (between-model
 vs "most irreproducible" (within-model), which are different questions and, on
 this data, probably different markets.
 
+Two per-question quantities exist for the charts that show the panel rather than
+its average. `estimates` is the twenty per-model folded means themselves —
+the terms `modelEstimate` averages, emitted index-aligned with `models` so the
+payload does not repeat twenty model names a hundred times — drawn as one strip
+per question against the market price. `marketDistance` is the mean of the
+twenty **absolute** distances to that price, which is not `|panel − market|`:
+models missing in opposite directions cancel in the panel's average and do not
+cancel here. Both probability-scale measures rise with it (+0.44 and +0.47).
+
 ---
 
 ## 4. The Yes/No result
@@ -400,9 +409,11 @@ Measured spread is wide: **$0.083/call (gpt-5.6-sol-pro) to $0.0004/call
 tokens. `mistral-large-2512` reports 0 reasoning tokens throughout. 58 traces
 have null cost/token fields.
 
-The cross-cut worth charting: **cost per forecast against occasion noise**.
-If they are uncorrelated — and the §2.2 numbers hint they might be — that is a
-genuinely useful result for anyone choosing a forecasting model.
+The cross-cut worth charting: **cost per answer against the composite**. Built,
+as §9.2. They are not uncorrelated — log price against noise is **−0.71** across
+the twenty models, so the dear models really are the consistent ones. Output length
+is the one that carries nothing: **−0.02** against the composite. Thinking
+longer is not what makes a forecaster agree with itself, and paying more is.
 
 ---
 
@@ -421,13 +432,13 @@ Five components, **equally weighted** (plain mean, no rescaling), each in [0,1].
 Two are distances in probability, three are shares of judgments. None needs to
 know how a market resolved.
 
-| Component                  | Formula                                                        | Random | Field avg |
-| -------------------------- | -------------------------------------------------------------- | ------ | --------- |
-| Average error              | mean over cells of MAD of the 4 repeats                        | 5/24 = 20.8% | 2.5%  |
-| Negation error             | mean over {model, market} of \|avg(Yes) − (1 − avg(No))\|      | 59/360 = 16.4% | 3.6% |
-| Pairwise disagreement      | share of repeat comparisons (iteration 0 vs 1) that flip       | 50%    | 9.2%      |
-| Negation disagreement      | share of §6.1 couple checks violated                           | 50%    | 11.6%     |
-| Individual-pair disagreement | share of pairs where the folded 8-forecast ranking differs from the model's own majority pick | 50% | 16.4% |
+| Component                    | Formula                                                                                       | Random         | Field avg |
+| ---------------------------- | --------------------------------------------------------------------------------------------- | -------------- | --------- |
+| Average error                | mean over cells of MAD of the 4 repeats                                                       | 5/24 = 20.8%   | 2.5%      |
+| Negation error               | mean over {model, market} of \|avg(Yes) − (1 − avg(No))\|                                     | 59/360 = 16.4% | 3.6%      |
+| Pairwise disagreement        | share of repeat comparisons (iteration 0 vs 1) that flip                                      | 50%            | 9.2%      |
+| Negation disagreement        | share of §6.1 couple checks violated                                                          | 50%            | 11.6%     |
+| Individual-pair disagreement | share of pairs where the folded 8-forecast ranking differs from the model's own majority pick | 50%            | 16.4%     |
 
 Composite range: **4.3%** (gpt-5.6-sol-pro) up to **16.5%**
 (mistral-large-2512). Field average **8.7%**; a model answering uniformly at
@@ -507,6 +518,45 @@ flatter every model: the dataset is skewed to long shots, so a pair usually sums
 far below 1, landing its sum check in the widest margin bucket while being
 trivially easy ("is 95% more likely than 10%?"). Field rank agreement is 62.0%
 against sum agreement of 70.4% — the gap is the whole reason to separate them.
+
+### 9.2 Consistency per $
+
+The §8 cross-cut, as one number. Inversely proportional to both the composite
+and the price of producing it, scaled so a model at the field average of each
+reads 1.00×. `consistencyPerDollar` in the payload:
+
+```
+consistency per $ = (field noise × field $/answer) / (noise × $/answer)
+```
+
+Four decisions:
+
+**The denominator is an answer, not a forecast.** The composite is built from
+both modalities, so the cost that divides it has to be too: `AVG(cost)` over
+every `llm_trace` reached from `forecast` **or** `pairwise_forecast` for the run
+(1,200 calls per model). Averaging per-call rather than dividing a total by the
+call count keeps the three models whose provider dropped some cost fields from
+reading cheaper than they were; `priced`/`calls` travel in the payload so the
+coverage is visible. Ranking two questions costs more than pricing one for all
+twenty models, and both arms are in the tooltip.
+
+**It is a ratio index, not a rate.** `1/(noise × cost)` has units of inverse
+dollars and no readable magnitude; dividing by the field's own product makes
+1.00× mean "typical on both" and 4.00× mean "twice as consistent for half the
+price".
+
+**It is cost-dominated by construction, and the page says so.** Spend spans 200×
+across the field where noise spans 3.9×, so the ranking is mostly a price
+ranking with a noise correction. That is the honest consequence of "inversely
+proportional to both" when the two inputs have wildly different dynamic ranges;
+a geometric mean of the two ratios would compress it, at the cost of no longer
+being inversely proportional to either.
+
+**Dots on a log axis, not bars.** The index runs 0.35× to 39.5×, price 0.0004 to
+0.081. A bar on a log axis states a ratio its length does not have, and on a
+linear axis the cheapest half of the field shares the first tenth of it. Dots
+carry position only, which is what a log scale can honestly support — the new
+`dotRows` primitive in `site/assets/viz.js`.
 
 ---
 

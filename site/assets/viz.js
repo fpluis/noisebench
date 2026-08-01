@@ -44,6 +44,19 @@ export const signedPct = (x, dp = 1) =>
     ? "—"
     : `${x > 0 ? "+" : x < 0 ? "−" : ""}${(Math.abs(x) * 100).toFixed(dp)}%`;
 
+// The exceptions to "everything is a percentage": what an answer cost, how long
+// it was, and the ratio between two of those. Four decimal places on the money,
+// because the cheapest model on the board bills four figures below the dearest
+// and a rounded cent would print every one of them as $0.00.
+export const usd = (x, dp = 4) =>
+  x === null || x === undefined ? "—" : `$${Number(x).toFixed(dp)}`;
+
+export const count = (x) =>
+  x === null || x === undefined ? "—" : Math.round(x).toLocaleString();
+
+export const times = (x, dp = 2) =>
+  x === null || x === undefined ? "—" : `${Number(x).toFixed(dp)}×`;
+
 // ---------------------------------------------------------------------------
 // Theme
 // ---------------------------------------------------------------------------
@@ -145,6 +158,25 @@ const niceTicks = (min, max, count = 5) => {
   for (let t = Math.ceil(min / step) * step; t <= max + 1e-9; t += step)
     out.push(Math.abs(t) < 1e-9 ? 0 : t);
   return out;
+};
+
+// Ticks for a log axis, at 1, 2 and 5 per decade. `lo`/`hi` are already log10.
+// A quantity that spans two orders of magnitude gets a full mantissa set; one
+// that spans more keeps only the decades, so the axis never carries more than
+// about six labels.
+const logTicks = (lo, hi) => {
+  const all = [];
+  for (let k = Math.floor(lo); k <= Math.ceil(hi); k += 1) {
+    for (const m of [1, 2, 5]) {
+      const v = m * 10 ** k;
+      const l = Math.log10(v);
+      if (l >= lo && l <= hi) all.push(v);
+    }
+  }
+  if (all.length <= 7) return all;
+  return all.filter(
+    (v) => Math.round(v / 10 ** Math.floor(Math.log10(v) + 1e-9)) === 1,
+  );
 };
 
 // Row labels are right-anchored against the plot, so an over-long one runs off
@@ -537,6 +569,455 @@ export const groupedColumns = (mount, options) => {
 };
 
 // ---------------------------------------------------------------------------
+// Dot rows — one ranked value per category, on a linear or log axis.
+//
+// The form a bar chart cannot take: a quantity with no meaningful zero to grow
+// from, or one whose field spans two orders of magnitude, where bars would be a
+// single stripe and nineteen slivers. A dot carries position only, so a log
+// axis stays honest — the ratio between two rows is the distance between their
+// dots, which is exactly what a ratio quantity should read as.
+//
+// Values sit in a fixed column at the right rather than beside their dot, so a
+// row near either end of the axis never has its number clipped or overlapping.
+// ---------------------------------------------------------------------------
+
+export const dotRows = (mount, options) => {
+  const {
+    rows,
+    logX = false,
+    valueFormat = (v) => fmt(v),
+    labelWidth = 190,
+    rowHeight = 23,
+    color = "var(--series-1)",
+    axisLabel = "",
+    // A vertical rule the rows are read against — the field average, usually.
+    reference = null,
+    referenceLabel = "",
+    tooltip = null,
+  } = options;
+
+  mount.innerHTML = "";
+  const width = Math.max(mount.clientWidth || 640, 460);
+  const top = 10;
+  const bottom = axisLabel ? 46 : 30;
+  const height = top + rows.length * rowHeight + bottom;
+  const valueColumn = 64;
+  const plotLeft = labelWidth;
+  const plotWidth = Math.max(120, width - plotLeft - valueColumn - 10);
+
+  const svg = el("svg", {
+    viewBox: `0 0 ${width} ${height}`,
+    width,
+    height,
+    role: "img",
+  });
+
+  const tx = (v) => (logX ? Math.log10(Math.max(v, 1e-12)) : v);
+  const values = rows.map((r) => tx(r.v));
+  if (reference !== null) values.push(tx(reference));
+  const rawLo = Math.min(...values);
+  const rawHi = Math.max(...values);
+  // A linear axis still starts at zero — the quantity has a floor and the bars
+  // it replaces would have shown it. A log axis cannot, and pads instead.
+  const pad = (rawHi - rawLo) * 0.08 || (logX ? 0.2 : 1);
+  const lo = logX ? rawLo - pad : Math.min(0, rawLo);
+  const hi = rawHi + pad;
+  const x = (v) => plotLeft + ((tx(v) - lo) / (hi - lo)) * plotWidth;
+
+  for (const t of logX ? logTicks(lo, hi) : niceTicks(lo, hi, 5)) {
+    el(
+      "line",
+      {
+        x1: x(t),
+        x2: x(t),
+        y1: top,
+        y2: top + rows.length * rowHeight,
+        stroke: "var(--gridline)",
+        "stroke-width": 1,
+      },
+      svg,
+    );
+    el(
+      "text",
+      {
+        x: x(t),
+        y: top + rows.length * rowHeight + 18,
+        "text-anchor": "middle",
+        "font-size": 11,
+        fill: "var(--text-muted)",
+      },
+      svg,
+    ).textContent = valueFormat(t);
+  }
+
+  if (reference !== null) {
+    el(
+      "line",
+      {
+        x1: x(reference),
+        x2: x(reference),
+        y1: top,
+        y2: top + rows.length * rowHeight,
+        stroke: "var(--text-muted)",
+        "stroke-width": 2,
+        "stroke-dasharray": "3 3",
+      },
+      svg,
+    );
+    if (referenceLabel) {
+      // Flip to the inside when the rule sits near the right edge, so the label
+      // stays on the plot either way.
+      const near = x(reference) > plotLeft + plotWidth - 90;
+      el(
+        "text",
+        {
+          x: x(reference) + (near ? -6 : 6),
+          y: top + 9,
+          "text-anchor": near ? "end" : "start",
+          "font-size": 11,
+          fill: "var(--text-muted)",
+          stroke: "var(--surface-1)",
+          "stroke-width": 3,
+          "paint-order": "stroke",
+        },
+        svg,
+      ).textContent = referenceLabel;
+    }
+  }
+
+  rows.forEach((row, i) => {
+    const cy = top + i * rowHeight + rowHeight / 2;
+
+    // A hairline rail from the label to the dot: it carries the eye across the
+    // row without implying an extent from zero the way a bar would.
+    el(
+      "line",
+      {
+        x1: plotLeft,
+        x2: plotLeft + plotWidth,
+        y1: cy,
+        y2: cy,
+        stroke: "var(--gridline)",
+        "stroke-width": 1,
+      },
+      svg,
+    );
+
+    el(
+      "text",
+      {
+        x: plotLeft - 10,
+        y: cy,
+        "text-anchor": "end",
+        "dominant-baseline": "middle",
+        "font-size": 12,
+        fill: "var(--text-secondary)",
+      },
+      svg,
+    ).textContent = truncate(row.label, labelWidth);
+
+    const dot = el(
+      "circle",
+      {
+        cx: x(row.v),
+        cy,
+        r: 5,
+        fill: color,
+        stroke: "var(--surface-1)",
+        "stroke-width": 2,
+      },
+      svg,
+    );
+
+    el(
+      "text",
+      {
+        x: width - 8,
+        y: cy,
+        "text-anchor": "end",
+        "dominant-baseline": "middle",
+        "font-size": 11,
+        "font-variant-numeric": "tabular-nums",
+        fill: "var(--text-secondary)",
+      },
+      svg,
+    ).textContent = valueFormat(row.v);
+
+    // The whole row is the hit target, not the 10px dot.
+    const hit = el(
+      "rect",
+      {
+        x: plotLeft,
+        y: cy - rowHeight / 2,
+        width: plotWidth,
+        height: rowHeight,
+        fill: "transparent",
+      },
+      svg,
+    );
+    hit.addEventListener("mouseenter", () => dot.setAttribute("r", 7));
+    hit.addEventListener("mouseleave", () => dot.setAttribute("r", 5));
+    bindTip(hit, row.label, () =>
+      tooltip ? tooltip(row) : [["Value", valueFormat(row.v)]],
+    );
+  });
+
+  if (axisLabel) {
+    el(
+      "text",
+      {
+        x: plotLeft + plotWidth / 2,
+        y: height - 8,
+        "text-anchor": "middle",
+        "font-size": 11,
+        fill: "var(--text-muted)",
+      },
+      svg,
+    ).textContent = axisLabel;
+  }
+
+  mount.appendChild(svg);
+  return svg;
+};
+
+// ---------------------------------------------------------------------------
+// Strips — one column per case, every observation drawn on it, plus a marker.
+//
+// A mean tells you where the panel landed; this says whether the panel agreed.
+// Twenty forecasts on one vertical is a distribution the reader can see the
+// shape of, and the marker is a second quantity — the market price — carried by
+// a different shape as well as a different hue, so the two never rely on colour
+// alone to be told apart.
+// ---------------------------------------------------------------------------
+
+export const strips = (mount, options) => {
+  const {
+    columns,
+    height = 380,
+    yFormat = (v) => fmt(v, 2),
+    yLabel = "",
+    xLabel = "",
+    // Only every nth column can afford a label when there are a hundred of
+    // them; the tooltip carries the rest.
+    tickEvery = 10,
+    tickLabel = (column) => column.label,
+    color = "var(--series-1)",
+    markerColor = "var(--series-2)",
+    tooltip = null,
+  } = options;
+
+  mount.innerHTML = "";
+  const left = 52;
+  const right = 14;
+  const top = 12;
+  const bottom = 46;
+  // Columns need room to be individually hoverable; below about 9px they fuse.
+  const width = Math.max(
+    mount.clientWidth || 640,
+    left + right + columns.length * 9,
+  );
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+
+  const svg = el("svg", {
+    viewBox: `0 0 ${width} ${height}`,
+    width,
+    height,
+    role: "img",
+  });
+
+  const all = columns.flatMap((c) =>
+    c.values.concat(
+      c.marker === null || c.marker === undefined ? [] : [c.marker],
+    ),
+  );
+  const pad = (Math.max(...all) - Math.min(...all)) * 0.05 || 0.05;
+  const lo = Math.min(...all) - pad;
+  const hi = Math.max(...all) + pad;
+  const y = (v) => top + plotHeight - ((v - lo) / (hi - lo)) * plotHeight;
+
+  for (const t of niceTicks(lo, hi, 5)) {
+    el(
+      "line",
+      {
+        x1: left,
+        x2: left + plotWidth,
+        y1: y(t),
+        y2: y(t),
+        stroke: "var(--gridline)",
+        "stroke-width": 1,
+      },
+      svg,
+    );
+    el(
+      "text",
+      {
+        x: left - 8,
+        y: y(t),
+        "text-anchor": "end",
+        "dominant-baseline": "middle",
+        "font-size": 11,
+        fill: "var(--text-muted)",
+      },
+      svg,
+    ).textContent = yFormat(t);
+  }
+
+  const band = plotWidth / columns.length;
+  const tickWidth = Math.min(7, band * 0.72);
+
+  columns.forEach((column, i) => {
+    const cx = left + band * (i + 0.5);
+    const values = column.values;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+
+    // The spine spans the panel's range, so the eye reads a length even where
+    // the marks themselves stack into one another.
+    el(
+      "line",
+      {
+        x1: cx,
+        x2: cx,
+        y1: y(min),
+        y2: y(max),
+        stroke: color,
+        "stroke-width": 1.5,
+        "stroke-opacity": 0.28,
+      },
+      svg,
+    );
+
+    for (const v of values) {
+      el(
+        "line",
+        {
+          x1: cx - tickWidth / 2,
+          x2: cx + tickWidth / 2,
+          y1: y(v),
+          y2: y(v),
+          stroke: color,
+          "stroke-width": 1.6,
+          "stroke-opacity": 0.75,
+          "stroke-linecap": "round",
+        },
+        svg,
+      );
+    }
+
+    if (column.marker !== null && column.marker !== undefined) {
+      const r = 4;
+      const d = `M${cx - r},${y(column.marker) - r} L${cx + r},${y(column.marker) + r} M${cx - r},${y(column.marker) + r} L${cx + r},${y(column.marker) - r}`;
+      // Drawn twice: a surface-coloured stroke underneath keeps the cross
+      // legible wherever it lands in the middle of the panel's own marks.
+      el(
+        "path",
+        { d, stroke: "var(--surface-1)", "stroke-width": 4, fill: "none" },
+        svg,
+      );
+      el(
+        "path",
+        {
+          d,
+          stroke: markerColor,
+          "stroke-width": 2,
+          "stroke-linecap": "round",
+          fill: "none",
+        },
+        svg,
+      );
+    }
+
+    const hit = el(
+      "rect",
+      {
+        x: cx - band / 2,
+        y: top,
+        width: band,
+        height: plotHeight,
+        fill: "transparent",
+      },
+      svg,
+    );
+    let hover = null;
+    hit.addEventListener("mouseenter", () => {
+      hover = el(
+        "rect",
+        {
+          x: cx - band / 2,
+          y: top,
+          width: band,
+          height: plotHeight,
+          fill: "var(--text-primary)",
+          "fill-opacity": 0.05,
+        },
+        svg,
+      );
+      // Behind the marks, so the highlight never sits on top of the data.
+      svg.insertBefore(hover, svg.firstChild);
+    });
+    hit.addEventListener("mouseleave", () => {
+      if (hover) hover.remove();
+      hover = null;
+    });
+    bindTip(hit, column.label, () =>
+      tooltip
+        ? tooltip(column)
+        : [
+            ["Lowest", yFormat(min)],
+            ["Highest", yFormat(max)],
+          ],
+    );
+
+    if (i % tickEvery === 0) {
+      el(
+        "text",
+        {
+          x: cx,
+          y: height - bottom + 18,
+          "text-anchor": "middle",
+          "font-size": 11,
+          fill: "var(--text-muted)",
+        },
+        svg,
+      ).textContent = tickLabel(column, i);
+    }
+  });
+
+  if (xLabel) {
+    el(
+      "text",
+      {
+        x: left + plotWidth / 2,
+        y: height - 8,
+        "text-anchor": "middle",
+        "font-size": 11,
+        fill: "var(--text-muted)",
+      },
+      svg,
+    ).textContent = xLabel;
+  }
+
+  if (yLabel) {
+    el(
+      "text",
+      {
+        x: 14,
+        y: top + plotHeight / 2,
+        "text-anchor": "middle",
+        "font-size": 11,
+        fill: "var(--text-muted)",
+        transform: `rotate(-90 14 ${top + plotHeight / 2})`,
+      },
+      svg,
+    ).textContent = yLabel;
+  }
+
+  mount.appendChild(svg);
+  return svg;
+};
+
+// ---------------------------------------------------------------------------
 // Scatter — one series, optional log x for the skewed midpoint axis.
 // ---------------------------------------------------------------------------
 
@@ -736,13 +1217,33 @@ export const scatter = (mount, options) => {
 // Legend + table view — identity is never carried by color alone.
 // ---------------------------------------------------------------------------
 
+// A swatch that matches the mark it stands for. Charts where two series differ
+// in shape as well as hue say so in the legend too, otherwise the one place the
+// reader goes to decode the colours is the one place the shape is missing.
+const SWATCH = {
+  cross: `<path d="M-4,-4 L4,4 M-4,4 L4,-4" stroke="COLOR" stroke-width="2"
+            stroke-linecap="round" fill="none" />`,
+  tick: `<path d="M-5,0 L5,0" stroke="COLOR" stroke-width="2"
+           stroke-linecap="round" fill="none" />`,
+  dot: `<circle r="4" fill="COLOR" />`,
+};
+
 export const legend = (mount, series) => {
   mount.innerHTML = "";
   for (const s of series) {
     const key = document.createElement("span");
     key.className = "key";
     const swatch = document.createElement("i");
-    swatch.style.background = s.color;
+    if (s.shape && SWATCH[s.shape]) {
+      swatch.style.background = "none";
+      swatch.style.width = "12px";
+      swatch.style.height = "12px";
+      swatch.innerHTML = `<svg width="12" height="12" viewBox="-6 -6 12 12" aria-hidden="true">${SWATCH[
+        s.shape
+      ].replaceAll("COLOR", s.color)}</svg>`;
+    } else {
+      swatch.style.background = s.color;
+    }
     const label = document.createElement("span");
     label.textContent = s.name;
     key.append(swatch, label);

@@ -665,10 +665,15 @@ export const noiseScores = (
  * head-to-head metrics have no per-market form: F1 of the design notes — one
  * market sits in two pairs and another in none — so a "per market" pairwise
  * rate would be dividing by a number that varies.
+ *
+ * `estimates` carries the same per-model folded means the average is built
+ * from, so the site can show the panel's spread on a question rather than only
+ * its centre. They are the terms of `modelEstimate`, not a second statistic.
  */
 export interface MarketMetrics {
   marketId: number;
   modelEstimate: number;
+  estimates: { model: string; estimate: number }[];
   averageError: number;
   negationError: number;
   drift: number;
@@ -687,7 +692,7 @@ export const marketMetrics = (
     drifts: number[];
     yes: number[];
     no: number[];
-    folded: number[];
+    folded: { model: string; estimate: number }[];
     models: Set<string>;
     forecasts: number;
   }
@@ -747,13 +752,20 @@ export const marketMetrics = (
     entry.yes.push(yes);
     entry.no.push(no);
     // The model's own view of the market: both wordings folded onto Yes.
-    entry.folded.push(mean([yes, 1 - no]));
+    entry.folded.push({
+      model: key.slice(0, key.indexOf(" ")),
+      estimate: mean([yes, 1 - no]),
+    });
   }
 
   return [...byMarket.entries()]
     .map(([marketId, entry]) => ({
       marketId,
-      modelEstimate: entry.folded.length > 0 ? mean(entry.folded) : 0,
+      modelEstimate:
+        entry.folded.length > 0 ? mean(entry.folded.map((f) => f.estimate)) : 0,
+      estimates: [...entry.folded].sort((a, b) =>
+        a.model.localeCompare(b.model),
+      ),
       averageError: entry.mads.length > 0 ? mean(entry.mads) : 0,
       negationError: entry.errors.length > 0 ? mean(entry.errors) : 0,
       drift: entry.drifts.length > 0 ? mean(entry.drifts) : 0,

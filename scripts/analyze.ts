@@ -58,6 +58,12 @@ interface MarketMeta {
 const round = (x: number, dp = 6): number =>
   Number.isFinite(x) ? Number(x.toFixed(dp)) : 0;
 
+/** `round`, but a missing quantity stays missing instead of becoming zero. */
+const roundOrNull = (x: number | null | undefined, dp = 6): number | null =>
+  x === null || x === undefined || !Number.isFinite(x)
+    ? null
+    : Number(x.toFixed(dp));
+
 /**
  * The strict-balance subset: cells holding all `iterations` repetitions, and
  * only markets where every model x phrasing cell survives that filter.
@@ -186,6 +192,53 @@ async function main(): Promise<void> {
       [runId],
     );
 
+    // What each answer cost to produce, over BOTH modalities — a direct
+    // forecast and a head-to-head judgment are each one call, and the composite
+    // is built from both, so the denominator has to be both. Cost is stored in
+    // nano-USD and is null when the provider returned none, so the average is
+    // over priced calls and `priced` travels with it. Averaging the per-call
+    // cost (rather than dividing a total by every call) keeps a model whose
+    // provider dropped a few cost fields from reading cheaper than it was.
+    const costRows = await client.query(
+      `SELECT lm.name AS model,
+              COUNT(*)::int AS calls,
+              COUNT(t.cost)::int AS priced,
+              AVG(t.cost) AS cost,
+              AVG(t.cost) FILTER (WHERE x.modality = 'direct') AS direct_cost,
+              AVG(t.cost) FILTER (WHERE x.modality = 'pairwise') AS pairwise_cost,
+              AVG(t.tokens_out) AS tokens_out,
+              AVG(t.reasoning_tokens) AS reasoning_tokens
+         FROM (SELECT forecaster_id, llm_trace_id, 'direct' AS modality
+                 FROM public.forecast WHERE benchmark_run_id = $1
+               UNION ALL
+               SELECT forecaster_id, llm_trace_id, 'pairwise' AS modality
+                 FROM public.pairwise_forecast WHERE benchmark_run_id = $1) x
+         JOIN public.forecaster fc ON fc.id = x.forecaster_id
+         JOIN public.llm_model lm ON lm.id = fc.forecasting_model_id
+         LEFT JOIN public.llm_trace t ON t.id = x.llm_trace_id
+        GROUP BY 1`,
+      [runId],
+    );
+    // Nano-USD to USD. Null rather than zero when nothing was priced: a model
+    // whose costs never came back is unknown, not free.
+    const usd = (nano: string | null): number | null =>
+      nano === null ? null : Number(nano) / 1e9;
+    const spend = new Map(
+      costRows.rows.map((r) => [
+        r.model,
+        {
+          costPerAnswer: usd(r.cost),
+          costPerForecast: usd(r.direct_cost),
+          costPerJudgment: usd(r.pairwise_cost),
+          tokensOut: r.tokens_out === null ? null : Number(r.tokens_out),
+          reasoningTokens:
+            r.reasoning_tokens === null ? null : Number(r.reasoning_tokens),
+          calls: r.calls,
+          priced: r.priced,
+        },
+      ]),
+    );
+
     console.log(
       `Run ${runId} (${run.name}): ${observations.length} parsed direct forecasts, ` +
         `${pairwise.length} head-to-head judgments, ${markets.length} markets.`,
@@ -195,6 +248,8 @@ async function main(): Promise<void> {
     // The five headline metrics and their composite, from both modalities.
     // ---------------------------------------------------------------------
     const scores = noiseScores(observations, pairwise);
+    // The order every per-model array in the payload is written in.
+    const modelOrder = scores.map((s) => s.model);
     const perMarket = marketMetrics(observations);
     const directionBlind = directionBlindReference(observations);
 
@@ -212,6 +267,45 @@ async function main(): Promise<void> {
     }
     console.log(
       `    ${"direction-blind negation error".padEnd(28)} ${(100 * directionBlind).toFixed(1)}%`,
+    );
+
+    // ---------------------------------------------------------------------
+    // What consistency cost.
+    // ---------------------------------------------------------------------
+    //
+    // `consistencyPerDollar` — "consistency per $" on the site — is inversely
+    // proportional to both a model's noise and its cost per answer, scaled so a
+    // model sitting at the field average of each reads 1.00x:
+    //
+    //   consistencyPerDollar = (field noise x field cost) / (noise x cost)
+    //
+    // Twice as consistent as the field at half the price is 4.00x. The index is
+    // dominated by cost by construction — spend spans two orders of magnitude
+    // across the field where noise spans a factor of four — which is the whole
+    // reason the two are worth reading side by side rather than only as one
+    // number.
+    const fieldNoise = meanOf(scores.map((s) => s.noise));
+    const costs = scores
+      .map((s) => spend.get(s.model)?.costPerAnswer)
+      .filter((c): c is number => typeof c === "number" && c > 0);
+    const fieldCost = costs.length > 0 ? meanOf(costs) : 0;
+    const consistencyPerDollar = (
+      model: string,
+      noise: number,
+    ): number | null => {
+      const cost = spend.get(model)?.costPerAnswer;
+      if (!cost || fieldCost === 0 || noise <= 0) return null;
+      return (fieldNoise * fieldCost) / (noise * cost);
+    };
+    const best = [...scores].sort(
+      (a, b) =>
+        (consistencyPerDollar(b.model, b.noise) ?? 0) -
+        (consistencyPerDollar(a.model, a.noise) ?? 0),
+    )[0];
+    console.log(
+      `  $${fieldCost.toFixed(5)} per answer across the field, ` +
+        `${costs.length}/${scores.length} models priced; best consistency per $ ` +
+        `${(consistencyPerDollar(best.model, best.noise) ?? 0).toFixed(2)}x (${best.model})`,
     );
 
     // ---------------------------------------------------------------------
@@ -346,11 +440,23 @@ async function main(): Promise<void> {
         ({ baseline, baselineNote, ...rest }) => rest,
       ),
       field: Object.fromEntries([
-        ["noise", round(meanOf(scores.map((s) => s.noise)), 4)],
+        ["noise", round(fieldNoise, 4)],
         ...METRIC_KEYS.map((key) => [
           key,
           round(meanOf(scores.map((s) => s[key])), 4),
         ]),
+        ["costPerAnswer", round(fieldCost, 9)],
+        [
+          "tokensOut",
+          round(
+            meanOf(
+              scores
+                .map((s) => spend.get(s.model)?.tokensOut)
+                .filter((t): t is number => typeof t === "number"),
+            ),
+            1,
+          ),
+        ],
       ]),
       models: scores.map((s) => ({
         model: s.model,
@@ -374,16 +480,54 @@ async function main(): Promise<void> {
         judgments: s.judgments,
         pairs: s.pairs,
         ties: s.ties,
+        // Inference spend and length, over both modalities. Null for a model
+        // whose provider never returned a cost — unknown, not free.
+        costPerAnswer: roundOrNull(spend.get(s.model)?.costPerAnswer, 9),
+        costPerForecast: roundOrNull(spend.get(s.model)?.costPerForecast, 9),
+        costPerJudgment: roundOrNull(spend.get(s.model)?.costPerJudgment, 9),
+        tokensOut: roundOrNull(spend.get(s.model)?.tokensOut, 1),
+        reasoningTokens: roundOrNull(spend.get(s.model)?.reasoningTokens, 1),
+        calls: spend.get(s.model)?.calls ?? 0,
+        priced: spend.get(s.model)?.priced ?? 0,
+        consistencyPerDollar: roundOrNull(
+          consistencyPerDollar(s.model, s.noise),
+          3,
+        ),
       })),
       byMarket: perMarket.map((m) => {
         const meta = marketById.get(m.marketId);
+        const midpoint = meta?.midpoint ?? null;
+        const estimates = new Map(
+          m.estimates.map((e) => [e.model, e.estimate]),
+        );
+        // Aligned with `models` above, index for index, so the site can name
+        // the model behind any point without carrying twenty labels a hundred
+        // times over. Null where a model produced no usable pair of wordings
+        // for the question.
+        const aligned = modelOrder.map((model) => {
+          const estimate = estimates.get(model);
+          return estimate === undefined ? null : round(estimate, 4);
+        });
         return {
           marketId: m.marketId,
           slug: meta?.slug ?? String(m.marketId),
           question: meta?.question ?? "",
           eventTitle: meta?.eventTitle ?? "",
-          midpoint: meta?.midpoint ?? null,
+          midpoint,
           modelEstimate: round(m.modelEstimate, 4),
+          estimates: aligned,
+          // How far the typical model sat from the market, which is not the
+          // same as how far the panel's average sat from it: models missing in
+          // opposite directions cancel in the average and do not cancel here.
+          marketDistance:
+            midpoint === null
+              ? null
+              : round(
+                  meanOf(
+                    m.estimates.map((e) => Math.abs(e.estimate - midpoint)),
+                  ),
+                  4,
+                ),
           averageError: round(m.averageError, 4),
           negationError: round(m.negationError, 4),
           drift: round(m.drift, 4),

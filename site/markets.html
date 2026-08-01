@@ -54,6 +54,43 @@
       </section>
 
       <section>
+        <h2>The spread behind each estimate</h2>
+        <p class="lede">
+          The same questions again, but with the panel taken apart. One column
+          per question, ordered by market price — the longest shots on the left,
+          the near-certainties on the right. Each tick is one model's own
+          estimate, both its wordings folded onto the Yes scale, and the cross
+          is what the market was paying. The dot on the chart above is the mean
+          of one of these columns; this is what that mean is hiding.
+        </p>
+        <figure>
+          <div class="chart-head">
+            <div class="legend" id="stripLegend"></div>
+          </div>
+          <div class="chart-scroll"><div id="strip"></div></div>
+          <figcaption id="stripcap"></figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Noise against distance from the market</h2>
+        <p class="lede">
+          Whether disagreeing with the crowd goes with being unsure. The
+          horizontal axis is how far the typical model sat from the market price
+          on a question — the mean of the twenty distances, so models missing in
+          opposite directions do not cancel the way they do in the panel's
+          average. Against it, both probability-scale measures at once.
+        </p>
+        <figure>
+          <div class="chart-head">
+            <div class="legend" id="distLegend"></div>
+          </div>
+          <div class="chart-scroll"><div id="dist"></div></div>
+          <figcaption id="distcap"></figcaption>
+        </figure>
+      </section>
+
+      <section>
         <h2>Which questions the models were noisiest on</h2>
         <p class="lede">
           The twenty questions with the largest values, in whichever measure is
@@ -108,8 +145,10 @@
         onRedraw,
         pct,
         scatter,
+        shortModel,
         signedPct,
         sortableTable,
+        strips,
       } from "./assets/viz.js";
 
       initTheme();
@@ -155,12 +194,11 @@
         (a, b) => b.averageError - a.averageError,
       )[0];
 
-      // Pearson r between the market price and a measure, over priced questions.
-      // Quoted in the captions so a claim about "long shots" is checkable rather
-      // than an impression from the scatter.
-      const corr = (pick) => {
-        const xs = priced.map((r) => r.midpoint);
-        const ys = priced.map(pick);
+      // Pearson r, and the least-squares line through the same two columns.
+      // Both are quoted or drawn wherever the page claims a relationship, so a
+      // claim about "long shots" is checkable rather than an impression left by
+      // the scatter.
+      const moments = (xs, ys) => {
         const mx = mean(xs);
         const my = mean(ys);
         let sxy = 0;
@@ -171,8 +209,23 @@
           sx += (xs[i] - mx) ** 2;
           sy += (ys[i] - my) ** 2;
         }
+        return { mx, my, sxy, sx, sy };
+      };
+      const pearson = (xs, ys) => {
+        const { sxy, sx, sy } = moments(xs, ys);
         return sxy / Math.sqrt(sx * sy);
       };
+      const trend = (xs, ys) => {
+        const { mx, my, sxy, sx } = moments(xs, ys);
+        const slope = sxy / sx;
+        return (x) => my + slope * (x - mx);
+      };
+      // Against the market price, which is what most of this page reads by.
+      const corr = (pick) =>
+        pearson(
+          priced.map((r) => r.midpoint),
+          priced.map(pick),
+        );
       const signedR = (r) => `${r < 0 ? "−" : "+"}${Math.abs(r).toFixed(2)}`;
 
       document.getElementById("tiles").innerHTML = [
@@ -283,7 +336,9 @@
       const ranked = rows.filter((r) => r.marketRank !== null);
       const gaps = ranked.map((r) => Math.abs(r.marketRank - r.modelRank));
       const close = gaps.filter((g) => g <= 5).length;
-      const median = [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 2)];
+      const median = [...gaps].sort((a, b) => a - b)[
+        Math.floor(gaps.length / 2)
+      ];
       const moved = ranked[gaps.indexOf(Math.max(...gaps))];
       document.getElementById("rankcap").textContent =
         `The market price is the mid of the order book at snapshot time. The two orderings agree far less than the two probability ` +
@@ -328,6 +383,176 @@
               `sides high, or both low.`;
       };
 
+      // -----------------------------------------------------------------
+      // The panel, taken apart
+      // -----------------------------------------------------------------
+      //
+      // `estimates` arrives aligned with `metrics.models`, index for index, so
+      // the names live in one place and the payload does not repeat twenty
+      // strings a hundred times.
+      const modelNames = metrics.models.map((m) => m.model);
+      const panels = priced
+        // A question no model produced a usable pair of wordings for has no
+        // panel to draw, and would leave an empty column rather than a gap.
+        .filter((r) => r.estimates.some((e) => e !== null))
+        .map((r) => {
+          const ranked = r.estimates
+            .map((estimate, i) => ({ model: modelNames[i], estimate }))
+            .filter((e) => e.estimate !== null)
+            .sort((a, b) => a.estimate - b.estimate);
+          return {
+            ...r,
+            ranked,
+            lowest: ranked[0],
+            highest: ranked[ranked.length - 1],
+            spread: ranked[ranked.length - 1].estimate - ranked[0].estimate,
+            // Whether the crowd's number is one the panel would have said at
+            // all, which is a weaker and more honest test than agreeing with
+            // its average.
+            covers:
+              r.midpoint >= ranked[0].estimate &&
+              r.midpoint <= ranked[ranked.length - 1].estimate,
+          };
+        })
+        .sort((a, b) => a.midpoint - b.midpoint);
+
+      const covered = panels.filter((p) => p.covers).length;
+      const spreads = panels.map((p) => p.spread).sort((a, b) => a - b);
+      const medianSpread = spreads[Math.floor(spreads.length / 2)];
+      const widest = [...panels].sort((a, b) => b.spread - a.spread)[0];
+
+      const FORECAST = {
+        name: "One model's estimate",
+        color: "var(--series-1)",
+      };
+      const MARKET = { name: "Market price", color: "var(--series-2)" };
+      const AVERAGE_ERROR = {
+        name: "Average error",
+        color: "var(--series-1)",
+      };
+      const NEGATION_ERROR = {
+        name: "Negation error",
+        color: "var(--series-2)",
+      };
+
+      const drawStrip = () => {
+        legend(document.getElementById("stripLegend"), [
+          { ...FORECAST, shape: "tick" },
+          { ...MARKET, shape: "cross" },
+        ]);
+
+        strips(document.getElementById("strip"), {
+          columns: panels.map((p) => ({
+            label: p.question || p.slug,
+            values: p.ranked.map((e) => e.estimate),
+            marker: p.midpoint,
+            raw: p,
+          })),
+          height: 400,
+          yFormat: (v) => pct(v, 0),
+          yLabel: "Probability of the outcome",
+          xLabel:
+            "Questions ordered by market price — every tenth labelled with its price",
+          tickEvery: 10,
+          tickLabel: (column) => pct(column.raw.midpoint, 0),
+          tooltip: (column) => [
+            ["Market price", pct(column.raw.midpoint, 1)],
+            ["Panel average", pct(column.raw.modelEstimate, 1)],
+            [
+              `Lowest — ${shortModel(column.raw.lowest.model)}`,
+              pct(column.raw.lowest.estimate, 1),
+            ],
+            [
+              `Highest — ${shortModel(column.raw.highest.model)}`,
+              pct(column.raw.highest.estimate, 1),
+            ],
+            ["Spread", pct(column.raw.spread, 1)],
+            ["Models", String(column.raw.ranked.length)],
+          ],
+        });
+
+        document.getElementById("stripcap").textContent =
+          `The panel is not one forecaster. On the median question its estimates span ${pct(medianSpread, 1)}, and on ` +
+          `"${widest.question || widest.slug}" they span ${pct(widest.spread, 1)} — ${shortModel(widest.lowest.model)} at ` +
+          `${pct(widest.lowest.estimate, 1)} against ${shortModel(widest.highest.model)} at ${pct(widest.highest.estimate, 1)}. ` +
+          `The market price falls inside that range on ${covered} of ${panels.length} questions, so where the panel's average misses the ` +
+          `crowd it is usually because the models are split rather than because they agree on something else.`;
+      };
+
+      const drawDistance = () => {
+        legend(document.getElementById("distLegend"), [
+          AVERAGE_ERROR,
+          NEGATION_ERROR,
+        ]);
+
+        const xs = priced.map((r) => r.marketDistance);
+        const xLo = Math.min(...xs);
+        const xHi = Math.max(...xs);
+        const series = [
+          { key: "averageError", meta: AVERAGE_ERROR },
+          { key: "negationError", meta: NEGATION_ERROR },
+        ];
+
+        scatter(document.getElementById("dist"), {
+          // One least-squares line per series, in its own colour: two clouds
+          // this overlapped are hard to read a slope off by eye.
+          guides: series.map(({ key, meta }) => {
+            const line = trend(
+              xs,
+              priced.map((r) => r[key]),
+            );
+            return {
+              x1: xLo,
+              y1: line(xLo),
+              x2: xHi,
+              y2: line(xHi),
+              color: meta.color,
+            };
+          }),
+          points: series.flatMap(({ key, meta }) =>
+            priced.map((r) => ({
+              x: r.marketDistance,
+              y: r[key],
+              label: r.question || r.slug,
+              color: meta.color,
+              raw: { row: r, measure: meta.name },
+            })),
+          ),
+          height: 360,
+          xLabel:
+            "Average distance from the market price, over the twenty models",
+          yLabel: "Error, in points of probability",
+          xFormat: (v) => pct(v, 0),
+          yFormat: (v) => pct(v, 0),
+          tooltip: (p) => [
+            ["Measure", p.raw.measure],
+            ["Distance to the market", pct(p.raw.row.marketDistance, 1)],
+            ["Average error", pct(p.raw.row.averageError, 1)],
+            ["Negation error", pct(p.raw.row.negationError, 1)],
+            ["Market price", pct(p.raw.row.midpoint, 1)],
+            ["Panel estimate", pct(p.raw.row.modelEstimate, 1)],
+          ],
+        });
+
+        const rAvg = pearson(
+          xs,
+          priced.map((r) => r.averageError),
+        );
+        const rNeg = pearson(
+          xs,
+          priced.map((r) => r.negationError),
+        );
+        const higher = priced.filter(
+          (r) => r.negationError > r.averageError,
+        ).length;
+        document.getElementById("distcap").textContent =
+          `Both rise with distance from the market — correlation ${signedR(rAvg)} for average error and ${signedR(rNeg)} for negation ` +
+          `error — and negation error rises faster, from a higher start: it is the larger of the two on ${higher} of the ${priced.length} ` +
+          `questions. Getting the two wordings to agree is the harder job at every distance. Neither line says the market was ` +
+          `right: a question the models are unsure about is one they answer inconsistently and one they price away from the crowd, and ` +
+          `nothing here distinguishes the crowd being wrong from the panel being noisy.`;
+      };
+
       const draw = () => {
         legend(document.getElementById("scatterLegend"), [
           ABOVE,
@@ -365,6 +590,8 @@
           `by ${pct(meanAbsDelta, 1)} on average. The scatter is widest in the upper half of the price range, where a question the market ` +
           `treats as likely can still read as a long shot to the models.`;
 
+        drawStrip();
+        drawDistance();
         drawWorst();
       };
 
