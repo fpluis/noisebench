@@ -24,9 +24,16 @@
 
       <section>
         <p class="lede">
-          Measuring noise in AI models by forecasting real Polymarket events.
-          Noise measures focus on internal consistency, regardless of forecast
-          accuracy.<span id="scope">Loading…</span>
+          Measuring noise in AI models by forecasting the top Polymarket events.
+        </p>
+        <p class="lede">
+          This benchmark estimates each model's judgment noise by comparing the consistency of its forecasts for highly impactful markets across many topics. Understanding noise in judgment helps us understand the degree to which a model's forecasts and opinions are inconsistent. Achieving 0% noise is possible but doesn't mean the forecasts will be perfectly accurate, only that they will be internally consistent.
+        </p>
+        <p class="lede">
+          Each model produces both individual forecasts for the odds of each market, eg <i>"Will JD Vance win the 2028 US Presidential Election?"</i> both for the "Yes" and "No" outcomes, multiple times. Then the models judge which of two separate market outcomes is more likely, eg <i>"Billionaire one-time wealth tax passes in California election 2026?"</i> vs <i>"Will Marine Le Pen win the 2027 French presidential election?"</i>, for the 4 different outcome combinations of each pair of markets.
+        </p>
+        <p class="lede">
+          <span id="scope">Loading…</span>
         </p>
       </section>
 
@@ -35,7 +42,7 @@
           <div>
             <h2>Noise Index</h2>
             <p class="lede" style="margin-bottom: 0">
-              A single score per model that combines five noise measures.
+              A single score per model that combines five noise measures with a simple average.
             </p>
           </div>
         </div>
@@ -47,11 +54,11 @@
           ></div>
           <div class="chart-scroll"><div id="composite"></div></div>
         </figure>
-        <p class="formula" id="composite-formula"></p>
       </section>
 
       <section>
-        <h2>What goes into the score</h2>
+        <h2>What goes into the aggregate score</h2>
+        <p class="formula" id="composite-formula"></p>
         <figure>
           <div class="chart-head">
             <div class="controls" style="margin-bottom: 0">
@@ -86,9 +93,7 @@
       <section>
         <h2>Consistency and cost</h2>
         <p class="lede">
-          An answer is one call to the model, counting both the probability
-          prompts and the head-to-head ones, since the composite is built from
-          both.
+          An answer is one call to the model, counting both the probability prompts and the head-to-head ones, since the composite is built from both.
         </p>
         <figure>
           <div class="chart-head">
@@ -127,7 +132,6 @@
         scatter,
         shortModel,
         signedPct,
-        times,
         usd,
         wireTableToggle,
       } from "./assets/viz.js";
@@ -192,7 +196,6 @@
           field: "drift",
           name: "Signed drift",
           formula: "mean over {model, question} of  avg(Yes) − (1 − avg(No))",
-          axisLabel: "avg(Yes) − (1 − avg(No)), averaged over questions",
           note: "Right of zero the two wordings sum past 100%, left of it they fall short.",
         },
       };
@@ -349,7 +352,7 @@
       };
       const ANSWER = {
         key: "answer",
-        name: "The answer itself",
+        name: "Non-reasoning tokens",
         color: "var(--text-secondary)",
         opacity: 0.45,
       };
@@ -367,7 +370,6 @@
         ["— asked to rank two", usd(m.costPerJudgment)],
         ["Tokens out", count(m.tokensOut)],
         ["— of which reasoning", count(m.reasoningTokens)],
-        ["Consistency per $", times(m.consistencyPerDollar)],
       ];
 
       const COST_VIEWS = [
@@ -414,12 +416,13 @@
               barHeight: 14,
               labelWidth: 210,
               valueFormat: (v) => count(v),
+              // The bar is a length in tokens; the figure past its end is the
+              // noise the row is ordered by, so the two quantities the chart
+              // sets against each other are both readable without a hover.
+              endLabel: (row) => pct(row.raw.noise, 1),
               axisLabel: "Output tokens per answer",
               tooltip: (row) => spendTip(row.raw),
             }),
-          caption: () =>
-            `Models run noisiest at the top down to steadiest at the foot, so the question the chart answers is whether the bars ` +
-            `shorten on the way down. They do not.`,
         },
       ];
 
@@ -447,15 +450,9 @@
           { name: "$ / ranking", get: (r) => usd(r.costPerJudgment) },
           { name: "Tokens out", get: (r) => count(r.tokensOut) },
           { name: "Reasoning", get: (r) => count(r.reasoningTokens) },
-          {
-            name: "Consistency per $",
-            get: (r) => times(r.consistencyPerDollar),
-          },
         ],
-        [...models].sort(
-          (a, b) =>
-            (b.consistencyPerDollar ?? 0) - (a.consistencyPerDollar ?? 0),
-        ),
+        // Steadiest first, which is the ordering the charts above it read by.
+        [...models].sort((a, b) => a.noise - b.noise),
       );
 
       for (const button of document.querySelectorAll("[data-cost]")) {

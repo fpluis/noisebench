@@ -23,15 +23,11 @@
       </header>
 
       <section>
-        <div class="tiles" id="tiles"></div>
-        <p class="note" id="pairnote"></p>
-      </section>
-
-      <section>
         <h2>The panel against the market</h2>
         <p class="lede">
           Per-market metrics across all models. Here "Panel" refers to the aggregation of models.
         </p>
+        <p class="lede" id="gapnote" style="margin-bottom: 14px"></p>
         <figure>
           <div class="chart-head">
             <div class="legend" id="scatterLegend"></div>
@@ -193,33 +189,9 @@
         );
       const signedR = (r) => `${r < 0 ? "−" : "+"}${Math.abs(r).toFixed(2)}`;
 
-      document.getElementById("tiles").innerHTML = [
-        ["Questions", String(rows.length), ``],
-        [
-          "Typical gap to the market",
-          pct(meanAbsDelta, 1),
-          `Mean |panel estimate − price|; ${below} of ${priced.length} sit below the market`,
-        ],
-        [
-          "Odds spread",
-          pct(mean(rows.map((r) => r.averageError)), 1),
-          "Across questions, averaged over models",
-        ],
-        [
-          "Negated spread",
-          pct(mean(rows.map((r) => r.negationError)), 1),
-          "Across questions, averaged over models",
-        ],
-      ]
-        .map(
-          ([label, value, hint]) => `
-        <div class="tile">
-          <div class="label">${label}</div>
-          <div class="value" style="font-size:26px">${value}</div>
-          <div class="hint">${hint}</div>
-        </div>`,
-        )
-        .join("");
+      document.getElementById("gapnote").innerHTML =
+        `Typical gap to the market: <b>${pct(meanAbsDelta, 1)}</b>: the mean of |panel estimate − price|, with ` +
+        `${below} of the ${priced.length} questions sitting below the market.`;
 
       // Colour carries the magnitude of the gap and the neighbouring column
       // carries its number, so the wash is never the only way to read it.
@@ -297,6 +269,9 @@
               raw: m,
             })),
           series: [{ key: "v", name: label(), color: "var(--series-1)" }],
+          // Five rows, and every bar is long enough to hold its own figure, so
+          // the bar has to be deeper than the 11px type that sits inside it.
+          barHeight: 17,
           labelWidth: 340,
           valueFormat: (v) => pct(v, 1),
           axisLabel: label(),
@@ -403,12 +378,6 @@
           ],
         });
 
-        document.getElementById("stripcap").textContent =
-          `The panel is not one forecaster. On the median question its estimates span ${pct(medianSpread, 1)}, and on ` +
-          `"${widest.question || widest.slug}" they span ${pct(widest.spread, 1)} — ${shortModel(widest.lowest.model)} at ` +
-          `${pct(widest.lowest.estimate, 1)} against ${shortModel(widest.highest.model)} at ${pct(widest.highest.estimate, 1)}. ` +
-          `The market price falls inside that range on ${covered} of ${panels.length} questions, so where the panel's average misses the ` +
-          `crowd it is usually because the models are split rather than because they agree on something else.`;
       };
 
       const drawDistance = () => {
@@ -474,15 +443,8 @@
           xs,
           priced.map((r) => r.negationError),
         );
-        const higher = priced.filter(
-          (r) => r.negationError > r.averageError,
-        ).length;
         document.getElementById("distcap").textContent =
-          `Both rise with distance from the market — correlation ${signedR(rAvg)} for odds spread and ${signedR(rNeg)} for negated ` +
-          `spread — and negated spread rises faster, from a higher start: it is the larger of the two on ${higher} of the ${priced.length} ` +
-          `questions. Getting the two wordings to agree is the harder job at every distance. Neither line says the market was ` +
-          `right: a question the models are unsure about is one they answer inconsistently and one they price away from the crowd, and ` +
-          `nothing here distinguishes the crowd being wrong from the panel being noisy.`;
+          `Both rise with distance from the market (correlation ${signedR(rAvg)} for odds spread and ${signedR(rNeg)} for negated spread).`;
       };
 
       const draw = () => {

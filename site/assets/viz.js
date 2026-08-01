@@ -60,18 +60,15 @@ export const signedPct = (x, dp = 1) =>
     ? "—"
     : `${x > 0 ? "+" : x < 0 ? "−" : ""}${(Math.abs(x) * 100).toFixed(dp)}%`;
 
-// The exceptions to "everything is a percentage": what an answer cost, how long
-// it was, and the ratio between two of those. Four decimal places on the money,
-// because the cheapest model on the board bills four figures below the dearest
-// and a rounded cent would print every one of them as $0.00.
+// The exceptions to "everything is a percentage": what an answer cost and how
+// long it was. Four decimal places on the money, because the cheapest model on
+// the board bills four figures below the dearest and a rounded cent would print
+// every one of them as $0.00.
 export const usd = (x, dp = 4) =>
   x === null || x === undefined ? "—" : `$${Number(x).toFixed(dp)}`;
 
 export const count = (x) =>
   x === null || x === undefined ? "—" : Math.round(x).toLocaleString();
-
-export const times = (x, dp = 2) =>
-  x === null || x === undefined ? "—" : `${Number(x).toFixed(dp)}×`;
 
 // ---------------------------------------------------------------------------
 // Theme
@@ -250,6 +247,11 @@ export const horizontalBars = (mount, options) => {
     barHeight = signed ? 16 : 11,
     groupGap = 12,
     axisLabel = "",
+    // What to print past the end of a stacked row, when the row's total is not
+    // the number worth reading there. The bar still carries the total as a
+    // length; this lets a second quantity — the one the row order is by — sit
+    // where the eye already goes.
+    endLabel = null,
     tooltip = null,
   } = options;
 
@@ -382,10 +384,9 @@ export const horizontalBars = (mount, options) => {
         acc += value;
       });
 
-      // One number per row, and it is the total — the segments are readable as
-      // lengths, but what the row is worth is the sum of them. Always past the
-      // end rather than inside: the segment the number would land on is the
-      // lightened one, where white type has nothing to sit against.
+      // One number per row, the total unless the caller names another. Always
+      // past the end rather than inside: the segment the number would land on
+      // is the lightened one, where white type has nothing to sit against.
       const sum = total(row);
       el(
         "text",
@@ -399,7 +400,7 @@ export const horizontalBars = (mount, options) => {
           fill: "var(--text-secondary)",
         },
         svg,
-      ).textContent = valueFormat(sum);
+      ).textContent = endLabel ? endLabel(row) : valueFormat(sum);
       return;
     }
 

@@ -23,38 +23,28 @@
       </header>
 
       <section>
-        <div class="tiles" id="tiles"></div>
+        <p class="lede" id="scope">Loading…</p>
       </section>
 
       <section>
         <h2>How the run worked</h2>
-        <p class="lede">
-          Three steps, from a live Polymarket order book to the numbers on these
-          pages.
-        </p>
         <ol class="steps">
           <li>
             <div class="step-title">Gather the questions dataset</div>
             <p>
-              100 of the top markets by Open Interest in Polymarket over the
-              next 2 years, balanced for different midpoint prices. We form
-              pairs using the sorted dataset by midpoint price descending, with
-              the goal of having question pairs of comparable odds/difficulty.
+              100 of the top markets by Open Interest in Polymarket over the next 2 years, balanced for different midpoint prices. We form pairs using the sorted dataset by midpoint price descending, with the goal of having question pairs of comparable odds/difficulty.
             </p>
           </li>
           <li>
             <div class="step-title">Snapshot the price, then research</div>
             <p>
-              Take a snapshot of the market's current midpoint price and
-              generate a research with a custom deep research agent that avoids
-              including explicit prediction market odds.
+              Take a snapshot of the market's current midpoint price and generate a research with a custom deep research agent that avoids including explicit prediction market odds.
             </p>
           </li>
           <li>
             <div class="step-title">Run inference and log it</div>
             <p>
-              Run inference over the entire dataset using OpenRouter and log the
-              results both on-chain and on a local database.
+              Run inference over the entire dataset using OpenRouter and log the results both on-chain and on a local database.
             </p>
           </li>
         </ol>
@@ -65,23 +55,15 @@
         <dl class="defs">
           <dt>Prompt iterations</dt>
           <dd>
-            How many times the exact same individual forecast is requested.
-            Multiple forecasts with the same exact inputs allow us to measure
-            odds spread.
+            How many times the exact same individual forecast is requested. Multiple forecasts with the same exact inputs allow us to measure odds spread.
           </dd>
           <dt>Negated questions</dt>
           <dd>
-            We ask each model the same number of times for the probability the
-            market resolves to "Yes" as we ask for "No". This lets us observe
-            the impact of 1 aspect of the question's framing that has 0 logical
-            effect and <em>should</em> produce the exact same but inverted
-            results, eg Yes=40% should always lead the model to forecast No=60%.
+            We ask each model the same number of times for the probability the market resolves to "Yes" as we ask for "No". This lets us observe the impact of 1 aspect of the question's framing that has 0 logical effect and <em>should</em> produce the exact same but inverted results, eg Yes=40% should always lead the model to forecast No=60%.
           </dd>
           <dt>Pairwise judgments</dt>
           <dd>
-            Given two options, A or B, which is likelier? We present each model
-            with 4 variations of each pair of markets: (A, B), (¬A, B), (A, ¬B),
-            (¬A, ¬B). Each pair is asked in four ways for each model so we can observe the model's logical consistency when changing how the question is framed, both in terms of negating the question and when asking for a standalone forecast of each question.
+            Given two options, A or B, which is likelier? We present each model with 4 variations of each pair of markets: (A, B), (¬A, B), (A, ¬B), (¬A, ¬B). Each pair is asked in four ways for each model so we can observe the model's logical consistency when changing how the question is framed, both in terms of negating the question and when asking for a standalone forecast of each question.
           </dd>
         </dl>
       </section>
@@ -89,11 +71,7 @@
       <section>
         <h2>The five measures</h2>
         <p class="lede">
-          Odds and negated spread are <b>absolute distances in probability</b>:
-          a 3.0% odds spread means a model's repeated answers to one question
-          sat 3 points of probability apart on average. The other tree measures
-          are <b>shares of judgments</b>: a 12.0% pairwise disagreement means 12
-          of every 100 comparable judgments came back different.
+          Odds and negated spread are <b>absolute distances in probability</b>: a 3.0% odds spread means a model's repeated answers to one question sat 3 points of probability apart on average. The other tree measures are <b>shares of judgments</b>: a 12.0% pairwise disagreement means 12 of every 100 comparable judgments came back different.
         </p>
         <figure>
           <div class="table-wrap">
@@ -152,11 +130,7 @@
       <section>
         <h2>Questions that went unanswered</h2>
         <p class="lede">
-          Not every request came back with a usable number. Those attempts are
-          absent from the analysis. A repeat set
-          holding fewer than two surviving forecasts is skipped by odds spread
-          instead of scoring zero, and a question answered in only one wording
-          is skipped by negated spread.
+          Not every request came back with a usable number. Those attempts are absent from the analysis. A repeat set holding fewer than two surviving forecasts is skipped by odds spread instead of scoring zero, and a question answered in only one wording is skipped by negated spread.
         </p>
         <figure>
           <div class="chart-head">
@@ -177,9 +151,13 @@
       <section>
         <h2>Transparency</h2>
         <p class="lede">
-          The entire code for both the benchmark and this site is available at https://github.com/fpluis/noisebench.
-          The code for the onchain contract where forecasts are logged is available at https://github.com/fpluis/forecast-registry.
-          The onchain forecasts for this benchmark run are publicly logged and can be seen at https://basescan.org/address/0x0189d7d85bc94421e1a4e51dfb40ffcea4f8d9af. Note that due to a misconfiguration error, all the negated forecasts had to be repeated so they will appear twice, here we report only the second, correct attempt.
+          The entire code for both the benchmark and this site is available at <a href="https://github.com/fpluis/noisebench">https://github.com/fpluis/noisebench</a>.
+        </p>
+        <p class="lede">
+          The code for the onchain contract where forecasts are logged is available at <a href="https://github.com/fpluis/forecast-registry">https://github.com/fpluis/forecast-registry</a>.
+        </p>
+        <p class="lede">
+          The onchain forecasts for this benchmark run are publicly logged and can be seen at <a href="https://basescan.org/address/0x0189d7d85bc94421e1a4e51dfb40ffcea4f8d9af">https://basescan.org/address/0x0189d7d85bc94421e1a4e51dfb40ffcea4f8d9af</a>. Note that due to a misconfiguration error, all the negated forecasts had to be repeated so they will appear twice, here we report only the second, correct attempt.
         </p>
         <p class="note" id="provenance"></p>
       </section>
@@ -208,33 +186,19 @@
       const started = new Date(run.startedAt);
       const ended = new Date(run.endedAt);
 
-      const attempted = run.models.reduce((s, m) => s + m.attempted, 0);
       const parsed = run.models.reduce((s, m) => s + m.parsed, 0);
       const models = metrics.models;
 
-      document.getElementById("tiles").innerHTML = [
-        ["Models", String(run.models.length), "Across ten vendors"],
-        ["Questions", String(run.markets), "From 72 Polymarket events"],
-        [
-          "Forecasts used",
-          parsed.toLocaleString(),
-          `of ${attempted.toLocaleString()} direct requests`,
-        ],
-        [
-          "Head-to-head judgments",
-          models.reduce((s, m) => s + m.judgments, 0).toLocaleString(),
-          "Across 50 fixed pairs",
-        ],
-      ]
-        .map(
-          ([label, value, hint]) => `
-        <div class="tile">
-          <div class="label">${label}</div>
-          <div class="value">${value}</div>
-          <div class="hint">${hint}</div>
-        </div>`,
-        )
-        .join("");
+      // The vendor prefix of a slug is who made the model, so the number of
+      // labs on the board is a count of distinct prefixes rather than a figure
+      // typed into the sentence and left to go stale.
+      const providers = new Set(run.models.map((m) => m.model.split("/")[0]))
+        .size;
+      const pairForecasts = models.reduce((s, m) => s + m.judgments, 0);
+
+      document.getElementById("scope").textContent =
+        `${run.models.length} models across ${providers} AI companies were evaluated on ${run.markets} Polymarket questions ` +
+        `across ${parsed.toLocaleString()} individual forecasts and ${pairForecasts.toLocaleString()} pair likelihood ranking questions.`;
 
       document.getElementById("components").innerHTML = metrics.components
         .map(

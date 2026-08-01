@@ -6,3 +6,8 @@ site/data/
 
 # Fixture data, kept byte-for-byte as it was fetched.
 datasets/
+
+# Prose on these pages is written one paragraph per line, so a sentence edited
+# later shows up as one changed line rather than as a reflowed block. Prettier
+# fills text to the print width and would undo that on every run.
+site/*.html
