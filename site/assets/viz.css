@@ -200,18 +200,20 @@ h3 {
   margin: 0 0 4px;
 }
 
+/* Prose runs the full width of its container rather than to a `ch` measure.
+   `.wrap` already caps the page at 1080px, so that is the line length, and it
+   is the same edge the charts and tables end on — text that stopped short of
+   it read as crammed into the left of the page. */
 p.lede {
   color: var(--text-secondary);
   font-size: 14px;
   margin: 0 0 20px;
-  max-width: 72ch;
 }
 
 p.note {
   color: var(--text-muted);
   font-size: 12.5px;
   margin: 10px 0 0;
-  max-width: 76ch;
 }
 
 /* Body links take a text token, not the browser default, so they sit in the
@@ -324,7 +326,6 @@ ol.steps p {
   margin: 0;
   font-size: 13px;
   color: var(--text-secondary);
-  max-width: 72ch;
 }
 
 /* ---------- definition list ---------- */
@@ -347,7 +348,6 @@ dl.defs dd {
   margin: 3px 0 0;
   font-size: 13.5px;
   color: var(--text-secondary);
-  max-width: 76ch;
 }
 
 /* ---------- figures ---------- */
@@ -364,18 +364,11 @@ figcaption {
   font-size: 12.5px;
   color: var(--text-secondary);
   margin-top: 10px;
-  max-width: 76ch;
 }
 
-/* A caption that is a formula rather than a sentence. It takes the figure's
-   full width rather than the caption's prose measure, since the constraint that
-   makes prose readable is the one that would make notation scroll sideways with
-   room to spare either side of it. `pre-wrap` keeps the alignment spacing and
-   still wraps rather than overflowing on a narrow screen. */
-figcaption:has(> code) {
-  max-width: none;
-}
-
+/* A caption that is a formula rather than a sentence. `pre-wrap` keeps the
+   alignment spacing and still wraps rather than overflowing on a narrow
+   screen. */
 figcaption > code {
   display: block;
   white-space: pre-wrap;

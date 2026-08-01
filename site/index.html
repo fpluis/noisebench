@@ -253,8 +253,8 @@
             tooltip: (row) => [
               [signedMeta.name, signedPct(row.raw[signedMeta.field], 1)],
               [meta.label, pct(row.raw[part], 1)],
-              ["Asked for the Yes side", pct(row.raw.yes, 1)],
-              ["Asked for the No side", pct(row.raw.no, 1)],
+              ["Mean odds asked as Yes", pct(row.raw.yes, 1)],
+              ["Mean odds asked as No", pct(row.raw.no, 1)],
               ["Questions", String(row.raw.markets)],
             ],
           });
@@ -305,9 +305,12 @@
           directional
             ? [
                 { name: "Model", get: (r) => r.model, numeric: false },
-                { name: "Asked Yes", get: (r) => pct(r.yes, 1) },
-                { name: "Asked No", get: (r) => pct(r.no, 1) },
-                { name: "Sum", get: (r) => pct(r.yes + r.no, 1) },
+                { name: "Mean odds — Yes", get: (r) => pct(r.yes, 1) },
+                { name: "Mean odds — No", get: (r) => pct(r.no, 1) },
+                {
+                  name: "Sum (should be 100%)",
+                  get: (r) => pct(r.yes + r.no, 1),
+                },
                 { name: "Signed drift", get: (r) => signedPct(r.drift, 1) },
                 { name: "Negated spread", get: (r) => pct(r.negationError, 1) },
                 { name: "Questions", get: (r) => String(r.markets) },
