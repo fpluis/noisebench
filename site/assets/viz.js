@@ -29,6 +29,22 @@ export const pct = (x, dp = 1) =>
 // twenty times, but keep it where two vendors ship the same short name.
 export const shortModel = (name) => name.split("/").pop();
 
+/**
+ * The brand hue for a model, from the vendor prefix of its slug.
+ *
+ * Takes either a full slug ("openai/gpt-5.5") or a bare vendor ("openai"), so a
+ * chart and its legend read the same definition. The values live in CSS, which
+ * is what makes light and dark one definition each; a vendor with no entry
+ * falls back to the neutral series colour rather than to nothing.
+ */
+export const brandColor = (name) => {
+  const vendor = String(name)
+    .split("/")[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-");
+  return `var(--brand-${vendor}, var(--series-1))`;
+};
+
 // ---------------------------------------------------------------------------
 // Units
 // ---------------------------------------------------------------------------
@@ -346,7 +362,10 @@ export const horizontalBars = (mount, options) => {
           "path",
           {
             d: barPath(from, yTop, to - from, barHeight, j === last ? 4 : 0),
-            fill: s.color,
+            // A row colour carries identity, so the parts separate by weight
+            // within that one hue rather than by taking a hue of their own.
+            fill: row.color ?? s.color,
+            "fill-opacity": s.opacity ?? 1,
             stroke: "var(--surface-1)",
             "stroke-width": 2,
             "paint-order": "stroke",
@@ -364,20 +383,20 @@ export const horizontalBars = (mount, options) => {
       });
 
       // One number per row, and it is the total — the segments are readable as
-      // lengths, but what the row is worth is the sum of them.
+      // lengths, but what the row is worth is the sum of them. Always past the
+      // end rather than inside: the segment the number would land on is the
+      // lightened one, where white type has nothing to sit against.
       const sum = total(row);
-      const end = x(sum);
-      const inside = end - x(0) >= 52;
       el(
         "text",
         {
-          x: end + (inside ? -6 : 6),
+          x: x(sum) + 6,
           y: yTop + barHeight / 2,
-          "text-anchor": inside ? "end" : "start",
+          "text-anchor": "start",
           "dominant-baseline": "middle",
           "font-size": 11,
           "font-variant-numeric": "tabular-nums",
-          fill: inside ? "#fff" : "var(--text-secondary)",
+          fill: "var(--text-secondary)",
         },
         svg,
       ).textContent = valueFormat(sum);
@@ -389,11 +408,16 @@ export const horizontalBars = (mount, options) => {
       const y = yTop + j * (barHeight + 2);
       const zero = signed ? x(0) : x(lo);
       const end = x(value);
-      const fill = signed
-        ? value < 0
-          ? "var(--diverge-neg)"
-          : "var(--diverge-pos)"
-        : s.color;
+      // A row that names its own colour keeps it even when signed: the bar is
+      // anchored at zero and sits on one side of it, so the sign is already
+      // carried by position and does not need the hue as well.
+      const fill =
+        row.color ??
+        (signed
+          ? value < 0
+            ? "var(--diverge-neg)"
+            : "var(--diverge-pos)"
+          : s.color);
 
       const path = el(
         "path",
@@ -594,7 +618,9 @@ export const groupedColumns = (mount, options) => {
         "path",
         {
           d: h > 1 ? d : `M${bx},${zero} h${barWidth} v1 h${-barWidth} z`,
-          fill: s.color,
+          // Per-row colour, for a chart whose categories are entities with an
+          // identity of their own rather than steps along a scale.
+          fill: row.color ?? s.color,
           // Emphasis, not a second hue: everything not highlighted recedes so
           // the named entity carries the eye without adding a colour class.
           "fill-opacity": highlight && row.label !== highlight ? 0.32 : 1,
@@ -1376,6 +1402,9 @@ export const legend = (mount, series) => {
       ].replaceAll("COLOR", s.color)}</svg>`;
     } else {
       swatch.style.background = s.color;
+      // A series told apart by weight rather than hue — the swatch has to show
+      // the weight, and stays neutral because the hue belongs to the row.
+      if (s.opacity !== undefined) swatch.style.opacity = String(s.opacity);
     }
     const label = document.createElement("span");
     label.textContent = s.name;

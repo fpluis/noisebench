@@ -81,7 +81,7 @@
           <dd>
             Given two options, A or B, which is likelier? We present each model
             with 4 variations of each pair of markets: (A, B), (¬A, B), (A, ¬B),
-            (¬A, ¬B).
+            (¬A, ¬B). Each pair is asked in four ways for each model so we can observe the model's logical consistency when changing how the question is framed, both in terms of negating the question and when asking for a standalone forecast of each question.
           </dd>
         </dl>
       </section>
@@ -89,11 +89,11 @@
       <section>
         <h2>The five measures</h2>
         <p class="lede">
-          Odds and negated spread are <b>absolute distances in probability</b>: a 3.0%
-          odds spread means a model's repeated answers to one question sat 3
-          points of probability apart on average. The other tree measures are
-          <b>shares of judgments</b>: a 12.0% pairwise disagreement means
-          12 of every 100 comparable judgments came back different.
+          Odds and negated spread are <b>absolute distances in probability</b>:
+          a 3.0% odds spread means a model's repeated answers to one question
+          sat 3 points of probability apart on average. The other tree measures
+          are <b>shares of judgments</b>: a 12.0% pairwise disagreement means 12
+          of every 100 comparable judgments came back different.
         </p>
         <figure>
           <div class="table-wrap">
@@ -113,12 +113,9 @@
       </section>
 
       <section>
-        <h2>Why the four wordings must disagree</h2>
+        <h2>Pair combinations</h2>
         <p class="lede">
-          Each pair is asked four ways. Those four answers only probe
-          <em>two</em> independent facts, and each fact gets asked twice in
-          opposite directions — which is what makes a coherence check possible
-          without knowing any true answer.
+          The pairs (A vs B) and (not A vs not B) are directly usable to test logical consistency with standalone forecasts. If model says p(A) > p(B) on standalone forecasts, then it must also choose A over B and not-A over not-B. But (A vs not-B) and (not-A vs B) are special: p(not_B) can be higher than p(A) but p(A) > p(B). Example: p(A) = 0.2, p(B) = 0.1, then p(not_B) = 0.9, which is higher than p(A) = 0.2, but p(A) > p(B). That's why for "Negation disagreement" we need to compare these two sets of pairs separately against each other.
         </p>
         <figure>
           <div class="table-wrap">
@@ -126,53 +123,29 @@
               <thead>
                 <tr>
                   <th style="text-align: left">Asked</th>
-                  <th style="text-align: left">Picking A means</th>
-                  <th style="text-align: left">Votes for</th>
+                  <th style="text-align: left">Correct choice assuming higher odds for A</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
                   <td style="text-align: left">A vs B</td>
-                  <td style="text-align: left"><code>P(A) &gt; P(B)</code></td>
-                  <td style="text-align: left">A, or B if B is picked</td>
+                  <td style="text-align: left">A</td>
                 </tr>
                 <tr>
                   <td style="text-align: left">not-A vs not-B</td>
-                  <td style="text-align: left">
-                    <code>P(A) &lt; P(B)</code> — must reverse the first
-                  </td>
-                  <td style="text-align: left">B, or A if not-B is picked</td>
+                  <td style="text-align: left">B</td>
                 </tr>
                 <tr>
                   <td style="text-align: left">A vs not-B</td>
-                  <td style="text-align: left">
-                    <code>P(A) + P(B) &gt; 1</code>
-                  </td>
-                  <td style="text-align: left">A either way</td>
+                  <td style="text-align: left">Depends on the odds for A and B</td>
                 </tr>
                 <tr>
                   <td style="text-align: left">not-A vs B</td>
-                  <td style="text-align: left">
-                    <code>P(A) + P(B) &lt; 1</code> — must reverse the third
-                  </td>
-                  <td style="text-align: left">B either way</td>
+                  <td style="text-align: left">Depends on the odds for A and B</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <figcaption>
-            Those two reversals are the whole of negation disagreement: checking
-            them is both necessary and sufficient for the set of four answers to
-            be logically coherent. Note what is <em>not</em> a contradiction —
-            saying A beats B and also that A beats not-B is perfectly fine
-            (A&nbsp;=&nbsp;90%, B&nbsp;=&nbsp;40% does both). The third column
-            is the vote normalization individual-pair disagreement uses: picking
-            a side as worded votes for its market, picking a flipped side votes
-            against it. The two sum wordings therefore vote one way whatever is
-            picked, and cancel each other out — the majority is decided by the
-            two ranking wordings, and the sum wordings are still counted so the
-            denominator is every judgment the model made about the pair.
-          </figcaption>
         </figure>
       </section>
 
@@ -180,7 +153,7 @@
         <h2>Questions that went unanswered</h2>
         <p class="lede">
           Not every request came back with a usable number. Those attempts are
-          absent from the analysis rather than counted as noise. A repeat set
+          absent from the analysis. A repeat set
           holding fewer than two surviving forecasts is skipped by odds spread
           instead of scoring zero, and a question answered in only one wording
           is skipped by negated spread.
@@ -202,28 +175,11 @@
       </section>
 
       <section>
-        <h2>Reproducing this</h2>
+        <h2>Transparency</h2>
         <p class="lede">
-          The site reads static JSON only, so once the analysis has run it needs
-          no database.
-        </p>
-        <figure>
-          <pre style="margin: 0; overflow-x: auto; font-size: 12.5px">
-npm run db:up            # postgres
-npm run db:setup         # apply migrations
-npm run backfill-snapshot -- --run 1
-npm run analyze -- --run 1
-npm run site             # http://localhost:4321</pre>
-        </figure>
-        <p class="note">
-          The five measures live in <code>src/metrics.ts</code>, are unit-tested
-          in <code>tests/metrics.test.ts</code> — including a worked example of
-          each — and are emitted to <code>site/data/metrics.json</code>, which
-          with <code>run.json</code> is everything these pages read. The
-          analysis layer also still writes <code>noise.json</code>, a fuller
-          variance decomposition of the same forecasts on both the probability
-          and log-odds scales, and <code>negation.json</code>; no page reads
-          them.
+          The entire code for both the benchmark and this site is available at https://github.com/fpluis/noisebench.
+          The code for the onchain contract where forecasts are logged is available at https://github.com/fpluis/forecast-registry.
+          The onchain forecasts for this benchmark run are publicly logged and can be seen at https://basescan.org/address/0x0189d7d85bc94421e1a4e51dfb40ffcea4f8d9af. Note that due to a misconfiguration error, all the negated forecasts had to be repeated so they will appear twice, here we report only the second, correct attempt.
         </p>
         <p class="note" id="provenance"></p>
       </section>
@@ -231,6 +187,7 @@ npm run site             # http://localhost:4321</pre>
 
     <script type="module">
       import {
+        brandColor,
         horizontalBars,
         initTheme,
         loadJson,
@@ -305,10 +262,6 @@ npm run site             # http://localhost:4321</pre>
         .filter((m) => m.parseFailureRate > 0)
         .sort((a, b) => b.parseFailureRate - a.parseFailureRate);
       const worst = failing[0];
-      document.getElementById("covcap").textContent =
-        `${failing.length} of ${run.models.length} models left at least one request unanswered. ` +
-        `${shortModel(worst.model)} accounts for most of it at ${pct(worst.parseFailureRate, 1)}; ` +
-        `the remaining ${run.models.length - failing.length} models answered everything asked of them.`;
 
       document.getElementById("provenance").textContent =
         `Run "${run.name}" started ${started.toISOString().replace("T", " ").slice(0, 16)} UTC ` +
@@ -317,6 +270,7 @@ npm run site             # http://localhost:4321</pre>
       const rows = failing.map((m) => ({
         label: shortModel(m.model),
         rate: m.parseFailureRate,
+        color: brandColor(m.model),
         raw: m,
       }));
 

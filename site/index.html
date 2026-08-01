@@ -40,6 +40,11 @@
           </div>
         </div>
         <figure>
+          <div
+            class="legend"
+            id="vendorLegend"
+            style="margin-bottom: 12px"
+          ></div>
           <div class="chart-scroll"><div id="composite"></div></div>
         </figure>
         <p class="formula" id="composite-formula"></p>
@@ -79,7 +84,7 @@
       </section>
 
       <section>
-        <h2>What consistency costs</h2>
+        <h2>Consistency and cost</h2>
         <p class="lede">
           An answer is one call to the model, counting both the probability
           prompts and the head-to-head ones, since the composite is built from
@@ -90,10 +95,10 @@
             <div class="controls" style="margin-bottom: 0">
               <div class="seg" role="group" aria-label="Measure" id="costSeg">
                 <button data-cost="noiseVsCost" aria-pressed="true">
-                  Noise vs answer cost
+                  Noise vs cost
                 </button>
                 <button data-cost="tokensVsNoise" aria-pressed="false">
-                  Tokens out vs noise
+                  Tokens vs noise
                 </button>
               </div>
             </div>
@@ -109,6 +114,7 @@
 
     <script type="module">
       import {
+        brandColor,
         count,
         groupedColumns,
         horizontalBars,
@@ -139,9 +145,7 @@
         `${answers.toLocaleString()} answers.`;
 
       document.getElementById("composite-formula").innerHTML =
-        `noise = ( ${components.map((c) => c.label.toLowerCase()).join("\n         + ")} ) / 5` +
-        `<span class="unit">Each term is already a percentage of its own denominator, so the mean is a percentage too. ` +
-        `A perfectly self-consistent forecaster scores 0%.</span>`;
+        `noise = ( ${components.map((c) => c.label.toLowerCase()).join("\n         + ")} ) / 5`
 
       document.getElementById("partSeg").innerHTML = components
         .map(
@@ -153,6 +157,29 @@
       let part = components[0].key;
       let view = "absolute";
       const partMeta = () => components.find((c) => c.key === part);
+
+      // Every mark for a model takes its vendor's brand hue. The name is on the
+      // mark either way, so this is a second reading of the same fact — but it
+      // is the reading that shows a lab's models sitting together, which twenty
+      // separate labels do not. Named once, under the headline chart, because
+      // half the slugs do not say who made them.
+      const VENDOR_NAMES = {
+        openai: "OpenAI",
+        anthropic: "Anthropic",
+        google: "Google",
+        deepseek: "DeepSeek",
+        qwen: "Alibaba (Qwen)",
+        "x-ai": "xAI (Grok)",
+        "z-ai": "Zhipu (GLM)",
+        moonshotai: "Moonshot (Kimi)",
+        xiaomi: "Xiaomi (MiMo)",
+        mistralai: "Mistral",
+        nvidia: "NVIDIA (Nemotron)",
+      };
+      const vendorOf = (model) => model.split("/")[0];
+      const vendors = [...new Set(models.map((m) => vendorOf(m.model)))].map(
+        (v) => ({ name: VENDOR_NAMES[v] ?? v, color: brandColor(v) }),
+      );
 
       // A measure only has a directional form if discarding a sign is what
       // makes it a magnitude. Negated spread is the one such measure: it is the
@@ -171,10 +198,13 @@
       };
 
       const draw = () => {
+        legend(document.getElementById("vendorLegend"), vendors);
+
         groupedColumns(document.getElementById("composite"), {
           rows: models.map((m) => ({
             label: shortModel(m.model),
             v: m.noise,
+            color: brandColor(m.model),
             raw: m,
           })),
           series: [{ key: "v", name: "Noise", color: "var(--series-1)" }],
@@ -207,6 +237,7 @@
               .map((m) => ({
                 label: shortModel(m.model),
                 v: m[signedMeta.field],
+                color: brandColor(m.model),
                 raw: m,
               })),
             series: [
@@ -228,7 +259,12 @@
           groupedColumns(document.getElementById("parts"), {
             rows: [...models]
               .sort((a, b) => a[part] - b[part])
-              .map((m) => ({ label: shortModel(m.model), v: m[part], raw: m })),
+              .map((m) => ({
+                label: shortModel(m.model),
+                v: m[part],
+                color: brandColor(m.model),
+                raw: m,
+              })),
             series: [{ key: "v", name: meta.label, color: "var(--series-1)" }],
             valueFormat: (v) => pct(v, 0),
             height: 360,
@@ -302,15 +338,20 @@
       const priced = byCost("costPerAnswer");
       const lengths = byCost("tokensOut");
 
+      // Hue belongs to the vendor here, so the two parts of a bar separate by
+      // weight instead. The series colour is only what the legend shows, and it
+      // stays neutral because no one hue stands for either part.
       const REASONING = {
         key: "reasoning",
         name: "Reasoning",
-        color: "var(--series-1)",
+        color: "var(--text-secondary)",
+        opacity: 1,
       };
       const ANSWER = {
         key: "answer",
         name: "The answer itself",
-        color: "var(--series-2)",
+        color: "var(--text-secondary)",
+        opacity: 0.45,
       };
 
       // Axis ticks land on 1, 2 and 5 per decade, so the trailing zeros a fixed
@@ -339,6 +380,7 @@
                 x: m.costPerAnswer,
                 y: m.noise,
                 label: shortModel(m.model),
+                color: brandColor(m.model),
                 raw: m,
               })),
               logX: true,
@@ -364,6 +406,7 @@
                   label: shortModel(m.model),
                   reasoning: m.reasoningTokens ?? 0,
                   answer: Math.max(0, m.tokensOut - (m.reasoningTokens ?? 0)),
+                  color: brandColor(m.model),
                   raw: m,
                 })),
               series: [REASONING, ANSWER],

@@ -25,6 +25,28 @@
   --diverge-mid: #f0efec;
 
   --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Vendor brand hues, keyed by the slug prefix of a model name. Identity is
+     still carried by the label on every mark — this is a grouping cue on top of
+     it, so a reader can see a lab's models cluster without reading twenty
+     names. Three brand books collide when put on one chart and are nudged the
+     minimum needed to separate: Xiaomi's orange sits on Mistral's, and Zhipu's
+     blue sits between Google's and DeepSeek's, so Xiaomi moves toward amber and
+     Zhipu toward the cyan its own branding claims. xAI and Moonshot are both
+     monochrome brands; xAI inverts with the theme the way its own marque does,
+     and Moonshot keeps a violet cast to its charcoal so the two never read as
+     the same ink. */
+  --brand-openai: #10a37f;
+  --brand-anthropic: #d97757;
+  --brand-google: #4285f4;
+  --brand-deepseek: #4e6cff;
+  --brand-qwen: #7c3aed;
+  --brand-z-ai: #0e9cd9;
+  --brand-x-ai: #111111;
+  --brand-moonshotai: #3f3d56;
+  --brand-xiaomi: #ff8a00;
+  --brand-mistralai: #ff5000;
+  --brand-nvidia: #76b900;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -44,6 +66,20 @@
     --diverge-pos: #3987e5;
     --diverge-neg: #e66767;
     --diverge-mid: #383835;
+
+    /* Lifted off the dark surface. xAI flips to the light half of its own
+       black-and-white identity rather than staying an invisible black. */
+    --brand-openai: #14b892;
+    --brand-anthropic: #e08a6e;
+    --brand-google: #5b9bf8;
+    --brand-deepseek: #6b84ff;
+    --brand-qwen: #a480ff;
+    --brand-z-ai: #35b4e8;
+    --brand-x-ai: #ededed;
+    --brand-moonshotai: #9b98c0;
+    --brand-xiaomi: #ff9e2e;
+    --brand-mistralai: #ff6b29;
+    --brand-nvidia: #8fd119;
   }
 }
 
@@ -63,6 +99,18 @@
   --diverge-pos: #3987e5;
   --diverge-neg: #e66767;
   --diverge-mid: #383835;
+
+  --brand-openai: #14b892;
+  --brand-anthropic: #e08a6e;
+  --brand-google: #5b9bf8;
+  --brand-deepseek: #6b84ff;
+  --brand-qwen: #a480ff;
+  --brand-z-ai: #35b4e8;
+  --brand-x-ai: #ededed;
+  --brand-moonshotai: #9b98c0;
+  --brand-xiaomi: #ff9e2e;
+  --brand-mistralai: #ff6b29;
+  --brand-nvidia: #8fd119;
 }
 
 * {

@@ -23,15 +23,15 @@
       </header>
 
       <section>
-        <p class="lede">
-          Market-level analysis of noise across AI forecasters.
-        </p>
         <div class="tiles" id="tiles"></div>
         <p class="note" id="pairnote"></p>
       </section>
 
       <section>
         <h2>The panel against the market</h2>
+        <p class="lede">
+          Per-market metrics across all models. Here "Panel" refers to the aggregation of models.
+        </p>
         <figure>
           <div class="chart-head">
             <div class="legend" id="scatterLegend"></div>
@@ -44,8 +44,7 @@
       <section>
         <h2>The spread behind each estimate</h2>
         <p class="lede">
-          Crosses mark the market's midpoint at snapshot time, the blue lines
-          represent the model probability spreads with 1 line per avg forecast.
+          Crosses mark the market's midpoint at snapshot time, the blue lines represent the model probability spreads with 1 line per avg forecast.
         </p>
         <figure>
           <div class="chart-head">
@@ -59,8 +58,7 @@
       <section>
         <h2>Noise against distance from the market</h2>
         <p class="lede">
-          Correlation between disagreement with market and overall noise. Note
-          models do not see the market prices explicitly.
+          Correlation between disagreement with market and overall noise. Note models do not see the market prices explicitly.
         </p>
         <figure>
           <div class="chart-head">
@@ -72,12 +70,7 @@
       </section>
 
       <section>
-        <h2>Which questions the models were noisiest on</h2>
-        <p class="lede">
-          The five questions with the largest values, in whichever measure is
-          selected. These are averages over all twenty models, so a question at
-          the top is one the whole field struggled with rather than one model.
-        </p>
+        <h2>Questions with the highest noise</h2>
         <figure>
           <div class="chart-head">
             <div class="controls" style="margin-bottom: 0">
@@ -99,8 +92,7 @@
       <section>
         <h2>Every question</h2>
         <p class="lede">
-          Panel-level odds and noise compared to market. Click any heading to
-          sort.
+          Panel-level odds and noise compared to market. Click any heading to sort.
         </p>
         <figure>
           <div class="table-wrap" id="marketTable"></div>
@@ -319,11 +311,8 @@
         document.getElementById("worstcap").textContent =
           view === "averageError"
             ? `${pct(worstAe.averageError, 1)} on "${worstAe.question}" means a typical model's four identical prompts came back that far ` +
-              `apart. Odds spread grows with the market price across the run — correlation ${signedR(corr((r) => r.averageError))} — ` +
-              `which is what a measure in points of probability does when the long shots leave it no room to move.`
-            : `Negated spread also grows with the market price, correlation ${signedR(corr((r) => r.negationError))}: on a 2% long shot both ` +
-              `answers are easy and nearly forced, while a question the market puts near even money leaves a model free to answer both ` +
-              `sides high, or both low.`;
+              `apart. Odds spread grows with the market price across the run (correlation ${signedR(corr((r) => r.averageError))}).`
+            : `Negated spread grows with market price, correlation ${signedR(corr((r) => r.negationError))}`;
       };
 
       // -----------------------------------------------------------------
