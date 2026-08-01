@@ -59,8 +59,8 @@
       <section>
         <h2>Noise against distance from the market</h2>
         <p class="lede">
-          Correlation between disagreement with market and overall noise.
-          Note models do not see the market prices explicitly.
+          Correlation between disagreement with market and overall noise. Note
+          models do not see the market prices explicitly.
         </p>
         <figure>
           <div class="chart-head">
@@ -74,7 +74,7 @@
       <section>
         <h2>Which questions the models were noisiest on</h2>
         <p class="lede">
-          The twenty questions with the largest values, in whichever measure is
+          The five questions with the largest values, in whichever measure is
           selected. These are averages over all twenty models, so a question at
           the top is one the whole field struggled with rather than one model.
         </p>
@@ -83,10 +83,10 @@
             <div class="controls" style="margin-bottom: 0">
               <div class="seg" role="group" aria-label="Measure">
                 <button data-view="averageError" aria-pressed="true">
-                  Average error
+                  Odds spread
                 </button>
                 <button data-view="negationError" aria-pressed="false">
-                  Negation error
+                  Negated spread
                 </button>
               </div>
             </div>
@@ -99,8 +99,8 @@
       <section>
         <h2>Every question</h2>
         <p class="lede">
-          Panel-level odds and noise compared to market. Click any
-          heading to sort.
+          Panel-level odds and noise compared to market. Click any heading to
+          sort.
         </p>
         <figure>
           <div class="table-wrap" id="marketTable"></div>
@@ -202,23 +202,19 @@
       const signedR = (r) => `${r < 0 ? "−" : "+"}${Math.abs(r).toFixed(2)}`;
 
       document.getElementById("tiles").innerHTML = [
-        [
-          "Questions",
-          String(rows.length),
-          ``,
-        ],
+        ["Questions", String(rows.length), ``],
         [
           "Typical gap to the market",
           pct(meanAbsDelta, 1),
           `Mean |panel estimate − price|; ${below} of ${priced.length} sit below the market`,
         ],
         [
-          "Average error",
+          "Odds spread",
           pct(mean(rows.map((r) => r.averageError)), 1),
           "Across questions, averaged over models",
         ],
         [
-          "Negation error",
+          "Negated spread",
           pct(mean(rows.map((r) => r.negationError)), 1),
           "Across questions, averaged over models",
         ],
@@ -278,12 +274,12 @@
             sortValue: (r) => r.delta,
           },
           {
-            name: "Average error",
+            name: "Odds spread",
             get: (r) => pct(r.averageError, 1),
             sortValue: (r) => r.averageError,
           },
           {
-            name: "Negation error",
+            name: "Negated spread",
             get: (r) => pct(r.negationError, 1),
             sortValue: (r) => r.negationError,
           },
@@ -294,31 +290,15 @@
         descending: false,
       });
 
-      document.getElementById("nq").textContent = `${rows.length} questions`;
-
-      const ordinal = (n) => {
-        const suffix = ["th", "st", "nd", "rd"];
-        const v = n % 100;
-        return `${n}${suffix[(v - 20) % 10] ?? suffix[v] ?? suffix[0]}`;
-      };
-
-      const ranked = rows.filter((r) => r.marketRank !== null);
-      const gaps = ranked.map((r) => Math.abs(r.marketRank - r.modelRank));
-      const close = gaps.filter((g) => g <= 5).length;
-      const median = [...gaps].sort((a, b) => a - b)[
-        Math.floor(gaps.length / 2)
-      ];
-      const moved = ranked[gaps.indexOf(Math.max(...gaps))];
-
       let view = "averageError";
       const label = () =>
-        view === "averageError" ? "Average error" : "Negation error";
+        view === "averageError" ? "Odds spread" : "Negated spread";
 
       const drawWorst = () => {
         horizontalBars(document.getElementById("worst"), {
           rows: [...rows]
             .sort((a, b) => b[view] - a[view])
-            .slice(0, 20)
+            .slice(0, 5)
             .map((m) => ({
               label: (m.question || m.slug).replace(/\?$/, ""),
               v: m[view],
@@ -331,17 +311,17 @@
           tooltip: (row) => [
             ["Market price", pct(row.raw.midpoint, 1)],
             ["Model estimate", pct(row.raw.modelEstimate, 1)],
-            ["Average error", pct(row.raw.averageError, 1)],
-            ["Negation error", pct(row.raw.negationError, 1)],
+            ["Odds spread", pct(row.raw.averageError, 1)],
+            ["Negated spread", pct(row.raw.negationError, 1)],
             ["Models", String(row.raw.models)],
           ],
         });
         document.getElementById("worstcap").textContent =
           view === "averageError"
             ? `${pct(worstAe.averageError, 1)} on "${worstAe.question}" means a typical model's four identical prompts came back that far ` +
-              `apart. Repeat spread grows with the market price across the run — correlation ${signedR(corr((r) => r.averageError))} — ` +
+              `apart. Odds spread grows with the market price across the run — correlation ${signedR(corr((r) => r.averageError))} — ` +
               `which is what a measure in points of probability does when the long shots leave it no room to move.`
-            : `Wording error also grows with the market price, correlation ${signedR(corr((r) => r.negationError))}: on a 2% long shot both ` +
+            : `Negated spread also grows with the market price, correlation ${signedR(corr((r) => r.negationError))}: on a 2% long shot both ` +
               `answers are easy and nearly forced, while a question the market puts near even money leaves a model free to answer both ` +
               `sides high, or both low.`;
       };
@@ -390,11 +370,11 @@
       };
       const MARKET = { name: "Market price", color: "var(--series-2)" };
       const AVERAGE_ERROR = {
-        name: "Average error",
+        name: "Odds spread",
         color: "var(--series-1)",
       };
       const NEGATION_ERROR = {
-        name: "Negation error",
+        name: "Negated spread",
         color: "var(--series-2)",
       };
 
@@ -490,8 +470,8 @@
           tooltip: (p) => [
             ["Measure", p.raw.measure],
             ["Distance to the market", pct(p.raw.row.marketDistance, 1)],
-            ["Average error", pct(p.raw.row.averageError, 1)],
-            ["Negation error", pct(p.raw.row.negationError, 1)],
+            ["Odds spread", pct(p.raw.row.averageError, 1)],
+            ["Negated spread", pct(p.raw.row.negationError, 1)],
             ["Market price", pct(p.raw.row.midpoint, 1)],
             ["Panel estimate", pct(p.raw.row.modelEstimate, 1)],
           ],
@@ -509,8 +489,8 @@
           (r) => r.negationError > r.averageError,
         ).length;
         document.getElementById("distcap").textContent =
-          `Both rise with distance from the market — correlation ${signedR(rAvg)} for average error and ${signedR(rNeg)} for negation ` +
-          `error — and negation error rises faster, from a higher start: it is the larger of the two on ${higher} of the ${priced.length} ` +
+          `Both rise with distance from the market — correlation ${signedR(rAvg)} for odds spread and ${signedR(rNeg)} for negated ` +
+          `spread — and negated spread rises faster, from a higher start: it is the larger of the two on ${higher} of the ${priced.length} ` +
           `questions. Getting the two wordings to agree is the harder job at every distance. Neither line says the market was ` +
           `right: a question the models are unsure about is one they answer inconsistently and one they price away from the crowd, and ` +
           `nothing here distinguishes the crowd being wrong from the panel being noisy.`;
@@ -543,8 +523,8 @@
             ["Market price", pct(p.raw.midpoint, 1)],
             ["Model estimate", pct(p.raw.modelEstimate, 1)],
             ["vs market", signedPct(p.raw.delta, 1)],
-            ["Average error", pct(p.raw.averageError, 1)],
-            ["Negation error", pct(p.raw.negationError, 1)],
+            ["Odds spread", pct(p.raw.averageError, 1)],
+            ["Negated spread", pct(p.raw.negationError, 1)],
           ],
         });
 

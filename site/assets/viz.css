@@ -228,6 +228,80 @@ code {
   border-color: color-mix(in srgb, var(--series-1) 40%, var(--border));
 }
 
+/* ---------- numbered steps ---------- */
+
+/* A pipeline is an ordered thing, so it takes an ordered list and the numbers
+   are real list counters rather than characters typed into the prose. */
+ol.steps {
+  list-style: none;
+  counter-reset: step;
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+}
+
+ol.steps li {
+  counter-increment: step;
+  position: relative;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 15px 18px 15px 54px;
+}
+
+ol.steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 16px;
+  top: 15px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--series-1);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+}
+
+ol.steps .step-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+ol.steps p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  max-width: 72ch;
+}
+
+/* ---------- definition list ---------- */
+
+dl.defs {
+  margin: 0;
+}
+
+dl.defs dt {
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-top: 16px;
+}
+
+dl.defs dt:first-of-type {
+  margin-top: 0;
+}
+
+dl.defs dd {
+  margin: 3px 0 0;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  max-width: 76ch;
+}
+
 /* ---------- figures ---------- */
 
 figure {
@@ -243,6 +317,23 @@ figcaption {
   color: var(--text-secondary);
   margin-top: 10px;
   max-width: 76ch;
+}
+
+/* A caption that is a formula rather than a sentence. It takes the figure's
+   full width rather than the caption's prose measure, since the constraint that
+   makes prose readable is the one that would make notation scroll sideways with
+   room to spare either side of it. `pre-wrap` keeps the alignment spacing and
+   still wraps rather than overflowing on a narrow screen. */
+figcaption:has(> code) {
+  max-width: none;
+}
+
+figcaption > code {
+  display: block;
+  white-space: pre-wrap;
+  font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+  font-size: 12px;
+  padding: 8px 10px;
 }
 
 .chart-head {

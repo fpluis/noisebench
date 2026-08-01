@@ -161,22 +161,32 @@ const niceTicks = (min, max, count = 5) => {
 };
 
 // Ticks for a log axis, at 1, 2 and 5 per decade. `lo`/`hi` are already log10.
-// A quantity that spans two orders of magnitude gets a full mantissa set; one
-// that spans more keeps only the decades, so the axis never carries more than
-// about six labels.
-const logTicks = (lo, hi) => {
-  const all = [];
-  for (let k = Math.floor(lo); k <= Math.ceil(hi); k += 1) {
-    for (const m of [1, 2, 5]) {
-      const v = m * 10 ** k;
-      const l = Math.log10(v);
-      if (l >= lo && l <= hi) all.push(v);
+//
+// `max` is how many labels the axis has room for, which the caller knows and
+// this does not — a 900px horizontal axis holds far more than a stack of rows
+// does. Thin by dropping mantissas rather than by dropping ticks: going
+// straight from 1-2-5 to bare decades throws away most of the axis the moment
+// one tick too many appears, so 1-5 sits in between.
+const logTicks = (lo, hi, max = 7) => {
+  const at = (mantissas) => {
+    const out = [];
+    for (let k = Math.floor(lo); k <= Math.ceil(hi); k += 1) {
+      for (const m of mantissas) {
+        const v = m * 10 ** k;
+        const l = Math.log10(v);
+        if (l >= lo && l <= hi) out.push(v);
+      }
     }
+    return out;
+  };
+  for (const mantissas of [
+    [1, 2, 5],
+    [1, 5],
+  ]) {
+    const ticks = at(mantissas);
+    if (ticks.length <= max) return ticks;
   }
-  if (all.length <= 7) return all;
-  return all.filter(
-    (v) => Math.round(v / 10 ** Math.floor(Math.log10(v) + 1e-9)) === 1,
-  );
+  return at([1]);
 };
 
 // Row labels are right-anchored against the plot, so an over-long one runs off
@@ -206,6 +216,11 @@ const barPath = (x, y, w, h, r) => {
 //
 // `signed: true` anchors bars at zero and colors by sign from the diverging
 // pair, for quantities where direction is the point (a model's level effect).
+//
+// `stacked: true` lays the series end to end inside one bar per row instead of
+// giving each its own bar. Use it when the series are parts of a whole and the
+// whole is a quantity in its own right — the row then carries both the total
+// and its split, which two bars side by side would make the reader add up.
 // ---------------------------------------------------------------------------
 
 export const horizontalBars = (mount, options) => {
@@ -213,6 +228,7 @@ export const horizontalBars = (mount, options) => {
     rows,
     series,
     signed = false,
+    stacked = false,
     valueFormat = (v) => fmt(v),
     labelWidth = 150,
     barHeight = signed ? 16 : 11,
@@ -221,9 +237,13 @@ export const horizontalBars = (mount, options) => {
     tooltip = null,
   } = options;
 
+  const total = (row) => series.reduce((s, ss) => s + (row[ss.key] ?? 0), 0);
+
   mount.innerHTML = "";
   const width = Math.max(mount.clientWidth || 640, 420);
-  const rowHeight = series.length * (barHeight + 2) + groupGap;
+  const rowHeight = stacked
+    ? barHeight + groupGap
+    : series.length * (barHeight + 2) + groupGap;
   const top = 8;
   const bottom = 34;
   const height = top + rows.length * rowHeight + bottom;
@@ -237,7 +257,10 @@ export const horizontalBars = (mount, options) => {
     role: "img",
   });
 
-  const values = rows.flatMap((r) => series.map((s) => r[s.key] ?? 0));
+  // Stacked bars run to their total, so that is what the axis has to reach.
+  const values = stacked
+    ? rows.map(total)
+    : rows.flatMap((r) => series.map((s) => r[s.key] ?? 0));
   const rawMax = Math.max(...values, 0);
   const rawMin = Math.min(...values, 0);
   const min = signed ? Math.min(rawMin, -rawMax) : 0;
@@ -295,7 +318,9 @@ export const horizontalBars = (mount, options) => {
       "text",
       {
         x: plotLeft - 10,
-        y: yTop + (series.length * (barHeight + 2)) / 2,
+        y: stacked
+          ? yTop + barHeight / 2
+          : yTop + (series.length * (barHeight + 2)) / 2,
         "text-anchor": "end",
         "dominant-baseline": "middle",
         "font-size": 12,
@@ -303,6 +328,61 @@ export const horizontalBars = (mount, options) => {
       },
       svg,
     ).textContent = truncate(row.label, labelWidth);
+
+    if (stacked) {
+      // Only the far end of the last filled segment is rounded, so the row
+      // reads as one bar divided rather than as several bars touching.
+      const last = series.reduce(
+        (l, s, j) => ((row[s.key] ?? 0) > 0 ? j : l),
+        -1,
+      );
+      let acc = 0;
+      series.forEach((s, j) => {
+        const value = row[s.key] ?? 0;
+        if (value <= 0) return;
+        const from = x(acc);
+        const to = x(acc + value);
+        const path = el(
+          "path",
+          {
+            d: barPath(from, yTop, to - from, barHeight, j === last ? 4 : 0),
+            fill: s.color,
+            stroke: "var(--surface-1)",
+            "stroke-width": 2,
+            "paint-order": "stroke",
+          },
+          svg,
+        );
+        bindTip(path, row.label, () =>
+          tooltip
+            ? tooltip(row)
+            : series
+                .map((ss) => [ss.name, valueFormat(row[ss.key] ?? 0)])
+                .concat([["Total", valueFormat(total(row))]]),
+        );
+        acc += value;
+      });
+
+      // One number per row, and it is the total — the segments are readable as
+      // lengths, but what the row is worth is the sum of them.
+      const sum = total(row);
+      const end = x(sum);
+      const inside = end - x(0) >= 52;
+      el(
+        "text",
+        {
+          x: end + (inside ? -6 : 6),
+          y: yTop + barHeight / 2,
+          "text-anchor": inside ? "end" : "start",
+          "dominant-baseline": "middle",
+          "font-size": 11,
+          "font-variant-numeric": "tabular-nums",
+          fill: inside ? "#fff" : "var(--text-secondary)",
+        },
+        svg,
+      ).textContent = valueFormat(sum);
+      return;
+    }
 
     series.forEach((s, j) => {
       const value = row[s.key] ?? 0;
@@ -1034,6 +1114,10 @@ export const scatter = (mount, options) => {
     // Straight guides in data coordinates, e.g. the y = x line a well-behaved
     // series should sit on. Drawn under the marks and labelled at their end.
     guides = [],
+    // Name every mark in the plot rather than only on hover. Worth it for a
+    // scatter of twenty models and wrong for one of a hundred questions, so it
+    // is the caller's call.
+    pointLabels = false,
     tooltip = null,
   } = options;
 
@@ -1094,10 +1178,10 @@ export const scatter = (mount, options) => {
     ).textContent = yFormat(t);
   }
 
+  // A log axis takes its ticks from the range it actually covers, at as fine a
+  // grain as the width allows — roughly one label per 88px.
   const xTicks = logX
-    ? [0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1].filter(
-        (v) => tx(v) >= xLo - xPad && tx(v) <= xHi + xPad,
-      )
+    ? logTicks(xLo - xPad, xHi + xPad, Math.max(4, Math.floor(plotWidth / 88)))
     : niceTicks(xLo - xPad, xHi + xPad, 6);
   for (const t of xTicks) {
     el(
@@ -1182,6 +1266,55 @@ export const scatter = (mount, options) => {
             [yLabel, yFormat(p.y)],
           ],
     );
+  }
+
+  // Labels last, so text sits above every mark. Each name takes the first of
+  // four positions around its dot that stays inside the plot and clear of both
+  // the dots and the names already placed; a name with nowhere to go is dropped
+  // rather than overprinted, and its tooltip still carries it.
+  if (pointLabels) {
+    const boxes = points.map((p) => ({
+      x1: X(p.x) - 7,
+      y1: Y(p.y) - 7,
+      x2: X(p.x) + 7,
+      y2: Y(p.y) + 7,
+    }));
+    const hits = (a, b) =>
+      a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2;
+    const AROUND = [
+      [9, 3.5, "start"],
+      [-9, 3.5, "end"],
+      [0, -10, "middle"],
+      [0, 15, "middle"],
+    ];
+    const placed = [...boxes];
+    for (const p of points) {
+      const text = truncate(p.label, 118);
+      const w = text.length * 5.4;
+      for (const [dx, dy, anchor] of AROUND) {
+        const cx = X(p.x) + dx;
+        const cy = Y(p.y) + dy;
+        const x1 =
+          anchor === "start" ? cx : anchor === "end" ? cx - w : cx - w / 2;
+        const box = { x1: x1 - 2, y1: cy - 10, x2: x1 + w + 2, y2: cy + 3 };
+        if (box.x1 < left - 6 || box.x2 > left + plotWidth + 6) continue;
+        if (box.y1 < top - 2 || box.y2 > top + plotHeight + 2) continue;
+        if (placed.some((q) => hits(box, q))) continue;
+        el(
+          "text",
+          {
+            x: cx,
+            y: cy,
+            "text-anchor": anchor,
+            "font-size": 10.5,
+            fill: "var(--text-muted)",
+          },
+          svg,
+        ).textContent = text;
+        placed.push(box);
+        break;
+      }
+    }
   }
 
   el(

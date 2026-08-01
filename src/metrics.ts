@@ -76,7 +76,7 @@ export interface MetricComponent {
 export const METRIC_COMPONENTS: readonly MetricComponent[] = [
   {
     key: "averageError",
-    label: "Average error",
+    label: "Odds spread",
     formula:
       "mean over cells of  ( 1/n · Σ |pᵢ − p̄| ),  one cell per {model, question, wording}",
     unit: "probability",
@@ -90,7 +90,7 @@ export const METRIC_COMPONENTS: readonly MetricComponent[] = [
   },
   {
     key: "negationError",
-    label: "Negation error",
+    label: "Negated spread",
     formula: "mean over {model, question} of  | avg(Yes) − (1 − avg(No)) |",
     unit: "probability",
     question:

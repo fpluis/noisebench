@@ -25,7 +25,8 @@
       <section>
         <p class="lede">
           Measuring noise in AI models by forecasting real Polymarket events.
-          Noise measures focus on internal consistency, regardless of forecast accuracy.<span id="scope">Loading…</span>
+          Noise measures focus on internal consistency, regardless of forecast
+          accuracy.<span id="scope">Loading…</span>
         </p>
       </section>
 
@@ -46,19 +47,19 @@
 
       <section>
         <h2>What goes into the score</h2>
-        <div class="tiles wide" id="components"></div>
-      </section>
-
-      <section>
-        <h2>Split noise metrics leaderboard</h2>
         <figure>
           <div class="chart-head">
             <div class="controls" style="margin-bottom: 0">
-              <div class="seg" role="group" aria-label="Measure" id="partSeg">
-              </div>
+              <div
+                class="seg"
+                role="group"
+                aria-label="Measure"
+                id="partSeg"
+              ></div>
             </div>
             <button class="link" id="partTableBtn">Show data table</button>
           </div>
+          <p class="lede" id="partdesc" style="margin-bottom: 14px"></p>
           <div class="controls" id="viewRow" hidden>
             <div class="seg" role="group" aria-label="View" id="viewSeg">
               <button data-view="absolute" aria-pressed="true">Absolute</button>
@@ -79,24 +80,26 @@
 
       <section>
         <h2>What consistency costs</h2>
-        <p class="formula" id="cost-formula"></p>
+        <p class="lede">
+          An answer is one call to the model, counting both the probability
+          prompts and the head-to-head ones, since the composite is built from
+          both.
+        </p>
         <figure>
           <div class="chart-head">
             <div class="controls" style="margin-bottom: 0">
               <div class="seg" role="group" aria-label="Measure" id="costSeg">
-                <button data-cost="consistencyPerDollar" aria-pressed="true">
-                  Consistency per $
+                <button data-cost="noiseVsCost" aria-pressed="true">
+                  Noise vs answer cost
                 </button>
-                <button data-cost="costPerAnswer" aria-pressed="false">
-                  Cost per answer
-                </button>
-                <button data-cost="tokensOut" aria-pressed="false">
-                  Tokens out
+                <button data-cost="tokensVsNoise" aria-pressed="false">
+                  Tokens out vs noise
                 </button>
               </div>
             </div>
             <button class="link" id="costTableBtn">Show data table</button>
           </div>
+          <div class="legend" id="costLegend" style="margin-bottom: 10px"></div>
           <div class="chart-scroll"><div id="cost"></div></div>
           <div class="table-wrap hidden" id="costTable"></div>
           <figcaption id="costcap"></figcaption>
@@ -107,14 +110,15 @@
     <script type="module">
       import {
         count,
-        dotRows,
         groupedColumns,
         horizontalBars,
         initTheme,
+        legend,
         loadJson,
         onRedraw,
         pct,
         renderTable,
+        scatter,
         shortModel,
         signedPct,
         times,
@@ -139,20 +143,6 @@
         `<span class="unit">Each term is already a percentage of its own denominator, so the mean is a percentage too. ` +
         `A perfectly self-consistent forecaster scores 0%.</span>`;
 
-      document.getElementById("components").innerHTML = components
-        .map(
-          (c) => `
-        <div class="tile">
-          <div class="label">${c.label}</div>
-          <div class="value" style="font-size:26px">${pct(metrics.field[c.key], 1)}</div>
-          <div class="hint">
-            ${c.question}<br />
-            <code style="display:inline-block;margin-top:6px">${c.formula}</code>
-          </div>
-        </div>`,
-        )
-        .join("");
-
       document.getElementById("partSeg").innerHTML = components
         .map(
           (c, i) =>
@@ -165,7 +155,7 @@
       const partMeta = () => components.find((c) => c.key === part);
 
       // A measure only has a directional form if discarding a sign is what
-      // makes it a magnitude. Negation error is the one such measure: it is the
+      // makes it a magnitude. Negated spread is the one such measure: it is the
       // absolute value of a difference between two wordings, and that
       // difference has a meaning of its own. The other four are already
       // directionless — a spread about a mean, or a count of judgments that
@@ -258,11 +248,16 @@
           });
         }
 
-        document.getElementById("partcap").textContent = directional
-          ? `${signedMeta.name} is the same quantity with its sign kept. Signs cancel across questions and across models; ` +
-            `magnitudes do not, which is why the score is built on the magnitude and this view is only here to say where it comes from. ` +
-            `${models.filter((m) => m.drift < 0).length} of ${models.length} models fall short of 100% across a question and its opposite; the rest overshoot.`
+        // What the measure is goes above the chart, in words; how it is computed
+        // goes underneath, in notation. The directional view swaps both for its
+        // own, since it is a different quantity from the one the score uses.
+        document.getElementById("partdesc").textContent = directional
+          ? signedMeta.name +
+            " is the same quantity with its sign kept. Signs cancel across questions and across models;"
           : meta.description;
+
+        document.getElementById("partcap").innerHTML =
+          `<code>${directional ? signedMeta.formula : meta.formula}</code>`;
 
         // In the directional view the table follows it, so the arms behind the
         // signed number are readable rather than only hoverable.
@@ -275,7 +270,7 @@
                 { name: "Asked No", get: (r) => pct(r.no, 1) },
                 { name: "Sum", get: (r) => pct(r.yes + r.no, 1) },
                 { name: "Signed drift", get: (r) => signedPct(r.drift, 1) },
-                { name: "Negation error", get: (r) => pct(r.negationError, 1) },
+                { name: "Negated spread", get: (r) => pct(r.negationError, 1) },
                 { name: "Questions", get: (r) => String(r.markets) },
               ]
             : [
@@ -296,152 +291,107 @@
       // What consistency costs
       // -----------------------------------------------------------------
       //
-      // Three quantities that share a shape but not a unit — dollars, tokens
-      // and a ratio — so they take turns on one axis rather than sharing one.
-      // A second y scale would be the only way to put them together, and there
-      // is no honest one.
-      const field = metrics.field;
+      // Both views put the composite on one axis and something the model spent
+      // to earn it on the other, so the question is always the trade-off rather
+      // than a ranking on a quantity that is not noise. Price is read on a log
+      // scale because that is the scale it varies on — the interesting question
+      // is whether paying twice as much buys consistency, not whether paying
+      // $0.04 more does.
       const byCost = (key) =>
         models.filter((m) => typeof m[key] === "number" && m[key] > 0);
       const priced = byCost("costPerAnswer");
-      const cheapest = [...priced].sort(
-        (a, b) => a.costPerAnswer - b.costPerAnswer,
-      )[0];
-      const dearest = [...priced].sort(
-        (a, b) => b.costPerAnswer - a.costPerAnswer,
-      )[0];
-      const bestValue = [...byCost("consistencyPerDollar")].sort(
-        (a, b) => b.consistencyPerDollar - a.consistencyPerDollar,
-      )[0];
-      const steadiest = models[0];
-      const noiseSpread = models[models.length - 1].noise / steadiest.noise;
-      const costSpread = dearest.costPerAnswer / cheapest.costPerAnswer;
-      const dearerToRank = models.filter(
-        (m) => m.costPerJudgment > m.costPerForecast,
-      ).length;
+      const lengths = byCost("tokensOut");
 
-      // Pearson r across the twenty models. Price is read on a log scale
-      // because that is the scale it varies on: the interesting question is
-      // whether paying twice as much buys consistency, not whether paying
-      // $0.04 more does.
-      const mean = (xs) => xs.reduce((s, x) => s + x, 0) / xs.length;
-      const pearson = (xs, ys) => {
-        const mx = mean(xs);
-        const my = mean(ys);
-        let sxy = 0;
-        let sx = 0;
-        let sy = 0;
-        for (let i = 0; i < xs.length; i += 1) {
-          sxy += (xs[i] - mx) * (ys[i] - my);
-          sx += (xs[i] - mx) ** 2;
-          sy += (ys[i] - my) ** 2;
-        }
-        return sxy / Math.sqrt(sx * sy);
+      const REASONING = {
+        key: "reasoning",
+        name: "Reasoning",
+        color: "var(--series-1)",
       };
-      const signedR = (r) => `${r < 0 ? "−" : "+"}${Math.abs(r).toFixed(2)}`;
-      const rPriceNoise = pearson(
-        priced.map((m) => Math.log10(m.costPerAnswer)),
-        priced.map((m) => m.noise),
-      );
-      const rLengthNoise = pearson(
-        byCost("tokensOut").map((m) => Math.log10(m.tokensOut)),
-        byCost("tokensOut").map((m) => m.noise),
-      );
+      const ANSWER = {
+        key: "answer",
+        name: "The answer itself",
+        color: "var(--series-2)",
+      };
 
-      document.getElementById("cost-span").textContent =
-        `${usd(dearest.costPerAnswer)} an answer from ${shortModel(dearest.model)}, ` +
-        `${usd(cheapest.costPerAnswer)} from ${shortModel(cheapest.model)}`;
+      // Axis ticks land on 1, 2 and 5 per decade, so the trailing zeros a fixed
+      // four places would add carry nothing and only make the row harder to
+      // scan. Figures in the tooltip and the table keep the fixed places, where
+      // they line up in a column and the alignment is the point.
+      const usdTick = (v) => `$${Number(v.toPrecision(2))}`;
 
-      document.getElementById("cost-formula").innerHTML =
-        `consistency per $ = ( field noise × field $/answer )\n` +
-        `                    ÷ ( noise × $/answer )` +
-        `<span class="unit">Halving either the noise or the price doubles it. ` +
-        `An answer is one call to the model, counting both the probability prompts and the head-to-head ones, ` +
-        `since the composite is built from both. Field averages: ${pct(field.noise, 1)} and ${usd(field.costPerAnswer)}.</span>`;
+      const spendTip = (m) => [
+        ["Noise", pct(m.noise, 1)],
+        ["Cost per answer", usd(m.costPerAnswer)],
+        ["— asked for a probability", usd(m.costPerForecast)],
+        ["— asked to rank two", usd(m.costPerJudgment)],
+        ["Tokens out", count(m.tokensOut)],
+        ["— of which reasoning", count(m.reasoningTokens)],
+        ["Consistency per $", times(m.consistencyPerDollar)],
+      ];
 
       const COST_VIEWS = [
         {
-          key: "consistencyPerDollar",
-          label: "Consistency per $",
-          axis: "Consistency per $, × the field average (log scale)",
-          format: (v) => times(v, 2),
-          best: "high",
-          reference: 1,
-          referenceLabel: "field average",
-          caption: () =>
-            `${shortModel(bestValue.model)} buys ${times(bestValue.consistencyPerDollar)} the field's consistency per $: ` +
-            `${pct(bestValue.noise, 1)} noise at ${usd(bestValue.costPerAnswer)} an answer. ` +
-            `${shortModel(steadiest.model)} is the most consistent model on the board and reads ${times(steadiest.consistencyPerDollar)}, ` +
-            `because it bills ${(steadiest.costPerAnswer / field.costPerAnswer).toFixed(1)}× the field average to get there. ` +
-            `The index is mostly a price ranking with a noise correction, and says so: spend spans ${costSpread.toFixed(0)}× ` +
-            `across the field where noise spans ${noiseSpread.toFixed(1)}×. It is also a real trade-off rather than a free lunch — ` +
-            `price and noise correlate ${signedR(rPriceNoise)} across the field, so the dear models are consistent for a reason.`,
+          key: "noiseVsCost",
+          legend: [],
+          draw: () =>
+            scatter(document.getElementById("cost"), {
+              points: priced.map((m) => ({
+                x: m.costPerAnswer,
+                y: m.noise,
+                label: shortModel(m.model),
+                raw: m,
+              })),
+              logX: true,
+              height: 400,
+              pointLabels: true,
+              xLabel: "US dollars per answer (log scale)",
+              yLabel: "Noise",
+              xFormat: usdTick,
+              yFormat: (v) => pct(v, 0),
+              tooltip: (p) => spendTip(p.raw),
+            }),
         },
         {
-          key: "costPerAnswer",
-          label: "Cost per answer",
-          axis: "US dollars per answer (log scale)",
-          format: (v) => usd(v, 4),
-          best: "low",
-          reference: field.costPerAnswer,
-          referenceLabel: "field average",
+          key: "tokensVsNoise",
+          legend: [REASONING, ANSWER],
+          draw: () =>
+            horizontalBars(document.getElementById("cost"), {
+              // Noisiest first, so the row order runs down to the steadiest
+              // model at the foot of the chart.
+              rows: [...lengths]
+                .sort((a, b) => b.noise - a.noise)
+                .map((m) => ({
+                  label: shortModel(m.model),
+                  reasoning: m.reasoningTokens ?? 0,
+                  answer: Math.max(0, m.tokensOut - (m.reasoningTokens ?? 0)),
+                  raw: m,
+                })),
+              series: [REASONING, ANSWER],
+              stacked: true,
+              barHeight: 14,
+              labelWidth: 210,
+              valueFormat: (v) => count(v),
+              axisLabel: "Output tokens per answer",
+              tooltip: (row) => spendTip(row.raw),
+            }),
           caption: () =>
-            `What one call cost, averaged over every call the model made in the run — ` +
-            `${models[0].forecasts.toLocaleString()} probability prompts and ${models[0].judgments.toLocaleString()} head-to-head ones each. ` +
-            `Ranking two questions costs more than pricing one for ${dearerToRank} of ${models.length} models, which is what carrying two ` +
-            `questions in one prompt does. Prices are what the provider billed at run time, so they date faster than anything else here.`,
-        },
-        {
-          key: "tokensOut",
-          label: "Tokens out",
-          axis: "Output tokens per answer, reasoning included (log scale)",
-          format: (v) => count(v),
-          best: "low",
-          reference: field.tokensOut,
-          referenceLabel: "field average",
-          caption: () =>
-            `Length is neither price nor consistency. The field's longest answers come from models that bill a fraction of what the shortest ` +
-            `do, since a token costs what its model charges for it — and length carries no signal about the composite at all, ` +
-            `correlating ${signedR(rLengthNoise)} with it, where price correlates ${signedR(rPriceNoise)}. Thinking longer is not what ` +
-            `makes a forecaster agree with itself. Reasoning is ${pct(
-              models.reduce((s, m) => s + (m.reasoningTokens ?? 0), 0) /
-                models.reduce((s, m) => s + (m.tokensOut ?? 0), 0),
-              0,
-            )} of the field's output — the prompt asks for a short answer, and what varies is how much thinking precedes it.`,
+            `Models run noisiest at the top down to steadiest at the foot, so the question the chart answers is whether the bars ` +
+            `shorten on the way down. They do not.`,
         },
       ];
 
       let costView = COST_VIEWS[0];
 
       const drawCost = () => {
-        const rows = byCost(costView.key)
-          .map((m) => ({
-            label: shortModel(m.model),
-            v: m[costView.key],
-            raw: m,
-          }))
-          .sort((a, b) => (costView.best === "high" ? b.v - a.v : a.v - b.v));
-
-        dotRows(document.getElementById("cost"), {
-          rows,
-          logX: true,
-          labelWidth: 200,
-          valueFormat: costView.format,
-          axisLabel: costView.axis,
-          reference: costView.reference,
-          referenceLabel: costView.referenceLabel,
-          tooltip: (row) => [
-            ["Consistency per $", times(row.raw.consistencyPerDollar)],
-            ["Noise", pct(row.raw.noise, 1)],
-            ["Cost per answer", usd(row.raw.costPerAnswer)],
-            ["— asked for a probability", usd(row.raw.costPerForecast)],
-            ["— asked to rank two", usd(row.raw.costPerJudgment)],
-            ["Tokens out", count(row.raw.tokensOut)],
-            ["— of which reasoning", count(row.raw.reasoningTokens)],
-          ],
-        });
-
-        document.getElementById("costcap").textContent = costView.caption();
+        // Only the stacked view has parts to name; an empty legend would still
+        // reserve its own gap above the plot.
+        const key = document.getElementById("costLegend");
+        key.hidden = costView.legend.length === 0;
+        legend(key, costView.legend);
+        costView.draw();
+        // A view is free to carry no caption at all.
+        document.getElementById("costcap").textContent =
+          costView.caption?.() ?? "";
       };
 
       renderTable(

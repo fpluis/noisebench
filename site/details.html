@@ -28,53 +28,72 @@
 
       <section>
         <h2>How the run worked</h2>
-        <p class="lede">Two ways of asking, over one set of questions.</p>
-        <div class="tiles">
-          <div class="tile">
-            <div class="label">Direct</div>
-            <div class="value" style="font-size: 20px">How likely is this?</div>
-            <div class="hint">
-              Each market put to each model as a probability request, four times
-              for its Yes outcome and four times for its No outcome. The
-              question, the rules, the dates and the research are identical
-              between the two; only which of the market's two outcomes is being
-              asked for changes. A coherent forecaster's two answers add to
-              100%.
-            </div>
-          </div>
-          <div class="tile">
-            <div class="label">Head-to-head</div>
-            <div class="value" style="font-size: 20px">Which is likelier?</div>
-            <div class="hint">
-              Fifty fixed pairs of markets, ranked against each other with no
-              probability attached, in all four combinations of requested
-              outcome, twice each. Flipping the requested outcome on both sides
-              must reverse the answer.
-            </div>
-          </div>
-        </div>
-        <p class="note">
-          The pairs are fixed, not random. They were built by sorting the
-          questions by market price and pairing neighbours, so the two sides are
-          deliberately close in likelihood and the comparison is hard. Asking
-          for the market's own No outcome rather than rewriting the question
-          into a negated one is deliberate: a hand-negated question contradicts
-          rules that are still written for Yes, which measures the contradiction
-          rather than the model.
+        <p class="lede">
+          Three steps, from a live Polymarket order book to the numbers on these
+          pages.
         </p>
+        <ol class="steps">
+          <li>
+            <div class="step-title">Gather the questions dataset</div>
+            <p>
+              100 of the top markets by Open Interest in Polymarket over the
+              next 2 years, balanced for different midpoint prices. We form
+              pairs using the sorted dataset by midpoint price descending, with
+              the goal of having question pairs of comparable odds/difficulty.
+            </p>
+          </li>
+          <li>
+            <div class="step-title">Snapshot the price, then research</div>
+            <p>
+              Take a snapshot of the market's current midpoint price and
+              generate a research with a custom deep research agent that avoids
+              including explicit prediction market odds.
+            </p>
+          </li>
+          <li>
+            <div class="step-title">Run inference and log it</div>
+            <p>
+              Run inference over the entire dataset using OpenRouter and log the
+              results both on-chain and on a local database.
+            </p>
+          </li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Methodology</h2>
+        <dl class="defs">
+          <dt>Prompt iterations</dt>
+          <dd>
+            How many times the exact same individual forecast is requested.
+            Multiple forecasts with the same exact inputs allow us to measure
+            odds spread.
+          </dd>
+          <dt>Negated questions</dt>
+          <dd>
+            We ask each model the same number of times for the probability the
+            market resolves to "Yes" as we ask for "No". This lets us observe
+            the impact of 1 aspect of the question's framing that has 0 logical
+            effect and <em>should</em> produce the exact same but inverted
+            results, eg Yes=40% should always lead the model to forecast No=60%.
+          </dd>
+          <dt>Pairwise judgments</dt>
+          <dd>
+            Given two options, A or B, which is likelier? We present each model
+            with 4 variations of each pair of markets: (A, B), (¬A, B), (A, ¬B),
+            (¬A, ¬B).
+          </dd>
+        </dl>
       </section>
 
       <section>
         <h2>The five measures</h2>
         <p class="lede">
-          Each is a failure rate with a genuine zero, and each is reported as a
-          plain percentage — but of two different things, which the unit column
-          spells out. Two are <b>absolute distances in probability</b>: a 3.0%
-          average error means a model's repeated answers to one question sat 3
-          points of probability apart, not that they varied by 3% of their own
-          size. Three are <b>shares of judgments</b>: a 12.0% pairwise
-          disagreement means 12 of every 100 comparable judgments came back
-          different.
+          Odds and negated spread are <b>absolute distances in probability</b>: a 3.0%
+          odds spread means a model's repeated answers to one question sat 3
+          points of probability apart on average. The other tree measures are
+          <b>shares of judgments</b>: a 12.0% pairwise disagreement means
+          12 of every 100 comparable judgments came back different.
         </p>
         <figure>
           <div class="table-wrap">
@@ -90,12 +109,6 @@
               <tbody id="components"></tbody>
             </table>
           </div>
-          <figcaption>
-            The composite is the unweighted mean of the five. Equal weight is
-            not equal contribution — the three judgment shares are several times
-            larger than the two probability distances and dominate the total —
-            so the components travel with it everywhere.
-          </figcaption>
         </figure>
       </section>
 
@@ -168,9 +181,9 @@
         <p class="lede">
           Not every request came back with a usable number. Those attempts are
           absent from the analysis rather than counted as noise. A repeat set
-          holding fewer than two surviving forecasts is skipped by average error
+          holding fewer than two surviving forecasts is skipped by odds spread
           instead of scoring zero, and a question answered in only one wording
-          is skipped by negation error.
+          is skipped by negated spread.
         </p>
         <figure>
           <div class="chart-head">
@@ -205,12 +218,12 @@ npm run site             # http://localhost:4321</pre>
         <p class="note">
           The five measures live in <code>src/metrics.ts</code>, are unit-tested
           in <code>tests/metrics.test.ts</code> — including a worked example of
-          each — and are emitted to
-          <code>site/data/metrics.json</code>, which with
-          <code>run.json</code> is everything these pages read. The analysis
-          layer also still writes <code>noise.json</code>, a fuller variance
-          decomposition of the same forecasts on both the probability and
-          log-odds scales, and <code>negation.json</code>; no page reads them.
+          each — and are emitted to <code>site/data/metrics.json</code>, which
+          with <code>run.json</code> is everything these pages read. The
+          analysis layer also still writes <code>noise.json</code>, a fuller
+          variance decomposition of the same forecasts on both the probability
+          and log-odds scales, and <code>negation.json</code>; no page reads
+          them.
         </p>
         <p class="note" id="provenance"></p>
       </section>

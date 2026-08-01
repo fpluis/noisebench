@@ -3,7 +3,7 @@
   "components": [
     {
       "key": "averageError",
-      "label": "Average error",
+      "label": "Odds spread",
       "formula": "mean MAD over cells of  ( 1/n · Σ |pᵢ − p̄| ),  one cell per {model, question, wording}",
       "unit": "probability",
       "question": "How much do odds change on average for the same exact input?",
@@ -11,11 +11,11 @@
     },
     {
       "key": "negationError",
-      "label": "Negation error",
+      "label": "Negated spread",
       "formula": "mean over {model, question} of  | avg(Yes) − (1 − avg(No)) |",
       "unit": "probability",
       "question": "How much do odds change when the forecasting the outcome as not happening?",
-      "description": "Average the Yes forecasts, average the No forecasts, convert the No average onto the Yes scale as 1 − avg(No), and take the absolute difference."
+      "description": "Average absolute differences for Yes vs No forecasts of the same questions."
     },
     {
       "key": "pairwiseDisagreement",
