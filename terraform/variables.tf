@@ -25,6 +25,22 @@ variable "deploy_branch" {
   default     = "master"
 }
 
+variable "github_owner_id" {
+  description = <<-EOT
+    Numeric ID of the GitHub account owning the repository, from
+    api.github.com/users/<owner>. GitHub now embeds it in the OIDC subject
+    claim, so it has to appear in the trust policy.
+  EOT
+  type        = string
+  default     = "9019480"
+}
+
+variable "github_repo_id" {
+  description = "Numeric ID of the repository, from api.github.com/repos/<owner>/<name>."
+  type        = string
+  default     = "1313006394"
+}
+
 variable "price_class" {
   description = <<-EOT
     CloudFront price class. PriceClass_100 (North America + Europe) is the
