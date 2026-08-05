@@ -1,0 +1,17 @@
+# Provider binaries and the local workspace.
+.terraform/
+
+# State never belongs in git — it lives in the S3 backend and can contain
+# resource attributes you would not want in a public repo. .terraform.lock.hcl
+# is deliberately NOT ignored: it pins provider versions for CI.
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+
+# Local variable overrides.
+*.auto.tfvars
+override.tf
+override.tf.json
+
+crash.log
+crash.*.log

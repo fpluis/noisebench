@@ -1,0 +1,128 @@
+name: Deploy site
+
+# Only a push to master reaches this workflow, and only a push that touched the
+# site. A pull request never runs it, which matters for a public repo: the AWS
+# role's trust policy accepts the master-branch OIDC token and nothing else, so
+# a contributor's fork cannot obtain credentials even by editing this file.
+on:
+  push:
+    branches: [master]
+    paths:
+      - "site/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write # mint the OIDC token that stands in for AWS keys
+  contents: read
+
+# Two deploys overlapping would race the S3 sync against the invalidation.
+concurrency:
+  group: deploy-site
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: publish to S3 + CloudFront
+    runs-on: ubuntu-latest
+
+    env:
+      BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+      DISTRIBUTION: ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The pages render entirely from these files. A truncated or half-written
+      # analyze.ts run would otherwise deploy a site that shows nothing, and
+      # the type checker never sees this data.
+      - name: Validate data files
+        run: |
+          if [ -z "$BUCKET" ] || [ -z "$DISTRIBUTION" ]; then
+            echo "::error::Repository secrets are not set — see terraform/README.md"
+            exit 1
+          fi
+
+          shopt -s nullglob
+          files=(site/data/*.json)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::site/data/ has no JSON — nothing to publish"
+            exit 1
+          fi
+          for f in "${files[@]}"; do
+            node -e "JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'))" "$f"
+            echo "ok  $f"
+          done
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: noisebench-deploy-${{ github.run_id }}
+          aws-region: us-east-1
+
+      # One sync, so --delete compares the whole bucket against the whole
+      # directory and there is no interaction between filters and deletion to
+      # reason about.
+      #
+      # s-maxage is a year because the invalidation below is what actually
+      # expires the CDN copy; max-age is five minutes so a browser that cached
+      # a page mid-deploy catches up quickly.
+      - name: Upload
+        run: |
+          aws s3 sync site/ "s3://$BUCKET/" --delete \
+            --no-progress \
+            --cache-control "public, max-age=300, s-maxage=31536000"
+
+      # The sync guesses Content-Type from the extension and gets .html and
+      # .webmanifest not-quite-right: no charset on the pages, and
+      # application/octet-stream for the manifest, which Chrome refuses to
+      # parse. `cp` rather than a second `sync` because sync compares size and
+      # timestamp and would skip files it had just uploaded. Re-sending them
+      # costs about 60 KB.
+      - name: Fix content types
+        run: |
+          aws s3 cp site/ "s3://$BUCKET/" --recursive \
+            --no-progress \
+            --cache-control "public, max-age=300, s-maxage=31536000" \
+            --content-type "text/html; charset=utf-8" \
+            --exclude "*" --include "*.html"
+
+          aws s3 cp site/ "s3://$BUCKET/" --recursive \
+            --no-progress \
+            --cache-control "public, max-age=300, s-maxage=31536000" \
+            --content-type "application/manifest+json" \
+            --exclude "*" --include "*.webmanifest"
+
+      # "/*" counts as a single path against the 1,000 free invalidation paths
+      # a month, so this stays free at any plausible deploy frequency.
+      - name: Invalidate CloudFront
+        run: |
+          id=$(aws cloudfront create-invalidation \
+            --distribution-id "$DISTRIBUTION" \
+            --paths "/*" \
+            --query Invalidation.Id --output text)
+          echo "invalidation $id"
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "$DISTRIBUTION" --id "$id"
+
+      # A completed invalidation does not mean every edge has caught up, and on
+      # the very first deploy the distribution may still be propagating, so each
+      # URL gets a few tries before the deploy is called a failure.
+      - name: Smoke test
+        run: |
+          check() {
+            for attempt in 1 2 3 4 5; do
+              code=$(curl -sS -o /dev/null -w '%{http_code}' "https://noisebench.com$1" || echo 000)
+              if [ "$code" = "200" ]; then
+                echo "200  $1"
+                return 0
+              fi
+              sleep 10
+            done
+            echo "::error::$1 answered $code after 5 attempts"
+            return 1
+          }
+
+          for path in / /markets /details /data/metrics.json; do
+            check "$path" || exit 1
+          done

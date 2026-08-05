@@ -11,3 +11,7 @@ datasets/
 # later shows up as one changed line rather than as a reflowed block. Prettier
 # fills text to the print width and would undo that on every run.
 site/*.html
+
+# Downloaded provider plugins. Prettier tries to read the binaries and dies on
+# their length.
+terraform/.terraform/

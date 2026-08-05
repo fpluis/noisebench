@@ -309,10 +309,34 @@ const quad = (
   iteration = 0,
   model = "m",
 ): PairwiseObservation[] => [
-  pw({ model, iteration, isANegated: false, isBNegated: false, isALikelier: aBeatsB }),
-  pw({ model, iteration, isANegated: true, isBNegated: true, isALikelier: !aBeatsB }),
-  pw({ model, iteration, isANegated: false, isBNegated: true, isALikelier: sumOverOne }),
-  pw({ model, iteration, isANegated: true, isBNegated: false, isALikelier: !sumOverOne }),
+  pw({
+    model,
+    iteration,
+    isANegated: false,
+    isBNegated: false,
+    isALikelier: aBeatsB,
+  }),
+  pw({
+    model,
+    iteration,
+    isANegated: true,
+    isBNegated: true,
+    isALikelier: !aBeatsB,
+  }),
+  pw({
+    model,
+    iteration,
+    isANegated: false,
+    isBNegated: true,
+    isALikelier: sumOverOne,
+  }),
+  pw({
+    model,
+    iteration,
+    isANegated: true,
+    isBNegated: false,
+    isALikelier: !sumOverOne,
+  }),
 ];
 
 test("expectedChoice decodes what each phrasing combination asks", () => {
@@ -364,9 +388,21 @@ test("pairwise repeat agreement counts every pair of repetitions", () => {
 test("cross-modal agreement is 100% when picks follow the model's own odds", () => {
   // Market 1 at 0.80, market 2 at 0.30: A beats B, and they sum past 1.
   const direct: DirectObservation[] = [
-    { model: "m", marketId: 1, isNegated: false, iteration: 0, parsedOdds: 0.8 },
+    {
+      model: "m",
+      marketId: 1,
+      isNegated: false,
+      iteration: 0,
+      parsedOdds: 0.8,
+    },
     { model: "m", marketId: 1, isNegated: true, iteration: 0, parsedOdds: 0.2 },
-    { model: "m", marketId: 2, isNegated: false, iteration: 0, parsedOdds: 0.3 },
+    {
+      model: "m",
+      marketId: 2,
+      isNegated: false,
+      iteration: 0,
+      parsedOdds: 0.3,
+    },
     { model: "m", marketId: 2, isNegated: true, iteration: 0, parsedOdds: 0.7 },
   ];
   const [row] = crossModalAgreement(direct, quad(true, true));
@@ -377,8 +413,20 @@ test("cross-modal agreement is 100% when picks follow the model's own odds", () 
 
 test("cross-modal agreement is 0 when every pick contradicts its own odds", () => {
   const direct: DirectObservation[] = [
-    { model: "m", marketId: 1, isNegated: false, iteration: 0, parsedOdds: 0.8 },
-    { model: "m", marketId: 2, isNegated: false, iteration: 0, parsedOdds: 0.3 },
+    {
+      model: "m",
+      marketId: 1,
+      isNegated: false,
+      iteration: 0,
+      parsedOdds: 0.8,
+    },
+    {
+      model: "m",
+      marketId: 2,
+      isNegated: false,
+      iteration: 0,
+      parsedOdds: 0.3,
+    },
   ];
   const [row] = crossModalAgreement(direct, quad(false, false));
   assert.equal(row.agreement, 0);

@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Read-only, and no secrets are referenced anywhere below, so this is safe to
+# run on pull requests from forks of a public repository.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    name: typecheck, tests, format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npx prettier --check .
+
+  terraform:
+    name: terraform fmt + validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.8
+
+      - name: fmt
+        run: terraform fmt -check -recursive
+        working-directory: terraform
+
+      # -backend=false skips the S3 backend, so validation needs no AWS
+      # credentials and runs on fork pull requests like everything else here.
+      - name: init
+        run: terraform init -backend=false
+        working-directory: terraform
+
+      - name: validate
+        run: terraform validate
+        working-directory: terraform

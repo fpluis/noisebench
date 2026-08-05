@@ -632,9 +632,24 @@ async function verifyOnchain(pool: Pool, runId: number): Promise<void> {
   // for 20 forecasters that is 60 scans and >12,000 requests against endpoints
   // that rate-limit, which makes the verifier itself a source of flakiness.
   const [allForecastLogs, allPairwiseLogs, allAttrLogs] = await Promise.all([
-    queryLogsChunked(contract, contract.filters.ForecastRecorded(), fromBlock, toBlock),
-    queryLogsChunked(contract, contract.filters.PairwiseForecastRecorded(), fromBlock, toBlock),
-    queryLogsChunked(contract, contract.filters.AttributeSet(), fromBlock, toBlock),
+    queryLogsChunked(
+      contract,
+      contract.filters.ForecastRecorded(),
+      fromBlock,
+      toBlock,
+    ),
+    queryLogsChunked(
+      contract,
+      contract.filters.PairwiseForecastRecorded(),
+      fromBlock,
+      toBlock,
+    ),
+    queryLogsChunked(
+      contract,
+      contract.filters.AttributeSet(),
+      fromBlock,
+      toBlock,
+    ),
   ]);
   console.log(
     `  on-chain: ${allForecastLogs.length} forecast, ${allPairwiseLogs.length} pairwise, ` +

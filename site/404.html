@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>noisebench — page not found</title>
+    <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="noisebench" />
+    <meta name="robots" content="noindex" />
+    <link rel="stylesheet" href="/assets/viz.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="masthead">
+        <div class="brand">
+          <img
+            class="brand-mark light"
+            src="/assets/noisebench_logo_black_no_bg.png"
+            alt=""
+            width="331"
+            height="298"
+          />
+          <img
+            class="brand-mark dark"
+            src="/assets/noisebench_logo_white_no_bg.png"
+            alt=""
+            width="331"
+            height="298"
+          />
+          <h1>noisebench</h1>
+        </div>
+        <nav class="tabs">
+          <a href="/index.html">Overview</a>
+          <a href="/markets.html">Markets</a>
+          <a href="/details.html">Details</a>
+          <button class="link" data-theme-toggle style="margin-left: 8px">
+            Dark
+          </button>
+        </nav>
+      </header>
+
+      <section>
+        <p class="lede">There is no page at this address.</p>
+        <p class="lede">
+          The benchmark lives on the <a href="/index.html">Overview</a>, the per-market results are under <a href="/markets.html">Markets</a>, and the methodology is on <a href="/details.html">Details</a>.
+        </p>
+      </section>
+    </div>
+
+    <!-- CloudFront serves this page for any unknown path, so every link above
+         is absolute: a relative one would resolve against the URL that missed. -->
+    <script type="module">
+      import { initTheme } from "/assets/viz.js";
+
+      initTheme();
+    </script>
+  </body>
+</html>
