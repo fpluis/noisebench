@@ -17,6 +17,7 @@
     "seed-providers": "tsx ./scripts/seed-providers.ts",
     "backfill-snapshot": "tsx ./scripts/backfill-snapshot.ts",
     "analyze": "tsx ./scripts/analyze.ts",
+    "export-csv": "tsx ./scripts/export-csv.ts",
     "site": "tsx ./scripts/serve-site.ts",
     "test:e2e": "tsx ./scripts/test-e2e.ts",
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",

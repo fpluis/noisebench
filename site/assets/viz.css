@@ -138,11 +138,50 @@ header.masthead {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
-  align-items: baseline;
+  /* Centered rather than baseline-aligned: the left side is a logo lockup now,
+     and a flex row takes its baseline from the image's bottom edge. */
+  align-items: center;
   justify-content: space-between;
   padding-bottom: 20px;
   margin-bottom: 32px;
   border-bottom: 1px solid var(--border);
+}
+
+.masthead .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* The mark is a flat one-color PNG, so it ships as a black/white pair rather
+   than one file that inverts. The swap follows the same rules as the color
+   tokens above: an explicit theme choice wins over the OS preference. */
+.brand-mark {
+  display: block;
+  flex: none;
+  width: 35px;
+  height: 32px;
+}
+
+.brand-mark.dark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .brand-mark.light {
+    display: none;
+  }
+  :root:where(:not([data-theme="light"])) .brand-mark.dark {
+    display: block;
+  }
+}
+
+:root[data-theme="dark"] .brand-mark.light {
+  display: none;
+}
+
+:root[data-theme="dark"] .brand-mark.dark {
+  display: block;
 }
 
 .masthead h1 {
