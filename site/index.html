@@ -34,6 +34,7 @@
         </div>
         <nav class="tabs">
           <a href="index.html" aria-current="page">Overview</a>
+          <a href="compare.html">Compare</a>
           <a href="markets.html">Markets</a>
           <a href="details.html">Details</a>
           <button class="link" data-theme-toggle style="margin-left: 8px">
@@ -53,7 +54,13 @@
           Each model produces both individual forecasts for the odds of each market, eg <i>"Will JD Vance win the 2028 US Presidential Election?"</i> both for the "Yes" and "No" outcomes, multiple times. Then the models judge which of two separate market outcomes is more likely, eg <i>"Billionaire one-time wealth tax passes in California election 2026?"</i> vs <i>"Will Marine Le Pen win the 2027 French presidential election?"</i>, for the 4 different outcome combinations of each pair of markets.
         </p>
         <p class="lede">
+          You can see the live forecasts of these and other forecasters live on <a href="https://sharpground.com">sharpground.com</a>.
+        </p>
+        <p class="lede">
           <span id="scope">Loading…</span>
+        </p>
+        <p class="lede">
+          Made by <a href="https://x.com/LuisFominaya">Luis Fominaya</a> 
         </p>
       </section>
 
@@ -153,6 +160,7 @@
         shortModel,
         signedPct,
         usd,
+        vendorName,
         wireTableToggle,
       } from "./assets/viz.js";
 
@@ -187,23 +195,9 @@
       // is the reading that shows a lab's models sitting together, which twenty
       // separate labels do not. Named once, under the headline chart, because
       // half the slugs do not say who made them.
-      const VENDOR_NAMES = {
-        openai: "OpenAI",
-        anthropic: "Anthropic",
-        google: "Google",
-        deepseek: "DeepSeek",
-        qwen: "Alibaba (Qwen)",
-        "x-ai": "xAI (Grok)",
-        "z-ai": "Zhipu (GLM)",
-        moonshotai: "Moonshot (Kimi)",
-        xiaomi: "Xiaomi (MiMo)",
-        mistralai: "Mistral",
-        nvidia: "NVIDIA (Nemotron)",
-      };
-      const vendorOf = (model) => model.split("/")[0];
-      const vendors = [...new Set(models.map((m) => vendorOf(m.model)))].map(
-        (v) => ({ name: VENDOR_NAMES[v] ?? v, color: brandColor(v) }),
-      );
+      const vendors = [
+        ...new Set(models.map((m) => m.model.split("/")[0])),
+      ].map((v) => ({ name: vendorName(v), color: brandColor(v) }));
 
       // A measure only has a directional form if discarding a sign is what
       // makes it a magnitude. Negated spread is the one such measure: it is the

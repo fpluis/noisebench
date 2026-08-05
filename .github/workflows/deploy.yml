@@ -123,6 +123,6 @@ jobs:
             return 1
           }
 
-          for path in / /markets /details /data/metrics.json; do
+          for path in / /compare /markets /details /data/metrics.json; do
             check "$path" || exit 1
           done

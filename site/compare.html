@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Compare — noisebench</title>
+    <link rel="icon" type="image/png" href="favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="favicon/favicon.svg" />
+    <link rel="shortcut icon" href="favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="noisebench" />
+    <link rel="manifest" href="favicon/site.webmanifest" />
+    <link rel="stylesheet" href="assets/viz.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="masthead">
+        <div class="brand">
+          <img
+            class="brand-mark light"
+            src="assets/noisebench_logo_black_no_bg.png"
+            alt=""
+            width="331"
+            height="298"
+          />
+          <img
+            class="brand-mark dark"
+            src="assets/noisebench_logo_white_no_bg.png"
+            alt=""
+            width="331"
+            height="298"
+          />
+          <h1>Compare</h1>
+        </div>
+        <nav class="tabs">
+          <a href="index.html">Overview</a>
+          <a href="compare.html" aria-current="page">Compare</a>
+          <a href="markets.html">Markets</a>
+          <a href="details.html">Details</a>
+          <button class="link" data-theme-toggle style="margin-left: 8px">
+            Dark
+          </button>
+        </nav>
+      </header>
+
+      <section>
+        <p class="lede">
+          Two models against each other: how noisy each one is, what an answer costs, how much the model writes to produce it, and how the five measures behind the noise score compare one by one.
+        </p>
+        <p class="lede">
+          Every chart below reads the same way: <b style="color: var(--series-1)">A</b> is the model on the left, <b style="color: var(--series-2)">B</b> the one on the right. The two often come from the same lab, so the pair takes these two colours rather than their vendor hues.
+        </p>
+        <div class="pickers">
+          <label class="picker a">
+            <span>Model A</span>
+            <select id="pickA"></select>
+          </label>
+          <button class="swap" id="swap" title="Swap A and B" aria-label="Swap A and B">
+            ⇄
+          </button>
+          <label class="picker b">
+            <span>Model B</span>
+            <select id="pickB"></select>
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Head to head</h2>
+        <p class="lede">
+          The three headline numbers. Each pair of bars is drawn against the same scale, and the grey tick is where the field of twenty models averages out.
+        </p>
+        <div class="duels" id="duels"></div>
+      </section>
+
+      <section>
+        <h2>The five measures behind the score</h2>
+        <p class="lede">
+          The noise index is the simple average of these five, so this is where a gap in the headline number comes from. Each row is one measure on its own axis-wide scale; the bar between the two dots is the gap, and the tick is the field average for that measure. What each one asks is on the <a href="details.html">Details</a> page.
+        </p>
+        <figure>
+          <div class="chart-head">
+            <div class="legend" id="partsLegend"></div>
+            <button class="link" id="partsTableBtn">Show data table</button>
+          </div>
+          <div class="chart-scroll"><div id="parts"></div></div>
+          <div class="table-wrap hidden" id="partsTable"></div>
+          <figcaption id="partscap"></figcaption>
+        </figure>
+      </section>
+    </div>
+
+    <script type="module">
+      import {
+        count,
+        dumbbell,
+        initTheme,
+        legend,
+        loadJson,
+        onRedraw,
+        pct,
+        renderTable,
+        shortModel,
+        usd,
+        vendorName,
+        wireTableToggle,
+      } from "./assets/viz.js";
+
+      initTheme();
+
+      const metrics = await loadJson("metrics.json");
+      const models = metrics.models;
+      const components = metrics.components;
+      const byId = new Map(models.map((m) => [m.model, m]));
+
+      // -----------------------------------------------------------------
+      // Which two
+      // -----------------------------------------------------------------
+      //
+      // The pair lives in the query string, so a comparison is a link someone
+      // can send. A slug that is not in this run falls back to the default
+      // rather than rendering an empty page.
+      const lowest = (key) =>
+        [...models]
+          .filter((m) => typeof m[key] === "number" && m[key] > 0)
+          .sort((x, y) => x[key] - y[key])[0].model;
+
+      // Steadiest against cheapest: the two ends of the trade-off the whole
+      // benchmark is about, and the pair with something to say on every tile.
+      const params = new URLSearchParams(location.search);
+      const valid = (slug) => (byId.has(slug) ? slug : null);
+      let a = valid(params.get("a")) ?? lowest("noise");
+      let b = valid(params.get("b")) ?? lowest("costPerAnswer");
+      if (a === b) b = models.find((m) => m.model !== a).model;
+
+      const A = { key: "a", color: "var(--series-1)" };
+      const B = { key: "b", color: "var(--series-2)" };
+      const rowA = () => byId.get(a);
+      const rowB = () => byId.get(b);
+
+      // Grouped by lab, and by noise inside each lab, because "the steadiest
+      // model this vendor has" is how someone picking a pair thinks about it.
+      const vendors = [...new Set(models.map((m) => m.model.split("/")[0]))];
+      const options = vendors
+        .map((v) => {
+          const group = models
+            .filter((m) => m.model.split("/")[0] === v)
+            .sort((x, y) => x.noise - y.noise)
+            .map(
+              (m) =>
+                `<option value="${m.model}">${shortModel(m.model)} — ${pct(m.noise, 1)} noise</option>`,
+            )
+            .join("");
+          return `<optgroup label="${vendorName(v)}">${group}</optgroup>`;
+        })
+        .join("");
+
+      const pickA = document.getElementById("pickA");
+      const pickB = document.getElementById("pickB");
+      pickA.innerHTML = options;
+      pickB.innerHTML = options;
+
+      // Picking the model already on the other side swaps them rather than
+      // leaving a model compared against itself.
+      const choose = (side, value) => {
+        if (side === "a") {
+          if (value === b) b = a;
+          a = value;
+        } else {
+          if (value === a) a = b;
+          b = value;
+        }
+        apply();
+      };
+
+      pickA.addEventListener("change", () => choose("a", pickA.value));
+      pickB.addEventListener("change", () => choose("b", pickB.value));
+      document.getElementById("swap").addEventListener("click", () => {
+        [a, b] = [b, a];
+        apply();
+      });
+
+      // `redraw` is false only on the first pass, where `onRedraw` below draws
+      // the page anyway and doing it twice would be work for nothing.
+      const apply = (redraw = true) => {
+        pickA.value = a;
+        pickB.value = b;
+        history.replaceState(
+          null,
+          "",
+          `?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`,
+        );
+        if (redraw) draw();
+      };
+
+      // -----------------------------------------------------------------
+      // Units and gaps
+      // -----------------------------------------------------------------
+
+      const pct1 = (v) => pct(v, 1);
+      const signedPts = (v) =>
+        v === null || v === undefined || Number.isNaN(v)
+          ? "—"
+          : `${v > 0 ? "+" : v < 0 ? "−" : ""}${(Math.abs(v) * 100).toFixed(1)} pts`;
+
+      // How many times one figure is the other. Past ten, the decimal is noise
+      // in its own right — "200×" is the whole of what that number says.
+      const times = (x, y) => {
+        if (!x || !y) return null;
+        const r = Math.max(x, y) / Math.min(x, y);
+        return `${r >= 10 ? Math.round(r) : r.toFixed(1)}×`;
+      };
+
+      const gapOf = (row) => Math.abs(row.b - row.a);
+
+      // -----------------------------------------------------------------
+      // Head to head
+      // -----------------------------------------------------------------
+      //
+      // One tile per headline quantity. Both bars run against the larger of the
+      // two values and the field average, so a 200x price difference reads as a
+      // sliver next to a full bar — which is what it is.
+      //
+      // Every verdict names the model with the LARGER figure and says what more
+      // of that quantity means. On these three measures more is the bad end —
+      // noisier, dearer, longer — and naming the cost is a plainer reading than
+      // congratulating the other one on avoiding it.
+      const TILES = [
+        {
+          label: "Noise index",
+          get: (m) => m.noise,
+          format: pct1,
+          field: () => metrics.field.noise,
+          verdict: (high, ratio) => `${shortModel(high.model)} is ${ratio} noisier`,
+        },
+        {
+          label: "Price per answer",
+          get: (m) => m.costPerAnswer,
+          format: (v) => usd(v),
+          field: () => metrics.field.costPerAnswer,
+          verdict: (high, ratio) =>
+            `${shortModel(high.model)} is ${ratio} more expensive`,
+        },
+        {
+          label: "Tokens out per answer",
+          get: (m) => m.tokensOut,
+          format: (v) => count(v),
+          field: () => metrics.field.tokensOut,
+          verdict: (high, ratio) => `${shortModel(high.model)} writes ${ratio} more`,
+        },
+      ];
+
+      const tile = (spec) => {
+        const ma = rowA();
+        const mb = rowB();
+        const va = spec.get(ma);
+        const vb = spec.get(mb);
+        const field = spec.field();
+        const known = typeof va === "number" && typeof vb === "number";
+        const scale = Math.max(va ?? 0, vb ?? 0, field ?? 0) || 1;
+        const width = (v) =>
+          typeof v === "number" ? `${(100 * v) / scale}%` : "0%";
+
+        const ratio = known ? times(va, vb) : null;
+        const higher = va >= vb ? ma : mb;
+        const note = !known
+          ? "One of the two has no figure for this run."
+          : Math.max(va, vb) / Math.min(va, vb) < 1.05
+            ? "The two are level, within 5% of each other"
+            : spec.verdict(higher, ratio);
+
+        return `
+          <div class="duel">
+            <div class="label">${spec.label}</div>
+            <div class="values">
+              <b class="a">${spec.format(va)}</b>
+              <span class="vs">vs</span>
+              <b class="b">${spec.format(vb)}</b>
+            </div>
+            <div class="scale">
+              <div class="track"><i style="width:${width(va)};background:var(--series-1)"></i></div>
+              <div class="track"><i style="width:${width(vb)};background:var(--series-2)"></i></div>
+              ${
+                typeof field === "number"
+                  ? `<span class="mark" style="left:${(100 * field) / scale}%" title="Field average"></span>`
+                  : ""
+              }
+            </div>
+            <div class="hint">${note} · field ${spec.format(field)}</div>
+          </div>`;
+      };
+
+      // -----------------------------------------------------------------
+      // Charts
+      // -----------------------------------------------------------------
+
+      const series = () => [
+        { ...A, name: shortModel(a) },
+        { ...B, name: shortModel(b) },
+      ];
+
+      const FIELD_KEY = {
+        name: "Field average",
+        color: "var(--text-muted)",
+        shape: "vtick",
+      };
+
+      const drawParts = () => {
+        const ma = rowA();
+        const mb = rowB();
+
+        legend(document.getElementById("partsLegend"), [
+          { ...series()[0], shape: "dot" },
+          { ...series()[1], shape: "dot" },
+          FIELD_KEY,
+        ]);
+
+        dumbbell(document.getElementById("parts"), {
+          rows: components.map((c) => ({
+            label: c.label,
+            a: ma[c.key],
+            b: mb[c.key],
+            meta: c,
+          })),
+          series: series(),
+          valueFormat: (v) => pct(v, 1),
+          labelWidth: 210,
+          axisLabel: "Share or points of probability. Lower is better.",
+          reference: (row) => metrics.field[row.meta.key] ?? null,
+          referenceLabel: "Field average",
+          gapLabel: (row) => `${(100 * gapOf(row)).toFixed(1)} pts`,
+          tooltip: (row) => [
+            [shortModel(a), pct(row.a, 1)],
+            [shortModel(b), pct(row.b, 1)],
+            ["Gap", `${(100 * gapOf(row)).toFixed(1)} pts`],
+            ["Field average", pct(metrics.field[row.meta.key], 1)],
+          ],
+        });
+
+        // Which measure the headline gap actually comes from — with five parts
+        // averaged into one score, it is rarely all five.
+        const widest = components
+          .map((c) => ({ c, gap: Math.abs(mb[c.key] - ma[c.key]) }))
+          .sort((x, y) => y.gap - x.gap)[0];
+        const [steadier, other] = ma.noise <= mb.noise ? [ma, mb] : [mb, ma];
+        const won = components.filter(
+          (c) => steadier[c.key] <= other[c.key],
+        ).length;
+        document.getElementById("partscap").textContent =
+          `${pct(Math.abs(mb.noise - ma.noise), 1)} separates the two on the index, and the widest single measure is ` +
+          `${widest.c.label.toLowerCase()} at ${(100 * widest.gap).toFixed(1)} points. ` +
+          `${shortModel(steadier.model)} has less noise on ` +
+          `${won === components.length ? "all five" : `${won} of the five`} measures.`;
+
+        renderTable(
+          document.getElementById("partsTable"),
+          [
+            { name: "Measure", get: (r) => r.name, numeric: false },
+            { name: shortModel(a), get: (r) => pct1(r.get(ma)) },
+            { name: shortModel(b), get: (r) => pct1(r.get(mb)) },
+            {
+              name: "Difference (B − A)",
+              get: (r) => signedPts(r.get(mb) - r.get(ma)),
+            },
+            { name: "Field", get: (r) => pct1(metrics.field[r.key]) },
+          ],
+          [
+            { name: "Noise index", key: "noise", get: (m) => m.noise },
+            ...components.map((c) => ({
+              name: c.label,
+              key: c.key,
+              get: (m) => m[c.key],
+            })),
+          ],
+        );
+      };
+
+      const draw = () => {
+        document.getElementById("duels").innerHTML = TILES.map(tile).join("");
+        drawParts();
+      };
+
+      wireTableToggle(
+        document.getElementById("partsTableBtn"),
+        document.getElementById("partsTable"),
+      );
+
+      apply(false);
+      onRedraw(draw);
+    </script>
+  </body>
+</html>

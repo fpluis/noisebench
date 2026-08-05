@@ -29,6 +29,28 @@ export const pct = (x, dp = 1) =>
 // twenty times, but keep it where two vendors ship the same short name.
 export const shortModel = (name) => name.split("/").pop();
 
+// Who made a model, from the vendor prefix of its slug. Half the slugs do not
+// say, so anywhere a lab is named — a legend, a grouped picker — reads this one
+// table rather than its own copy of it.
+const VENDOR_NAMES = {
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  google: "Google",
+  deepseek: "DeepSeek",
+  qwen: "Alibaba (Qwen)",
+  "x-ai": "xAI (Grok)",
+  "z-ai": "Zhipu (GLM)",
+  moonshotai: "Moonshot (Kimi)",
+  xiaomi: "Xiaomi (MiMo)",
+  mistralai: "Mistral",
+  nvidia: "NVIDIA (Nemotron)",
+};
+
+export const vendorName = (name) => {
+  const vendor = String(name).split("/")[0];
+  return VENDOR_NAMES[vendor] ?? vendor;
+};
+
 /**
  * The brand hue for a model, from the vendor prefix of its slug.
  *
@@ -888,6 +910,307 @@ export const dotRows = (mount, options) => {
 };
 
 // ---------------------------------------------------------------------------
+// Dumbbells — two cases per row, on one axis, joined by the gap between them.
+//
+// The form for comparing exactly two things across several measures. Two bar
+// charts side by side make the reader subtract; a dumbbell draws the difference
+// itself, as the length of the connector, while both dots keep their absolute
+// position on a shared axis. Rows are measures, not entities, so the axis has to
+// mean the same thing down the whole chart — call it once per unit.
+//
+// Both figures sit in fixed columns at the right rather than beside their dot:
+// two dots a few pixels apart would collide, and a column of tabular figures is
+// what makes the five rows readable as numbers as well as as lengths.
+// ---------------------------------------------------------------------------
+
+export const dumbbell = (mount, options) => {
+  const {
+    rows,
+    // Exactly two, in column order: [left figure column, right figure column].
+    series,
+    logX = false,
+    valueFormat = (v) => fmt(v),
+    // What the figure columns print, when the axis wants a coarser form than
+    // the figures do: ticks on a log money axis read better as $0.005 than as
+    // $0.0050, and the figures beside them still want the fixed places they
+    // line up on.
+    figureFormat = valueFormat,
+    labelWidth = 200,
+    rowHeight = 32,
+    axisLabel = "",
+    // Heads for the two figure columns. Two letters, because they tie a column
+    // to the picker that chose it and a truncated slug would tie it to nothing.
+    columnLabels = ["A", "B"],
+    // A third value per row, drawn as a tick on the axis — the field average,
+    // usually, which is what says whether a gap is large for this measure.
+    reference = null,
+    referenceLabel = "",
+    // What to print on the connector: the gap, in whatever form the unit makes
+    // readable — points for a percentage, a ratio for money.
+    gapLabel = null,
+    tooltip = null,
+  } = options;
+
+  const [first, second] = series;
+
+  mount.innerHTML = "";
+  const width = Math.max(mount.clientWidth || 640, 480);
+  const top = 26;
+  const bottom = axisLabel ? 44 : 28;
+  const height = top + rows.length * rowHeight + bottom;
+  const valueColumn = 66;
+  const plotLeft = labelWidth;
+  const plotWidth = Math.max(120, width - plotLeft - 2 * valueColumn - 14);
+  const columnX = [width - valueColumn - 8, width - 8];
+
+  const svg = el("svg", {
+    viewBox: `0 0 ${width} ${height}`,
+    width,
+    height,
+    role: "img",
+  });
+
+  const tx = (v) => (logX ? Math.log10(Math.max(v, 1e-12)) : v);
+  const at = (row, s) => row[s.key];
+  const values = rows.flatMap((row) => {
+    const ref = reference ? reference(row) : null;
+    return [at(row, first), at(row, second), ref]
+      .filter((v) => typeof v === "number")
+      .map(tx);
+  });
+  const rawLo = Math.min(...values);
+  const rawHi = Math.max(...values);
+  // A linear axis keeps its zero — the dots are values, and where they sit
+  // relative to nothing is part of what a reader is judging. A log axis has no
+  // zero to keep and pads both ends instead.
+  const pad = (rawHi - rawLo) * 0.08 || (logX ? 0.2 : 1);
+  const lo = logX ? rawLo - pad : Math.min(0, rawLo);
+  const hi = rawHi + pad;
+  const x = (v) => plotLeft + ((tx(v) - lo) / (hi - lo)) * plotWidth;
+
+  for (const t of logX
+    ? logTicks(lo, hi, Math.max(4, Math.floor(plotWidth / 88)))
+    : niceTicks(lo, hi, 5)) {
+    el(
+      "line",
+      {
+        x1: x(t),
+        x2: x(t),
+        y1: top,
+        y2: top + rows.length * rowHeight,
+        stroke: "var(--gridline)",
+        "stroke-width": 1,
+      },
+      svg,
+    );
+    el(
+      "text",
+      {
+        x: x(t),
+        y: top + rows.length * rowHeight + 18,
+        "text-anchor": "middle",
+        "font-size": 11,
+        fill: "var(--text-muted)",
+      },
+      svg,
+    ).textContent = valueFormat(t);
+  }
+
+  series.forEach((s, i) => {
+    el(
+      "text",
+      {
+        x: columnX[i],
+        y: top - 10,
+        "text-anchor": "end",
+        "font-size": 11,
+        "font-weight": 600,
+        fill: s.color,
+      },
+      svg,
+    ).textContent = columnLabels[i] ?? s.name;
+  });
+
+  rows.forEach((row, i) => {
+    const cy = top + i * rowHeight + rowHeight / 2;
+
+    el(
+      "line",
+      {
+        x1: plotLeft,
+        x2: plotLeft + plotWidth,
+        y1: cy,
+        y2: cy,
+        stroke: "var(--gridline)",
+        "stroke-width": 1,
+      },
+      svg,
+    );
+
+    el(
+      "text",
+      {
+        x: plotLeft - 10,
+        y: cy,
+        "text-anchor": "end",
+        "dominant-baseline": "middle",
+        "font-size": 12,
+        fill: "var(--text-secondary)",
+      },
+      svg,
+    ).textContent = truncate(row.label, labelWidth);
+
+    const ref = reference ? reference(row) : null;
+    if (typeof ref === "number") {
+      el(
+        "line",
+        {
+          x1: x(ref),
+          x2: x(ref),
+          y1: cy - 9,
+          y2: cy + 9,
+          stroke: "var(--text-muted)",
+          "stroke-width": 2,
+        },
+        svg,
+      );
+    }
+
+    // A value the run never recorded has no position on the axis, so it gets no
+    // dot and no connector — the empty figure in its column is the honest
+    // reading, and a dot pinned to the floor would not be.
+    const known = series.map((s) => typeof at(row, s) === "number");
+    const xs = series.map((s, j) => (known[j] ? x(at(row, s)) : null));
+    const paired = known[0] && known[1];
+
+    // The gap is the point of the form, so it is a mark in its own right —
+    // heavier than the rail it sits on, and under the dots.
+    if (paired) {
+      el(
+        "line",
+        {
+          x1: xs[0],
+          x2: xs[1],
+          y1: cy,
+          y2: cy,
+          stroke: "var(--baseline)",
+          "stroke-width": 3,
+          "stroke-linecap": "round",
+        },
+        svg,
+      );
+    }
+
+    if (paired && gapLabel && Math.abs(xs[1] - xs[0]) >= 54) {
+      el(
+        "text",
+        {
+          x: (xs[0] + xs[1]) / 2,
+          y: cy - 10,
+          "text-anchor": "middle",
+          "font-size": 10.5,
+          "font-variant-numeric": "tabular-nums",
+          fill: "var(--text-muted)",
+          // Halo, because the connector and the neighbouring rail both run
+          // under wherever the midpoint happens to fall.
+          stroke: "var(--surface-1)",
+          "stroke-width": 3,
+          "paint-order": "stroke",
+        },
+        svg,
+      ).textContent = gapLabel(row);
+    }
+
+    series.forEach((s, j) => {
+      if (!known[j]) {
+        el(
+          "text",
+          {
+            x: columnX[j],
+            y: cy,
+            "text-anchor": "end",
+            "dominant-baseline": "middle",
+            "font-size": 11.5,
+            fill: "var(--text-muted)",
+          },
+          svg,
+        ).textContent = "—";
+        return;
+      }
+
+      el(
+        "circle",
+        {
+          cx: xs[j],
+          cy,
+          r: 5.5,
+          fill: s.color,
+          // 2px surface ring, so two dots that nearly coincide stay countable.
+          stroke: "var(--surface-1)",
+          "stroke-width": 2,
+        },
+        svg,
+      );
+
+      el(
+        "text",
+        {
+          x: columnX[j],
+          y: cy,
+          "text-anchor": "end",
+          "dominant-baseline": "middle",
+          "font-size": 11.5,
+          "font-variant-numeric": "tabular-nums",
+          fill: s.color,
+        },
+        svg,
+      ).textContent = figureFormat(at(row, s));
+    });
+
+    // The whole row is the hit target, figure columns included.
+    const hit = el(
+      "rect",
+      {
+        x: plotLeft,
+        y: cy - rowHeight / 2,
+        width: width - plotLeft - 8,
+        height: rowHeight,
+        fill: "transparent",
+      },
+      svg,
+    );
+    bindTip(hit, row.label, () =>
+      tooltip
+        ? tooltip(row)
+        : series
+            .map((s) => [s.name, figureFormat(at(row, s))])
+            .concat(
+              typeof ref === "number"
+                ? [[referenceLabel || "Reference", figureFormat(ref)]]
+                : [],
+            ),
+    );
+  });
+
+  if (axisLabel) {
+    el(
+      "text",
+      {
+        x: plotLeft + plotWidth / 2,
+        y: height - 8,
+        "text-anchor": "middle",
+        "font-size": 11,
+        fill: "var(--text-muted)",
+      },
+      svg,
+    ).textContent = axisLabel;
+  }
+
+  mount.appendChild(svg);
+  return svg;
+};
+
+// ---------------------------------------------------------------------------
 // Strips — one column per case, every observation drawn on it, plus a marker.
 //
 // A mean tells you where the panel landed; this says whether the panel agreed.
@@ -1385,6 +1708,8 @@ const SWATCH = {
             stroke-linecap="round" fill="none" />`,
   tick: `<path d="M-5,0 L5,0" stroke="COLOR" stroke-width="2"
            stroke-linecap="round" fill="none" />`,
+  vtick: `<path d="M0,-5 L0,5" stroke="COLOR" stroke-width="2"
+            stroke-linecap="round" fill="none" />`,
   dot: `<circle r="4" fill="COLOR" />`,
 };
 

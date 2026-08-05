@@ -317,6 +317,180 @@ code {
   border-color: color-mix(in srgb, var(--series-1) 40%, var(--border));
 }
 
+/* ---------- two-model comparison ---------- */
+
+/* The two sides of a comparison are told apart by the first two categorical
+   slots rather than by their vendor hues: the interesting pairs are often two
+   models from one lab, which would then be drawn in one colour. A and B are
+   roles, so the colour belongs to the role and is fixed by this rule for the
+   picker, the tiles and every chart on the page at once. */
+.pickers {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  align-items: end;
+}
+
+.picker {
+  display: block;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--pick);
+  border-radius: 10px;
+  padding: 12px 14px 14px;
+}
+
+.picker.a {
+  --pick: var(--series-1);
+}
+
+.picker.b {
+  --pick: var(--series-2);
+}
+
+.picker > span {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 7px;
+}
+
+.picker select {
+  font: inherit;
+  font-size: 14px;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--page);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.picker select:focus-visible {
+  outline: 2px solid var(--pick);
+  outline-offset: -2px;
+}
+
+button.swap {
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  align-self: center;
+  margin-bottom: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+button.swap:hover {
+  color: var(--text-primary);
+  border-color: var(--baseline);
+}
+
+.duels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(258px, 1fr));
+  gap: 12px;
+}
+
+.duel {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
+.duel .label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.duel .values {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 7px 0 12px;
+}
+
+.duel .values b {
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.duel .values .a {
+  color: var(--series-1);
+}
+
+.duel .values .b {
+  color: var(--series-2);
+}
+
+.duel .values .vs {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Both bars are drawn against the same scale — the larger of the two values, or
+   the field average when that is larger still — so their lengths are comparable
+   to each other and to the tick that marks the field. */
+.duel .scale {
+  position: relative;
+  display: grid;
+  gap: 5px;
+}
+
+.duel .track {
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+
+.duel .track i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  min-width: 2px;
+}
+
+.duel .mark {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--text-muted);
+  border-radius: 1px;
+}
+
+.duel .hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 10px;
+}
+
+@media (max-width: 640px) {
+  .pickers {
+    grid-template-columns: 1fr;
+  }
+
+  button.swap {
+    justify-self: start;
+    margin: 0;
+  }
+}
+
 /* ---------- numbered steps ---------- */
 
 /* A pipeline is an ordered thing, so it takes an ordered list and the numbers
