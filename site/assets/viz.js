@@ -247,6 +247,98 @@ const barPath = (x, y, w, h, r) => {
 };
 
 // ---------------------------------------------------------------------------
+// Watermark and byline — who made the chart, carried by the chart.
+// ---------------------------------------------------------------------------
+//
+// Charts leave this site as screenshots, so attribution has to be part of the
+// mark rather than page furniture beside it. Two marks doing two jobs: the site
+// name across the plot, large enough that a crop cannot lose it, and the author
+// in the bottom-left gutter, small enough to read as a byline. Neither is ever
+// hit-tested, so neither can swallow a tooltip.
+//
+// The watermark is drawn before anything else, so every line, bar and label
+// paints over it, and uses `--text-primary` at a low alpha rather than a fixed
+// grey — that way one definition reads on the light surface and the dark one.
+
+const WATERMARK = "noisebench.com";
+
+// Roughly the advance width of one character of the string at 1em in this face.
+// Sizing the text against the plot beats a constant, which would be too wide at
+// 420px and lost at 900.
+const WATERMARK_EM = 0.56;
+
+const watermark = (svg, box) => {
+  const size = Math.min(
+    (box.width * 0.78) / (WATERMARK.length * WATERMARK_EM),
+    box.height * 0.5,
+    72,
+  );
+  // Below about 9px the string stops being legible and is just noise under the
+  // data, so a plot that cannot hold it goes without.
+  if (size < 9) return;
+  el(
+    "text",
+    {
+      x: box.x + box.width / 2,
+      y: box.y + box.height / 2,
+      "text-anchor": "middle",
+      "dominant-baseline": "middle",
+      "font-size": size,
+      "font-weight": 700,
+      "letter-spacing": (size * 0.03).toFixed(2),
+      fill: "var(--text-primary)",
+      "fill-opacity": 0.08,
+      "pointer-events": "none",
+      "aria-hidden": "true",
+    },
+    svg,
+  ).textContent = WATERMARK;
+};
+
+const BYLINE = "@LuisFominaya";
+
+// The strip the byline gets to itself, below everything else. Sharing the axis
+// gutter does not survive a narrow chart: at the 420px floor a long axis caption
+// spans almost the full width, and the rotated category labels of a column chart
+// sweep down through the bottom-left corner. Every form adds this to its bottom
+// margin and lifts its caption by the same amount, so the corner is always free.
+const BYLINE_ROOM = 14;
+
+const byline = (svg, height) => {
+  el(
+    "text",
+    {
+      x: 4,
+      y: height - 4,
+      "text-anchor": "start",
+      "font-size": 10,
+      fill: "var(--text-muted)",
+      "pointer-events": "none",
+    },
+    svg,
+  ).textContent = BYLINE;
+};
+
+/**
+ * The chart root, watermarked and signed.
+ *
+ * `plot` is the data rectangle, in SVG coordinates, and is what the watermark
+ * centres on — on a chart carrying a 150px label gutter the middle of the SVG
+ * is not the middle of anything the reader is looking at.
+ */
+const chartSvg = (width, height, plot) => {
+  const svg = el("svg", {
+    viewBox: `0 0 ${width} ${height}`,
+    width,
+    height,
+    role: "img",
+  });
+  watermark(svg, plot);
+  byline(svg, height);
+  return svg;
+};
+
+// ---------------------------------------------------------------------------
 // Horizontal bars — one or more series per row.
 //
 // `signed: true` anchors bars at zero and colors by sign from the diverging
@@ -285,16 +377,16 @@ export const horizontalBars = (mount, options) => {
     ? barHeight + groupGap
     : series.length * (barHeight + 2) + groupGap;
   const top = 8;
-  const bottom = 34;
+  const bottom = 34 + BYLINE_ROOM;
   const height = top + rows.length * rowHeight + bottom;
   const plotLeft = labelWidth;
   const plotWidth = Math.max(120, width - plotLeft - 56);
 
-  const svg = el("svg", {
-    viewBox: `0 0 ${width} ${height}`,
-    width,
-    height,
-    role: "img",
+  const svg = chartSvg(width, height, {
+    x: plotLeft,
+    y: top,
+    width: plotWidth,
+    height: height - top - bottom,
   });
 
   // Stacked bars run to their total, so that is what the axis has to reach.
@@ -342,7 +434,7 @@ export const horizontalBars = (mount, options) => {
       "text",
       {
         x: plotLeft + plotWidth / 2,
-        y: height - 2,
+        y: height - 2 - BYLINE_ROOM,
         "text-anchor": "middle",
         "font-size": 11,
         fill: "var(--text-muted)",
@@ -527,15 +619,20 @@ export const groupedColumns = (mount, options) => {
   const left = 52;
   const right = 12;
   const top = 12;
-  const bottom = rotate ? 108 : 46;
+  const bottom = (rotate ? 108 : 46) + BYLINE_ROOM;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
 
-  const svg = el("svg", {
-    viewBox: `0 0 ${width} ${height}`,
-    width,
-    height,
-    role: "img",
+  const svg = chartSvg(width, height, {
+    x: left,
+    y: top,
+    width: plotWidth,
+    // Only the upper part of the plot. Columns are solid and grow from the
+    // baseline, so a watermark centred on the whole plot has its right half
+    // painted out by the tall end of a sorted field; the air above the bars is
+    // where the string survives whole. The other forms here are thin enough to
+    // read through, so they centre normally.
+    height: plotHeight * 0.55,
   });
 
   const values = rows.flatMap((r) => series.map((s) => r[s.key] ?? 0));
@@ -684,7 +781,7 @@ export const groupedColumns = (mount, options) => {
       "text",
       {
         x: left + plotWidth / 2,
-        y: height - 6,
+        y: height - 6 - BYLINE_ROOM,
         "text-anchor": "middle",
         "font-size": 11,
         fill: "var(--text-muted)",
@@ -728,17 +825,17 @@ export const dotRows = (mount, options) => {
   mount.innerHTML = "";
   const width = Math.max(mount.clientWidth || 640, 460);
   const top = 10;
-  const bottom = axisLabel ? 46 : 30;
+  const bottom = (axisLabel ? 46 : 30) + BYLINE_ROOM;
   const height = top + rows.length * rowHeight + bottom;
   const valueColumn = 64;
   const plotLeft = labelWidth;
   const plotWidth = Math.max(120, width - plotLeft - valueColumn - 10);
 
-  const svg = el("svg", {
-    viewBox: `0 0 ${width} ${height}`,
-    width,
-    height,
-    role: "img",
+  const svg = chartSvg(width, height, {
+    x: plotLeft,
+    y: top,
+    width: plotWidth,
+    height: rows.length * rowHeight,
   });
 
   const tx = (v) => (logX ? Math.log10(Math.max(v, 1e-12)) : v);
@@ -896,7 +993,7 @@ export const dotRows = (mount, options) => {
       "text",
       {
         x: plotLeft + plotWidth / 2,
-        y: height - 8,
+        y: height - 8 - BYLINE_ROOM,
         "text-anchor": "middle",
         "font-size": 11,
         fill: "var(--text-muted)",
@@ -956,18 +1053,18 @@ export const dumbbell = (mount, options) => {
   mount.innerHTML = "";
   const width = Math.max(mount.clientWidth || 640, 480);
   const top = 26;
-  const bottom = axisLabel ? 44 : 28;
+  const bottom = (axisLabel ? 44 : 28) + BYLINE_ROOM;
   const height = top + rows.length * rowHeight + bottom;
   const valueColumn = 66;
   const plotLeft = labelWidth;
   const plotWidth = Math.max(120, width - plotLeft - 2 * valueColumn - 14);
   const columnX = [width - valueColumn - 8, width - 8];
 
-  const svg = el("svg", {
-    viewBox: `0 0 ${width} ${height}`,
-    width,
-    height,
-    role: "img",
+  const svg = chartSvg(width, height, {
+    x: plotLeft,
+    y: top,
+    width: plotWidth,
+    height: rows.length * rowHeight,
   });
 
   const tx = (v) => (logX ? Math.log10(Math.max(v, 1e-12)) : v);
@@ -1197,7 +1294,7 @@ export const dumbbell = (mount, options) => {
       "text",
       {
         x: plotLeft + plotWidth / 2,
-        y: height - 8,
+        y: height - 8 - BYLINE_ROOM,
         "text-anchor": "middle",
         "font-size": 11,
         fill: "var(--text-muted)",
@@ -1240,7 +1337,7 @@ export const strips = (mount, options) => {
   const left = 52;
   const right = 14;
   const top = 12;
-  const bottom = 46;
+  const bottom = 46 + BYLINE_ROOM;
   // Columns need room to be individually hoverable; below about 9px they fuse.
   const width = Math.max(
     mount.clientWidth || 640,
@@ -1249,11 +1346,11 @@ export const strips = (mount, options) => {
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
 
-  const svg = el("svg", {
-    viewBox: `0 0 ${width} ${height}`,
-    width,
-    height,
-    role: "img",
+  const svg = chartSvg(width, height, {
+    x: left,
+    y: top,
+    width: plotWidth,
+    height: plotHeight,
   });
 
   const all = columns.flatMap((c) =>
@@ -1419,7 +1516,7 @@ export const strips = (mount, options) => {
       "text",
       {
         x: left + plotWidth / 2,
-        y: height - 8,
+        y: height - 8 - BYLINE_ROOM,
         "text-anchor": "middle",
         "font-size": 11,
         fill: "var(--text-muted)",
@@ -1476,15 +1573,15 @@ export const scatter = (mount, options) => {
   const left = 56;
   const right = 14;
   const top = 14;
-  const bottom = 48;
+  const bottom = 48 + BYLINE_ROOM;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
 
-  const svg = el("svg", {
-    viewBox: `0 0 ${width} ${height}`,
-    width,
-    height,
-    role: "img",
+  const svg = chartSvg(width, height, {
+    x: left,
+    y: top,
+    width: plotWidth,
+    height: plotHeight,
   });
 
   const tx = (v) => (logX ? Math.log10(Math.max(v, 1e-4)) : v);
@@ -1671,7 +1768,7 @@ export const scatter = (mount, options) => {
     "text",
     {
       x: left + plotWidth / 2,
-      y: height - 6,
+      y: height - 6 - BYLINE_ROOM,
       "text-anchor": "middle",
       "font-size": 11,
       fill: "var(--text-muted)",
