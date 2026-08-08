@@ -480,6 +480,7 @@ async function main(): Promise<void> {
         judgments: s.judgments,
         pairs: s.pairs,
         ties: s.ties,
+        indistinguishablePairs: s.indistinguishablePairs,
         // Inference spend and length, over both modalities. Null for a model
         // whose provider never returned a cost — unknown, not free.
         costPerAnswer: roundOrNull(spend.get(s.model)?.costPerAnswer, 9),

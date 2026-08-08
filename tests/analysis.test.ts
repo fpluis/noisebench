@@ -351,6 +351,24 @@ test("expectedChoice decodes what each phrasing combination asks", () => {
   assert.equal(expectedChoice("01", 0.4, 0.1), false);
 });
 
+test("expectedChoice returns null on the boundary of each fact", () => {
+  // Equal odds: the rank wordings have no answer, the sum wordings still do.
+  assert.equal(expectedChoice("00", 0.4, 0.4), null);
+  assert.equal(expectedChoice("11", 0.4, 0.4), null);
+  assert.equal(expectedChoice("01", 0.4, 0.4), false);
+  assert.equal(expectedChoice("10", 0.4, 0.4), true);
+
+  // Summing to exactly 1: the sum wordings lose their answer, rank keeps its.
+  assert.equal(expectedChoice("01", 0.7, 0.3), null);
+  assert.equal(expectedChoice("10", 0.7, 0.3), null);
+  assert.equal(expectedChoice("00", 0.7, 0.3), true);
+
+  // The boundary is a tolerance, not exact equality, because beliefs are means
+  // of eight forecasts and the last bit is arithmetic, not judgment.
+  assert.equal(expectedChoice("00", 0.4, 0.4 + 1e-12), null);
+  assert.equal(expectedChoice("00", 0.4, 0.4 + 1e-6), false);
+});
+
 test("a fully coherent quadruple scores 100% pairwise negation coherence", () => {
   for (const aBeatsB of [true, false]) {
     for (const sumOverOne of [true, false]) {
@@ -430,6 +448,58 @@ test("cross-modal agreement is 0 when every pick contradicts its own odds", () =
   ];
   const [row] = crossModalAgreement(direct, quad(false, false));
   assert.equal(row.agreement, 0);
+});
+
+test("cross-modal agreement drops only the judgments it cannot score", () => {
+  // Both markets at 0.50: the rank wordings are unscorable, but the pair sums
+  // to exactly 1 so the sum wordings are unscorable too — all four go.
+  const tied: DirectObservation[] = [
+    {
+      model: "m",
+      marketId: 1,
+      isNegated: false,
+      iteration: 0,
+      parsedOdds: 0.5,
+    },
+    {
+      model: "m",
+      marketId: 2,
+      isNegated: false,
+      iteration: 0,
+      parsedOdds: 0.5,
+    },
+  ];
+  const [all] = crossModalAgreement(tied, quad(true, true));
+  assert.equal(all.n, 0);
+  assert.equal(all.indistinguishable, 4);
+  assert.equal(
+    all.byMargin.reduce((t, b) => t + b.n, 0),
+    0,
+  );
+
+  // Both at 0.30: still tied on rank, but nowhere near summing to 1, so the two
+  // sum wordings survive. The drop is per fact, not per pair.
+  const rankTied: DirectObservation[] = [
+    {
+      model: "m",
+      marketId: 1,
+      isNegated: false,
+      iteration: 0,
+      parsedOdds: 0.3,
+    },
+    {
+      model: "m",
+      marketId: 2,
+      isNegated: false,
+      iteration: 0,
+      parsedOdds: 0.3,
+    },
+  ];
+  const [some] = crossModalAgreement(rankTied, quad(true, true));
+  assert.equal(some.indistinguishable, 2);
+  assert.equal(some.n, 2);
+  // 0.30 + 0.30 < 1, and quad(_, true) answers as though the sum exceeded 1.
+  assert.equal(some.sum, 0);
 });
 
 test("reliability is high for a repeatable model and low for a drifting one", () => {

@@ -292,7 +292,52 @@ test("an even vote split counts as half a disagreement", () => {
   ];
   const [row] = individualPairDisagreement(observations, pairwise);
   assert.equal(row.ties, 1);
+  assert.equal(row.indistinguishable, 0);
   assert.equal(row.individualPairDisagreement, 0.5);
+});
+
+test("a pair the model rates identically leaves the denominator", () => {
+  // Both markets average 0.40, so the head-to-head pick was forced by the
+  // prompt rather than by a belief and there is nothing to score it against.
+  const observations = [
+    ...direct("m", 1, false, [0.3]),
+    ...direct("m", 1, true, [0.5]),
+    ...direct("m", 2, false, [0.5]),
+    ...direct("m", 2, true, [0.7]),
+  ];
+  const pairwise = quad("m", 1, 2, 0, {
+    "00": true,
+    "11": true,
+    "01": true,
+    "10": true,
+  });
+  const [row] = individualPairDisagreement(observations, pairwise);
+  assert.equal(row.pairs, 0);
+  assert.equal(row.ties, 0);
+  assert.equal(row.indistinguishable, 1);
+  // No scorable pair, so the rate is the empty-denominator zero, not 0.5.
+  assert.equal(row.individualPairDisagreement, 0);
+});
+
+test("a belief tie surviving only as float noise is still dropped", () => {
+  // Both markets are 0.05 every time, but mean([0.05, 0.05]) and
+  // mean([0.05, 1 - 0.95]) are different floats. Exact equality would have
+  // scored this pair; INDIFFERENT catches it.
+  const observations = [
+    ...direct("m", 1, false, [0.05]),
+    ...direct("m", 1, true, [0.95]),
+    ...direct("m", 2, false, [0.05, 0.05]),
+    ...direct("m", 2, true, [0.95, 0.95]),
+  ];
+  const pA = 0.05;
+  const pB = (0.05 + (1 - 0.95)) / 2;
+  assert.notEqual(pA, pB, "the fixture must actually differ in the last bits");
+  assert.ok(Math.abs(pA - pB) < 1e-15);
+
+  const pairwise = quad("m", 1, 2, 0, { "00": true, "11": true });
+  const [row] = individualPairDisagreement(observations, pairwise);
+  assert.equal(row.pairs, 0);
+  assert.equal(row.indistinguishable, 1);
 });
 
 test("the folded belief averages both wordings, not just the Yes arm", () => {

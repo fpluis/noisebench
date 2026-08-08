@@ -295,7 +295,14 @@
                 ? [["Picked side A", pct(row.raw.aRate, 1)]]
                 : []),
               ...(part === "individualPairDisagreement"
-                ? [["Pairs with no majority", String(row.raw.ties)]]
+                ? [
+                    ["Pairs scored", String(row.raw.pairs)],
+                    ["Pairs with no majority", String(row.raw.ties)],
+                    [
+                      "Dropped, both rated alike",
+                      String(row.raw.indistinguishablePairs ?? 0),
+                    ],
+                  ]
                 : []),
             ],
           });

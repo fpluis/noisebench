@@ -14,6 +14,7 @@
 
 import {
   DirectObservation,
+  INDIFFERENT,
   PairwiseObservation,
   meanOf as mean,
   toYes,
@@ -138,7 +139,7 @@ export const METRIC_COMPONENTS: readonly MetricComponent[] = [
     question:
       "Does the outcome a model prefers head-to-head match the one it gave the higher probability to on its own?",
     description:
-      "Two independent readings of the same belief. On the direct side, average the model's eight forecasts for each market on the Yes scale — four asked as Yes plus four asked as No and folded over — and see which market comes out higher. On the head-to-head side, turn each of the pair's judgments into a vote for one market: picking a side as worded votes for that market, picking a negated side votes against it, so for the other. A pair disagrees when the majority vote names a different market than the probabilities do; an even split counts as half.",
+      "Two independent readings of the same belief. On the direct side, average the model's eight forecasts for each market on the Yes scale — four asked as Yes plus four asked as No and folded over — and see which market comes out higher. On the head-to-head side, turn each of the pair's judgments into a vote for one market: picking a side as worded votes for that market, picking a negated side votes against it, so for the other. A pair disagrees when the majority vote names a different market than the probabilities do; an even split counts as half. Pairs the model gave the same average to are dropped, not scored: the head-to-head prompt forces a pick, but there is no stated preference for it to contradict.",
     baseline: RANDOM_BASELINES.individualPairDisagreement,
     baselineNote:
       "Random picks carry no information about the model's own probabilities, so they land on the other market half the time.",
@@ -467,7 +468,14 @@ export interface IndividualPairDisagreement {
   model: string;
   individualPairDisagreement: number;
   pairs: number;
+  // Pairs whose votes split evenly. The model HAS a preference on the direct
+  // side; its head-to-head answers just failed to name one, which is the noise
+  // this metric exists to catch, so these stay in the denominator at half.
   ties: number;
+  // Pairs dropped entirely: the model gave both markets the same average, so
+  // there is no preference for the majority to match or contradict. Not counted
+  // in `pairs`.
+  indistinguishable: number;
 }
 
 export const individualPairDisagreement = (
@@ -496,7 +504,12 @@ export const individualPairDisagreement = (
 
   const perModel = new Map<
     string,
-    { disagreements: number; pairs: number; ties: number }
+    {
+      disagreements: number;
+      pairs: number;
+      ties: number;
+      indistinguishable: number;
+    }
   >();
   for (const rows of byModelPair.values()) {
     const model = rows[0].model;
@@ -506,8 +519,16 @@ export const individualPairDisagreement = (
 
     let acc = perModel.get(model);
     if (!acc) {
-      acc = { disagreements: 0, pairs: 0, ties: 0 };
+      acc = { disagreements: 0, pairs: 0, ties: 0, indistinguishable: 0 };
       perModel.set(model, acc);
+    }
+
+    // The model rates the two markets the same, so it named no favourite for
+    // the head-to-head majority to match. The pick was forced by the prompt,
+    // not by a belief, and leaves the denominator entirely.
+    if (Math.abs(pA - pB) <= INDIFFERENT) {
+      acc.indistinguishable += 1;
+      continue;
     }
 
     let votesA = 0;
@@ -515,9 +536,9 @@ export const individualPairDisagreement = (
     const votesB = rows.length - votesA;
 
     acc.pairs += 1;
-    if (votesA === votesB || pA === pB) {
-      // No majority (or no preference to compare it against): half a
-      // disagreement, so the denominator stays every pair the model judged.
+    if (votesA === votesB) {
+      // A preference exists but the votes did not find it: half a disagreement,
+      // so the denominator stays every pair the model could have answered.
       acc.ties += 1;
       acc.disagreements += 0.5;
     } else if (votesA > votesB !== pA > pB) {
@@ -532,6 +553,7 @@ export const individualPairDisagreement = (
         acc.pairs > 0 ? acc.disagreements / acc.pairs : 0,
       pairs: acc.pairs,
       ties: acc.ties,
+      indistinguishable: acc.indistinguishable,
     }))
     .sort((a, b) => a.model.localeCompare(b.model));
 };
@@ -600,6 +622,7 @@ export interface NoiseScore {
   judgments: number;
   pairs: number;
   ties: number;
+  indistinguishablePairs: number;
 }
 
 export const noiseScores = (
@@ -647,6 +670,7 @@ export const noiseScores = (
         judgments: pairRepeat.get(model)?.judgments ?? 0,
         pairs: cross.get(model)?.pairs ?? 0,
         ties: cross.get(model)?.ties ?? 0,
+        indistinguishablePairs: cross.get(model)?.indistinguishable ?? 0,
       };
     })
     .sort((a, b) => a.noise - b.noise);

@@ -39,16 +39,16 @@
       "formula": "disagreeing pairs / pairs,  majority(votes) vs sign( p̄(A) − p̄(B) )",
       "unit": "share",
       "question": "How often do pair judgments disagree with single odds forecasts?",
-      "description": "Percentage of pairs where the model's majority pairwise picks implies a different odds absolute rank vs forecasting the two markets standalone. Eg a disagreeing pair would be the model picking A > B, but then forecasting A = 50% and B = 60%"
+      "description": "Percentage of pairs where the model's majority pairwise picks implies a different odds absolute rank vs forecasting the two markets standalone. Eg a disagreeing pair would be the model picking A > B, but then forecasting A = 50% and B = 60%. Pairs where the model gave both markets the same average are skipped rather than counted: the head-to-head prompt forces a pick, but there is no stated preference for that pick to contradict."
     }
   ],
   "field": {
-    "noise": 0.0865,
+    "noise": 0.0864,
     "averageError": 0.025,
     "negationError": 0.0358,
     "pairwiseDisagreement": 0.0922,
     "negationDisagreement": 0.1157,
-    "individualPairDisagreement": 0.1635,
+    "individualPairDisagreement": 0.163,
     "costPerAnswer": 0.016458441,
     "tokensOut": 1204.3
   },
@@ -75,6 +75,7 @@
       "judgments": 400,
       "pairs": 50,
       "ties": 3,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.081096895,
       "costPerForecast": 0.076424119,
       "costPerJudgment": 0.090442446,
@@ -82,7 +83,7 @@
       "reasoningTokens": 1057.3,
       "calls": 1200,
       "priced": 1200,
-      "consistencyPerDollar": 0.413
+      "consistencyPerDollar": 0.412
     },
     {
       "model": "google/gemini-3.6-flash",
@@ -106,6 +107,7 @@
       "judgments": 400,
       "pairs": 50,
       "ties": 1,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.015976852,
       "costPerForecast": 0.014865221,
       "costPerJudgment": 0.018200115,
@@ -113,7 +115,7 @@
       "reasoningTokens": 1309.9,
       "calls": 1200,
       "priced": 1200,
-      "consistencyPerDollar": 1.632
+      "consistencyPerDollar": 1.63
     },
     {
       "model": "openai/gpt-5.5",
@@ -137,6 +139,7 @@
       "judgments": 400,
       "pairs": 50,
       "ties": 4,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.041072075,
       "costPerForecast": 0.0403864,
       "costPerJudgment": 0.042443425,
@@ -144,16 +147,16 @@
       "reasoningTokens": 823.7,
       "calls": 1200,
       "priced": 1200,
-      "consistencyPerDollar": 0.624
+      "consistencyPerDollar": 0.623
     },
     {
       "model": "anthropic/claude-opus-5",
-      "noise": 0.0606,
+      "noise": 0.0613,
       "averageError": 0.0104,
       "negationError": 0.0227,
       "pairwiseDisagreement": 0.055,
       "negationDisagreement": 0.055,
-      "individualPairDisagreement": 0.16,
+      "individualPairDisagreement": 0.1633,
       "drift": -0.0085,
       "yes": 0.2301,
       "no": 0.7613,
@@ -166,8 +169,9 @@
       "comparisons": 200,
       "checks": 200,
       "judgments": 400,
-      "pairs": 50,
+      "pairs": 49,
       "ties": 2,
+      "indistinguishablePairs": 1,
       "costPerAnswer": 0.027949242,
       "costPerForecast": 0.021701344,
       "costPerJudgment": 0.040445038,
@@ -175,7 +179,7 @@
       "reasoningTokens": 98.4,
       "calls": 1200,
       "priced": 1200,
-      "consistencyPerDollar": 0.84
+      "consistencyPerDollar": 0.83
     },
     {
       "model": "anthropic/claude-fable-5",
@@ -199,6 +203,7 @@
       "judgments": 392,
       "pairs": 49,
       "ties": 4,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.063664592,
       "costPerForecast": 0.053245088,
       "costPerJudgment": 0.0845036,
@@ -230,6 +235,7 @@
       "judgments": 395,
       "pairs": 50,
       "ties": 4,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.003176061,
       "costPerForecast": 0.002815518,
       "costPerJudgment": 0.003883456,
@@ -237,7 +243,7 @@
       "reasoningTokens": 1272.6,
       "calls": 1200,
       "priced": 1170,
-      "consistencyPerDollar": 6.372
+      "consistencyPerDollar": 6.365
     },
     {
       "model": "google/gemini-3.1-pro-preview",
@@ -261,6 +267,7 @@
       "judgments": 400,
       "pairs": 50,
       "ties": 4,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.018073113,
       "costPerForecast": 0.01577639,
       "costPerJudgment": 0.02266656,
@@ -268,7 +275,7 @@
       "reasoningTokens": 743.9,
       "calls": 1200,
       "priced": 1200,
-      "consistencyPerDollar": 1.108
+      "consistencyPerDollar": 1.106
     },
     {
       "model": "x-ai/grok-4.5",
@@ -292,6 +299,7 @@
       "judgments": 400,
       "pairs": 50,
       "ties": 6,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.011024179,
       "costPerForecast": 0.009242572,
       "costPerJudgment": 0.014587394,
@@ -299,7 +307,7 @@
       "reasoningTokens": 777.1,
       "calls": 1200,
       "priced": 1200,
-      "consistencyPerDollar": 1.668
+      "consistencyPerDollar": 1.666
     },
     {
       "model": "z-ai/glm-5.2",
@@ -323,6 +331,7 @@
       "judgments": 400,
       "pairs": 50,
       "ties": 4,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.003786121,
       "costPerForecast": 0.003188268,
       "costPerJudgment": 0.004981828,
@@ -330,7 +339,7 @@
       "reasoningTokens": 648.8,
       "calls": 1200,
       "priced": 1200,
-      "consistencyPerDollar": 4.822
+      "consistencyPerDollar": 4.816
     },
     {
       "model": "openai/gpt-5.6-terra-pro",
@@ -354,6 +363,7 @@
       "judgments": 400,
       "pairs": 50,
       "ties": 3,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.014308787,
       "costPerForecast": 0.013164314,
       "costPerJudgment": 0.016597732,
@@ -361,16 +371,16 @@
       "reasoningTokens": 591.5,
       "calls": 1200,
       "priced": 1200,
-      "consistencyPerDollar": 1.267
+      "consistencyPerDollar": 1.265
     },
     {
       "model": "moonshotai/kimi-k3",
-      "noise": 0.0843,
+      "noise": 0.0849,
       "averageError": 0.0284,
       "negationError": 0.0395,
       "pairwiseDisagreement": 0.1129,
       "negationDisagreement": 0.1027,
-      "individualPairDisagreement": 0.1383,
+      "individualPairDisagreement": 0.1413,
       "drift": -0.0038,
       "yes": 0.2745,
       "no": 0.7216,
@@ -383,8 +393,9 @@
       "comparisons": 186,
       "checks": 185,
       "judgments": 373,
-      "pairs": 47,
+      "pairs": 46,
       "ties": 7,
+      "indistinguishablePairs": 1,
       "costPerAnswer": 0.012343932,
       "costPerForecast": 0.011015726,
       "costPerJudgment": 0.015053757,
@@ -392,7 +403,7 @@
       "reasoningTokens": 125.4,
       "calls": 1200,
       "priced": 1134,
-      "consistencyPerDollar": 1.367
+      "consistencyPerDollar": 1.355
     },
     {
       "model": "deepseek/deepseek-v4-flash",
@@ -416,6 +427,7 @@
       "judgments": 400,
       "pairs": 50,
       "ties": 5,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.000405671,
       "costPerForecast": 0.00034042,
       "costPerJudgment": 0.000536172,
@@ -423,7 +435,7 @@
       "reasoningTokens": 1067.3,
       "calls": 1200,
       "priced": 1200,
-      "consistencyPerDollar": 39.52
+      "consistencyPerDollar": 39.475
     },
     {
       "model": "openai/gpt-5.6-luna-pro",
@@ -447,6 +459,7 @@
       "judgments": 400,
       "pairs": 50,
       "ties": 4,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.007984388,
       "costPerForecast": 0.007138242,
       "costPerJudgment": 0.00967668,
@@ -454,7 +467,7 @@
       "reasoningTokens": 1019.3,
       "calls": 1200,
       "priced": 1200,
-      "consistencyPerDollar": 1.98
+      "consistencyPerDollar": 1.978
     },
     {
       "model": "nvidia/nemotron-3-ultra-550b-a55b",
@@ -478,6 +491,7 @@
       "judgments": 398,
       "pairs": 50,
       "ties": 4,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.008822289,
       "costPerForecast": 0.007096453,
       "costPerJudgment": 0.012265332,
@@ -485,7 +499,7 @@
       "reasoningTokens": 1678.8,
       "calls": 1200,
       "priced": 1198,
-      "consistencyPerDollar": 1.764
+      "consistencyPerDollar": 1.762
     },
     {
       "model": "google/gemini-3.5-flash-lite",
@@ -509,6 +523,7 @@
       "judgments": 400,
       "pairs": 50,
       "ties": 6,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.003309495,
       "costPerForecast": 0.00267978,
       "costPerJudgment": 0.004568924,
@@ -516,7 +531,7 @@
       "reasoningTokens": 777.9,
       "calls": 1200,
       "priced": 1200,
-      "consistencyPerDollar": 4.634
+      "consistencyPerDollar": 4.629
     },
     {
       "model": "qwen/qwen3.5-plus-20260420",
@@ -540,6 +555,7 @@
       "judgments": 386,
       "pairs": 50,
       "ties": 5,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.004852727,
       "costPerForecast": 0.004404133,
       "costPerJudgment": 0.005749916,
@@ -547,7 +563,7 @@
       "reasoningTokens": 1990.7,
       "calls": 1200,
       "priced": 1200,
-      "consistencyPerDollar": 2.794
+      "consistencyPerDollar": 2.791
     },
     {
       "model": "anthropic/claude-sonnet-5",
@@ -571,6 +587,7 @@
       "judgments": 400,
       "pairs": 50,
       "ties": 8,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.007610358,
       "costPerForecast": 0.005751505,
       "costPerJudgment": 0.011328065,
@@ -578,7 +595,7 @@
       "reasoningTokens": 6.8,
       "calls": 1200,
       "priced": 1200,
-      "consistencyPerDollar": 1.778
+      "consistencyPerDollar": 1.776
     },
     {
       "model": "xiaomi/mimo-v2.5",
@@ -602,6 +619,7 @@
       "judgments": 400,
       "pairs": 50,
       "ties": 6,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.000894311,
       "costPerForecast": 0.000825262,
       "costPerJudgment": 0.001032407,
@@ -609,7 +627,7 @@
       "reasoningTokens": 2016.7,
       "calls": 1200,
       "priced": 1200,
-      "consistencyPerDollar": 14.148
+      "consistencyPerDollar": 14.132
     },
     {
       "model": "openai/gpt-5-nano",
@@ -633,6 +651,7 @@
       "judgments": 400,
       "pairs": 50,
       "ties": 7,
+      "indistinguishablePairs": 0,
       "costPerAnswer": 0.000986947,
       "costPerForecast": 0.000919039,
       "costPerJudgment": 0.001122764,
@@ -640,16 +659,16 @@
       "reasoningTokens": 1987.5,
       "calls": 1200,
       "priced": 1200,
-      "consistencyPerDollar": 10.205
+      "consistencyPerDollar": 10.193
     },
     {
       "model": "mistralai/mistral-large-2512",
-      "noise": 0.1651,
+      "noise": 0.1619,
       "averageError": 0.0348,
       "negationError": 0.0707,
       "pairwiseDisagreement": 0.22,
       "negationDisagreement": 0.29,
-      "individualPairDisagreement": 0.21,
+      "individualPairDisagreement": 0.1939,
       "drift": 0.0565,
       "yes": 0.3005,
       "no": 0.756,
@@ -662,8 +681,9 @@
       "comparisons": 200,
       "checks": 200,
       "judgments": 400,
-      "pairs": 50,
+      "pairs": 49,
       "ties": 9,
+      "indistinguishablePairs": 1,
       "costPerAnswer": 0.00183078,
       "costPerForecast": 0.001578195,
       "costPerJudgment": 0.00233595,
@@ -671,7 +691,7 @@
       "reasoningTokens": 0,
       "calls": 1200,
       "priced": 1200,
-      "consistencyPerDollar": 4.708
+      "consistencyPerDollar": 4.796
     }
   ],
   "byMarket": [

@@ -486,10 +486,31 @@ failure, so the two are always reported together, and `aRate` (share of picks
 going to side A) rides along in the tooltip. A-rates span 0.475–0.525, so
 nothing is degenerate.
 
-**Ties in the individual-pair check count as half.** The folded direct belief can
-sit exactly level, or the majority vote across the four wording combos can split
-2–2; 96 of 996 model-pairs tie. Counting them as 0.5 keeps the measure at 50%
-under a coin-flip model, and `ties` is reported alongside.
+**Two kinds of tie, handled differently.** They used to share one branch, which
+was wrong: only one of them is noise.
+
+_Vote ties count as half._ The majority vote across the four wording combos
+splits 2–2 — 96 of 996 model-pairs. The model does hold a preference on the
+direct side; its head-to-head answers simply failed to name one, which is
+exactly what this metric exists to catch. Counting them as 0.5 keeps the measure
+at 50% under a coin-flip model, and `ties` is reported alongside.
+
+_Belief ties are dropped._ The folded direct averages sit level, so there is no
+preference for the majority to match or contradict and the forced A-vs-B pick is
+not comparable to anything. These leave the denominator entirely (3 of 996
+model-pairs; `indistinguishablePairs` reports the count). "Level" is
+`|p̄(A) − p̄(B)| ≤ INDIFFERENT` (1e-9, `analysis.ts`), not exact equality —
+beliefs are means of eight forecasts, so two markets answered identically every
+time can still differ in the last bit, and exact equality caught only 2 of the 3.
+
+The same rule governs cross-modal agreement (§9.1), where `expectedChoice`
+returns `null` on the boundary and the judgment is dropped. There the test is per
+observation, not per pair: the rank wordings are unscorable when
+p̄(A) = p̄(B) and the sum wordings when p̄(A) + p̄(B) = 1, and a pair can hit
+one boundary without the other. 12 of 7,944 judgments drop.
+
+Note that the sum wordings are exact, not an approximation: P(A) > P(¬B) **is**
+P(A) + P(B) > 1, because P(¬B) = 1 − P(B). Only the boundary needed fixing.
 
 ### 9.1 The margin curve
 
