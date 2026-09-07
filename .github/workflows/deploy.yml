@@ -54,6 +54,36 @@ jobs:
             echo "ok  $f"
           done
 
+      # A page that is not in the sitemap is a page no search engine is told
+      # about. `npm run sitemap` writes the file; this only catches the case
+      # where a page was added and that step was skipped.
+      - name: Check the sitemap covers every page
+        run: |
+          missing=0
+          for f in site/*.html; do
+            name=$(basename "$f" .html)
+
+            # Served for every unknown path and marked noindex, so it is the one
+            # page that must stay out.
+            if [ "$name" = "404" ]; then
+              continue
+            fi
+
+            if [ "$name" = "index" ]; then
+              url="https://noisebench.com/"
+            else
+              url="https://noisebench.com/$name"
+            fi
+
+            if grep -qF "<loc>$url</loc>" site/sitemap.xml; then
+              echo "ok  $url"
+            else
+              echo "::error::$url is not in site/sitemap.xml — run npm run sitemap"
+              missing=1
+            fi
+          done
+          exit $missing
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
@@ -123,6 +153,40 @@ jobs:
             return 1
           }
 
-          for path in / /compare /markets /details /data/metrics.json; do
+          for path in / /compare /markets /details /data/metrics.json /robots.txt /sitemap.xml; do
             check "$path" || exit 1
           done
+
+      # Tell the IndexNow engines — Bing, Yandex, Seznam, Naver — that these
+      # URLs changed, rather than waiting to be crawled. One submission reaches
+      # every participant; Google does not take part and finds the run through
+      # the sitemap instead. What proves the submission is site/$KEY.txt, which
+      # the sync above has just published at the root.
+      #
+      # Runs last and never fails the job: the deploy has already passed its
+      # smoke test, and a refused submission changes nothing that is live.
+      - name: Ping IndexNow
+        continue-on-error: true
+        env:
+          KEY: df228dfe80a12ef4fd056907a3065f86
+        run: |
+          payload=$(node -e '
+            const fs = require("fs");
+            const xml = fs.readFileSync("site/sitemap.xml", "utf8");
+            const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+            process.stdout.write(JSON.stringify({
+              host: "noisebench.com",
+              key: process.env.KEY,
+              keyLocation: `https://noisebench.com/${process.env.KEY}.txt`,
+              urlList: urls,
+            }));
+          ')
+
+          code=$(curl -sS -X POST https://api.indexnow.org/IndexNow \
+            -H "Content-Type: application/json; charset=utf-8" \
+            -d "$payload" \
+            -o response.txt -w '%{http_code}')
+
+          # 200 accepted, 202 accepted with the key still being checked.
+          echo "IndexNow answered $code"
+          cat response.txt

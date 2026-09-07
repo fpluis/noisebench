@@ -18,3 +18,5 @@ tests/fixtures/responses
 
 # Local postgres volume (if bind-mounted)
 .pgdata
+
+terraform/terraform.tfvars

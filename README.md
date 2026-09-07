@@ -375,13 +375,15 @@ bucket read through CloudFront. Publishing a new analysis is a commit:
 
 ```bash
 npx tsx scripts/analyze.ts --run 1   # rewrites site/data/*.json
+npm run sitemap                      # re-dates site/sitemap.xml
 git commit -am "Publish run 1"
 git push                             # → deploy workflow → live in ~2 min
 ```
 
 `.github/workflows/deploy.yml` runs on any push to `master` that touches
-`site/**`. It parses each JSON file, syncs the directory to S3, invalidates the
-CDN, and checks that the four public URLs answer 200. It authenticates with a
+`site/**`. It parses each JSON file, checks that every page is in the sitemap,
+syncs the directory to S3, invalidates the CDN, checks that the public URLs
+answer 200, and submits the changed URLs to IndexNow. It authenticates with a
 short-lived OIDC token rather than an AWS key, and the role it assumes will only
 issue credentials to a push to `master` of this repository — so the workflow
 stays safe with the repo public. `.github/workflows/ci.yml` runs the type check,
@@ -391,6 +393,10 @@ request, including from forks.
 The infrastructure is in [`terraform/`](terraform/), which also documents the
 one-time setup, the cost (about $0.50/month, effectively all of it the Route53
 hosted zone), and the reasoning behind the deploy path's permissions.
+
+[`docs/seo.md`](docs/seo.md) covers what the site publishes for search engines —
+sitemap, canonical URLs, structured data, share card — and how to verify the
+domain in Google Search Console and Bing Webmaster Tools.
 
 ## Testing
 

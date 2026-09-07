@@ -23,6 +23,8 @@ const TYPES: Record<string, string> = {
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
   ".png": "image/png",
+  ".txt": "text/plain; charset=utf-8",
+  ".xml": "application/xml; charset=utf-8",
   ".webmanifest": "application/manifest+json",
 };
 
@@ -47,13 +49,21 @@ const main = (): void => {
       return;
     }
 
-    const file =
+    // Same two rewrites the CloudFront function does in front of S3, so a link
+    // to /markets resolves here as well as it does in production.
+    const candidates =
       fs.existsSync(target) && fs.statSync(target).isDirectory()
-        ? path.join(target, "index.html")
-        : target;
+        ? [path.join(target, "index.html")]
+        : [target, `${target}.html`];
 
-    if (!fs.existsSync(file)) {
-      res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
+    const file = candidates.find((candidate) => fs.existsSync(candidate));
+
+    if (!file) {
+      res.writeHead(404, {
+        "content-type": TYPES[".html"],
+        "cache-control": "no-store",
+      });
+      fs.createReadStream(path.join(ROOT, "404.html")).pipe(res);
       return;
     }
 

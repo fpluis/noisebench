@@ -1,0 +1,7 @@
+# noisebench is an open benchmark — everything here is meant to be crawled,
+# including the JSON under /data/ that the pages and the Dataset markup point at.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://noisebench.com/sitemap.xml
