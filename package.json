@@ -20,6 +20,7 @@
     "export-csv": "tsx ./scripts/export-csv.ts",
     "site": "tsx ./scripts/serve-site.ts",
     "sitemap": "tsx ./scripts/gen-sitemap.ts",
+    "static": "node ./scripts/gen-static.mjs",
     "test:e2e": "tsx ./scripts/test-e2e.ts",
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "format": "prettier --write .",

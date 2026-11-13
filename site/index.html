@@ -44,13 +44,14 @@
             "name": "noisebench",
             "description": "An open benchmark measuring judgment noise in AI forecasters.",
             "inLanguage": "en",
-            "creator": { "@id": "https://noisebench.com/#creator" }
+            "creator": { "@id": "https://luisfominaya.com/#person" }
           },
           {
             "@type": "Person",
-            "@id": "https://noisebench.com/#creator",
-            "name": "Luis Fominaya",
-            "url": "https://x.com/LuisFominaya"
+            "@id": "https://luisfominaya.com/#person",
+            "name": "Luis Fominaya Parra",
+            "url": "https://luisfominaya.com/",
+            "sameAs": ["https://x.com/LuisFominaya", "https://github.com/fpluis"]
           },
           {
             "@type": "Dataset",
@@ -61,7 +62,9 @@
             "license": "https://opensource.org/licenses/MIT",
             "isAccessibleForFree": true,
             "inLanguage": "en",
-            "creator": { "@id": "https://noisebench.com/#creator" },
+            "creator": { "@id": "https://luisfominaya.com/#person" },
+            "dateModified": "2026-07-29",
+            "temporalCoverage": "2026-07-28/2026-07-29",
             "measurementTechnique": "Repeated prompting under logically equivalent rewordings",
             "keywords": [
               "LLM benchmark",
@@ -108,6 +111,11 @@
         ]
       }
     </script>
+    <!-- static:faq-ld -->
+    <script type="application/ld+json">
+      {"@context":"https://schema.org","@type":"FAQPage","@id":"https://noisebench.com/#faq","mainEntity":[{"@type":"Question","name":"What is noisebench?","acceptedAnswer":{"@type":"Answer","text":"An open benchmark that measures judgment noise in AI forecasters. Every model answers the same live Polymarket questions several times, in the Yes and the No wording, and ranks pairs of markets in all four negation combinations. Noise is whatever changes when nothing should."}},{"@type":"Question","name":"Which AI model is the least noisy forecaster?","acceptedAnswer":{"@type":"Answer","text":"gpt-5.6-sol-pro (OpenAI), with a noise score of 4.3% in the run that finished 29 July 2026. The next two were gemini-3.6-flash (Google) (5.5%) and gpt-5.5 (OpenAI) (5.5%)."}},{"@type":"Question","name":"Which AI model is the noisiest forecaster?","acceptedAnswer":{"@type":"Answer","text":"mistral-large-2512 (Mistral), at 16.2%, ahead of gpt-5-nano (OpenAI) (14.1%)."}},{"@type":"Question","name":"How is the noise score calculated?","acceptedAnswer":{"@type":"Answer","text":"It is the simple average of five measures: odds spread, negated spread, pairwise disagreement, negation disagreement, individual-pair disagreement. None of them needs to know the right answer: each one checks whether a model contradicts itself."}},{"@type":"Question","name":"Does a low noise score mean a model forecasts accurately?","acceptedAnswer":{"@type":"Answer","text":"No. A model can give the same wrong answer every time and score 0% noise. Noise measures internal consistency, not accuracy; the Markets page compares the panel's odds with the market price."}},{"@type":"Question","name":"Which model gives the most consistency for the money?","acceptedAnswer":{"@type":"Answer","text":"deepseek-v4-flash (DeepSeek) was the cheapest, at $0.0004 per answer, with a noise score of 8.9%. The Compare page plots noise against cost for every model."}}]}
+    </script>
+    <!-- /static:faq-ld -->
   </head>
   <body>
     <div class="wrap">
@@ -157,9 +165,44 @@
           <span id="scope">Loading…</span>
         </p>
         <p class="lede">
-          Made by <a href="https://x.com/LuisFominaya">Luis Fominaya</a> 
+          Made by <a href="https://luisfominaya.com/" rel="author">Luis Fominaya</a> (<a href="https://x.com/LuisFominaya">@LuisFominaya</a>)
         </p>
       </section>
+
+      <!-- static:summary -->
+      <section>
+        <h2>Results at a glance</h2>
+        <p class="lede">In the latest run (finished 29 July 2026; 20 AI models, 100 Polymarket questions and 23,861 answers), the least noisy forecaster was gpt-5.6-sol-pro (OpenAI) with a noise score of 4.3%, and the noisiest was mistral-large-2512 (Mistral) at 16.2%. The average across all models was 8.6%. Lower is better: 0% means a model gave the same answer every time it was asked, in every wording.</p>
+        <div class="table-wrap">
+          <table class="prose">
+            <caption class="sr-only">Noise score per model, least noisy first</caption>
+            <thead><tr><th class="num">Rank</th><th>Model</th><th>Maker</th><th class="num">Noise</th><th class="num">Cost per answer</th></tr></thead>
+            <tbody>
+              <tr><td class="num">1</td><td>gpt-5.6-sol-pro</td><td>OpenAI</td><td class="num">4.3%</td><td class="num">$0.0811</td></tr>
+              <tr><td class="num">2</td><td>gemini-3.6-flash</td><td>Google</td><td class="num">5.5%</td><td class="num">$0.0160</td></tr>
+              <tr><td class="num">3</td><td>gpt-5.5</td><td>OpenAI</td><td class="num">5.5%</td><td class="num">$0.0411</td></tr>
+              <tr><td class="num">4</td><td>claude-opus-5</td><td>Anthropic</td><td class="num">6.1%</td><td class="num">$0.0279</td></tr>
+              <tr><td class="num">5</td><td>claude-fable-5</td><td>Anthropic</td><td class="num">6.4%</td><td class="num">$0.0637</td></tr>
+              <tr><td class="num">6</td><td>deepseek-v4-pro</td><td>DeepSeek</td><td class="num">7.0%</td><td class="num">$0.0032</td></tr>
+              <tr><td class="num">7</td><td>gemini-3.1-pro-preview</td><td>Google</td><td class="num">7.1%</td><td class="num">$0.0181</td></tr>
+              <tr><td class="num">8</td><td>grok-4.5</td><td>xAI (Grok)</td><td class="num">7.7%</td><td class="num">$0.0110</td></tr>
+              <tr><td class="num">9</td><td>glm-5.2</td><td>Zhipu (GLM)</td><td class="num">7.8%</td><td class="num">$0.0038</td></tr>
+              <tr><td class="num">10</td><td>gpt-5.6-terra-pro</td><td>OpenAI</td><td class="num">7.8%</td><td class="num">$0.0143</td></tr>
+              <tr><td class="num">11</td><td>kimi-k3</td><td>Moonshot (Kimi)</td><td class="num">8.5%</td><td class="num">$0.0123</td></tr>
+              <tr><td class="num">12</td><td>deepseek-v4-flash</td><td>DeepSeek</td><td class="num">8.9%</td><td class="num">$0.0004</td></tr>
+              <tr><td class="num">13</td><td>gpt-5.6-luna-pro</td><td>OpenAI</td><td class="num">9.0%</td><td class="num">$0.0080</td></tr>
+              <tr><td class="num">14</td><td>nemotron-3-ultra-550b-a55b</td><td>NVIDIA (Nemotron)</td><td class="num">9.1%</td><td class="num">$0.0088</td></tr>
+              <tr><td class="num">15</td><td>gemini-3.5-flash-lite</td><td>Google</td><td class="num">9.3%</td><td class="num">$0.0033</td></tr>
+              <tr><td class="num">16</td><td>qwen3.5-plus-20260420</td><td>Alibaba (Qwen)</td><td class="num">10.5%</td><td class="num">$0.0049</td></tr>
+              <tr><td class="num">17</td><td>claude-sonnet-5</td><td>Anthropic</td><td class="num">10.5%</td><td class="num">$0.0076</td></tr>
+              <tr><td class="num">18</td><td>mimo-v2.5</td><td>Xiaomi (MiMo)</td><td class="num">11.3%</td><td class="num">$0.0009</td></tr>
+              <tr><td class="num">19</td><td>gpt-5-nano</td><td>OpenAI</td><td class="num">14.1%</td><td class="num">$0.0010</td></tr>
+              <tr><td class="num">20</td><td>mistral-large-2512</td><td>Mistral</td><td class="num">16.2%</td><td class="num">$0.0018</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <!-- /static:summary -->
 
       <section>
         <div class="chart-head">
@@ -239,6 +282,26 @@
           <figcaption id="costcap"></figcaption>
         </figure>
       </section>
+
+      <!-- static:faq -->
+      <section>
+        <h2>Questions</h2>
+        <dl class="faq">
+          <dt>What is noisebench?</dt>
+          <dd>An open benchmark that measures judgment noise in AI forecasters. Every model answers the same live Polymarket questions several times, in the Yes and the No wording, and ranks pairs of markets in all four negation combinations. Noise is whatever changes when nothing should.</dd>
+          <dt>Which AI model is the least noisy forecaster?</dt>
+          <dd>gpt-5.6-sol-pro (OpenAI), with a noise score of 4.3% in the run that finished 29 July 2026. The next two were gemini-3.6-flash (Google) (5.5%) and gpt-5.5 (OpenAI) (5.5%).</dd>
+          <dt>Which AI model is the noisiest forecaster?</dt>
+          <dd>mistral-large-2512 (Mistral), at 16.2%, ahead of gpt-5-nano (OpenAI) (14.1%).</dd>
+          <dt>How is the noise score calculated?</dt>
+          <dd>It is the simple average of five measures: odds spread, negated spread, pairwise disagreement, negation disagreement, individual-pair disagreement. None of them needs to know the right answer: each one checks whether a model contradicts itself.</dd>
+          <dt>Does a low noise score mean a model forecasts accurately?</dt>
+          <dd>No. A model can give the same wrong answer every time and score 0% noise. Noise measures internal consistency, not accuracy; the Markets page compares the panel's odds with the market price.</dd>
+          <dt>Which model gives the most consistency for the money?</dt>
+          <dd>deepseek-v4-flash (DeepSeek) was the cheapest, at $0.0004 per answer, with a noise score of 8.9%. The Compare page plots noise against cost for every model.</dd>
+        </dl>
+      </section>
+      <!-- /static:faq -->
     </div>
 
     <script type="module">

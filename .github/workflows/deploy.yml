@@ -9,6 +9,7 @@ on:
     branches: [master]
     paths:
       - "site/**"
+      - "scripts/gen-static.mjs"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
@@ -84,6 +85,18 @@ jobs:
           done
           exit $missing
 
+      # Node 22 imports site/assets/viz.js (an ES module without a package
+      # "type") on its own; older versions refuse it.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Writes the results, the Q&A and the question table into the HTML and
+      # regenerates llms.txt from the data being published, so crawlers that
+      # do not run JavaScript read the same numbers as the charts.
+      - name: Write the results into the pages
+        run: node scripts/gen-static.mjs
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
@@ -153,7 +166,7 @@ jobs:
             return 1
           }
 
-          for path in / /compare /markets /details /data/metrics.json /robots.txt /sitemap.xml; do
+          for path in / /compare /markets /details /data/metrics.json /robots.txt /sitemap.xml /llms.txt; do
             check "$path" || exit 1
           done
 

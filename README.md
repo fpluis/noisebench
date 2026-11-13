@@ -375,6 +375,7 @@ bucket read through CloudFront. Publishing a new analysis is a commit:
 
 ```bash
 npx tsx scripts/analyze.ts --run 1   # rewrites site/data/*.json
+npm run static                       # writes the results into the HTML + llms.txt
 npm run sitemap                      # re-dates site/sitemap.xml
 git commit -am "Publish run 1"
 git push                             # → deploy workflow → live in ~2 min

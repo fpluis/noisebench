@@ -26,6 +26,43 @@
     <meta name="twitter:creator" content="@LuisFominaya" />
 
     <link rel="stylesheet" href="assets/viz.css" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "CollectionPage",
+      "@id": "https://noisebench.com/markets#page",
+      "url": "https://noisebench.com/markets",
+      "name": "Market-by-market results",
+      "description": "Every Polymarket question in the run: the panel's odds against the market midpoint, the spread behind each estimate, and the questions that drew the noisiest answers.",
+      "inLanguage": "en",
+      "isPartOf": {
+        "@id": "https://noisebench.com/#website"
+      },
+      "about": {
+        "@id": "https://noisebench.com/#dataset"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "noisebench",
+          "item": "https://noisebench.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Market-by-market results"
+        }
+      ]
+    }
+  ]
+}
+    </script>
   </head>
   <body>
     <div class="wrap">
@@ -127,7 +164,113 @@
           Panel-level odds and noise compared to market. Click any heading to sort.
         </p>
         <figure>
-          <div class="table-wrap" id="marketTable"></div>
+          <div class="table-wrap" id="marketTable"><!-- static:markets -->
+            <table>
+              <thead><tr><th>Question</th><th class="num">Market midpoint</th><th class="num">Panel estimate</th><th class="num">Odds spread</th></tr></thead>
+              <tbody>
+                <tr><td>Will Nigel Farage win the Clacton by-election?</td><td class="num">96.2%</td><td class="num">84.6%</td><td class="num">2.2%</td></tr>
+                <tr><td>Will United Russia (ER) win the most seats in the next Russian parliamentary election?</td><td class="num">95.9%</td><td class="num">98.1%</td><td class="num">0.4%</td></tr>
+                <tr><td>Will Xavier Becerra win the California Governor Election in 2026?</td><td class="num">92.7%</td><td class="num">93.8%</td><td class="num">1.5%</td></tr>
+                <tr><td>Will there be two UK Prime Ministers by end of 2027?</td><td class="num">86.5%</td><td class="num">74.3%</td><td class="num">6.2%</td></tr>
+                <tr><td>Will SpaceX have the highest IPO Market Cap 2026?</td><td class="num">86.5%</td><td class="num">92.1%</td><td class="num">3.1%</td></tr>
+                <tr><td>Will the Democratic Party control the House after the 2026 Midterm elections?</td><td class="num">85.5%</td><td class="num">76.4%</td><td class="num">2.2%</td></tr>
+                <tr><td>Will no Fed rate cuts happen in 2026?</td><td class="num">85.3%</td><td class="num">82.0%</td><td class="num">3.1%</td></tr>
+                <tr><td>Will Nicolás Maduro be the leader of Venezuela end of 2026?</td><td class="num">82.6%</td><td class="num">3.4%</td><td class="num">0.5%</td></tr>
+                <tr><td>Will Mojtaba Khamenei be head of state in Iran end of 2026?</td><td class="num">80.0%</td><td class="num">36.1%</td><td class="num">5.1%</td></tr>
+                <tr><td>Fed rate hike in 2026?</td><td class="num">77.5%</td><td class="num">33.7%</td><td class="num">3.7%</td></tr>
+                <tr><td>US x Iran Effective Ceasefire by August 31?</td><td class="num">71.5%</td><td class="num">69.9%</td><td class="num">5.9%</td></tr>
+                <tr><td>Will Anthropic IPO by December 31, 2026?</td><td class="num">71.0%</td><td class="num">58.2%</td><td class="num">4.0%</td></tr>
+                <tr><td>Iran charges Hormuz fees by December 31?</td><td class="num">66.5%</td><td class="num">74.1%</td><td class="num">4.4%</td></tr>
+                <tr><td>Will Paramount close Warner Bros acquisition?</td><td class="num">66.0%</td><td class="num">24.9%</td><td class="num">3.2%</td></tr>
+                <tr><td>Will Trump be impeached before his term ends?</td><td class="num">65.5%</td><td class="num">32.5%</td><td class="num">4.5%</td></tr>
+                <tr><td>US x Iran Effective Ceasefire by August 14?</td><td class="num">64.5%</td><td class="num">65.7%</td><td class="num">6.7%</td></tr>
+                <tr><td>Will Luiz Inácio Lula da Silva win the 2026 Brazilian presidential election?</td><td class="num">63.5%</td><td class="num">59.1%</td><td class="num">1.9%</td></tr>
+                <tr><td>Will the Democrats win the 2028 US Presidential Election?</td><td class="num">58.5%</td><td class="num">56.4%</td><td class="num">3.3%</td></tr>
+                <tr><td>Will United Russia (ER) gain the most seats in the next Russian parliamentary election?</td><td class="num">57.5%</td><td class="num">18.0%</td><td class="num">7.0%</td></tr>
+                <tr><td>Will the Fed increase interest rates by 25 bps after the September 2026 meeting?</td><td class="num">57.5%</td><td class="num">49.8%</td><td class="num">2.2%</td></tr>
+                <tr><td>US announces end of Iranian blockade by August 31, 2026?</td><td class="num">56.5%</td><td class="num">19.6%</td><td class="num">2.4%</td></tr>
+                <tr><td>Iran charges Hormuz fees by October 31?</td><td class="num">55.5%</td><td class="num">70.6%</td><td class="num">4.1%</td></tr>
+                <tr><td>Strait of Hormuz traffic returns to normal by December 31?</td><td class="num">55.5%</td><td class="num">10.0%</td><td class="num">1.7%</td></tr>
+                <tr><td>Will the Republican Party control the Senate after the 2026 Midterm elections?</td><td class="num">55.5%</td><td class="num">57.1%</td><td class="num">1.8%</td></tr>
+                <tr><td>Will Javier Milei win the 2027 Argentina presidential election?</td><td class="num">52.5%</td><td class="num">41.9%</td><td class="num">1.6%</td></tr>
+                <tr><td>Will the Doge-1 Lunar Mission launch by December 31, 2027?</td><td class="num">52.5%</td><td class="num">42.1%</td><td class="num">8.4%</td></tr>
+                <tr><td>Will Gadi Eizenkot be the next Prime Minister of Israel?</td><td class="num">51.8%</td><td class="num">32.9%</td><td class="num">2.5%</td></tr>
+                <tr><td>Will NVIDIA be the largest company in the world by market cap on December 31?</td><td class="num">48.5%</td><td class="num">44.1%</td><td class="num">2.2%</td></tr>
+                <tr><td>2026 Balance of Power: D Senate, D House</td><td class="num">43.5%</td><td class="num">22.4%</td><td class="num">2.5%</td></tr>
+                <tr><td>Will Samuel Alito announce his retirement by June 30, 2027?</td><td class="num">43.0%</td><td class="num">17.8%</td><td class="num">2.9%</td></tr>
+                <tr><td>Will J.D. Vance win the 2028 Republican presidential nomination?</td><td class="num">43.0%</td><td class="num">61.2%</td><td class="num">3.8%</td></tr>
+                <tr><td>Will Giorgia Meloni be the next Prime Minister of Italy?</td><td class="num">40.5%</td><td class="num">65.1%</td><td class="num">3.5%</td></tr>
+                <tr><td>Netanyahu out by end of 2026?</td><td class="num">37.5%</td><td class="num">50.3%</td><td class="num">7.1%</td></tr>
+                <tr><td>Iran leadership change by June 30, 2027?</td><td class="num">37.0%</td><td class="num">21.3%</td><td class="num">2.8%</td></tr>
+                <tr><td>Will Nicolás Maduro be sentenced to no prison time?</td><td class="num">36.5%</td><td class="num">69.4%</td><td class="num">5.0%</td></tr>
+                <tr><td>Will Anthropic IPO by October 31, 2026?</td><td class="num">35.5%</td><td class="num">42.4%</td><td class="num">5.0%</td></tr>
+                <tr><td>US announces end of Iranian blockade by August 15, 2026?</td><td class="num">35.5%</td><td class="num">12.3%</td><td class="num">1.7%</td></tr>
+                <tr><td>Russia x Ukraine ceasefire agreement by December 31, 2026?</td><td class="num">35.5%</td><td class="num">15.7%</td><td class="num">2.1%</td></tr>
+                <tr><td>Billionaire one-time wealth tax passes in California election 2026?</td><td class="num">33.5%</td><td class="num">47.9%</td><td class="num">2.3%</td></tr>
+                <tr><td>Will Marine Le Pen win the 2027 French presidential election?</td><td class="num">32.0%</td><td class="num">48.5%</td><td class="num">2.7%</td></tr>
+                <tr><td>US-Iran Final Nuclear Deal by December 31, 2026?</td><td class="num">31.5%</td><td class="num">3.7%</td><td class="num">0.9%</td></tr>
+                <tr><td>US strike on Cuba by December 31?</td><td class="num">30.5%</td><td class="num">5.3%</td><td class="num">1.0%</td></tr>
+                <tr><td>Iran full airspace closure by August 31?</td><td class="num">29.5%</td><td class="num">39.9%</td><td class="num">6.7%</td></tr>
+                <tr><td>NATO x Russia military clash by December 31, 2026?</td><td class="num">27.5%</td><td class="num">62.4%</td><td class="num">11.9%</td></tr>
+                <tr><td>Iran charges Hormuz fees by August 31?</td><td class="num">24.0%</td><td class="num">59.5%</td><td class="num">4.7%</td></tr>
+                <tr><td>Will the Republican Party hold 47 or fewer Senate seats after the 2026 midterm elections?</td><td class="num">23.5%</td><td class="num">21.0%</td><td class="num">3.4%</td></tr>
+                <tr><td>Will the U.S. invade Iran before 2027?</td><td class="num">21.5%</td><td class="num">13.3%</td><td class="num">2.0%</td></tr>
+                <tr><td>Iran leadership change by December 31?</td><td class="num">20.5%</td><td class="num">16.3%</td><td class="num">2.5%</td></tr>
+                <tr><td>Will JD Vance win the 2028 US Presidential Election?</td><td class="num">20.2%</td><td class="num">22.5%</td><td class="num">2.0%</td></tr>
+                <tr><td>Will Gavin Newsom win the 2028 Democratic presidential nomination?</td><td class="num">19.4%</td><td class="num">17.4%</td><td class="num">1.8%</td></tr>
+                <tr><td>Russia x Ukraine ceasefire agreement by October 31, 2026?</td><td class="num">16.5%</td><td class="num">11.8%</td><td class="num">1.3%</td></tr>
+                <tr><td>Iran full airspace closure by August 15?</td><td class="num">16.5%</td><td class="num">31.9%</td><td class="num">5.3%</td></tr>
+                <tr><td>US-Iran Final Nuclear Deal by September 30, 2026?</td><td class="num">15.5%</td><td class="num">2.8%</td><td class="num">0.7%</td></tr>
+                <tr><td>Putin out as President of Russia by June 30, 2027?</td><td class="num">15.5%</td><td class="num">6.3%</td><td class="num">1.2%</td></tr>
+                <tr><td>Will Samuel Alito announce his retirement by December 31, 2026?</td><td class="num">14.5%</td><td class="num">6.2%</td><td class="num">1.4%</td></tr>
+                <tr><td>Will China invade Taiwan by December 31, 2027?</td><td class="num">13.5%</td><td class="num">10.0%</td><td class="num">1.4%</td></tr>
+                <tr><td>Will GameStop acquire eBay?</td><td class="num">13.5%</td><td class="num">6.0%</td><td class="num">1.6%</td></tr>
+                <tr><td>Strait of Hormuz traffic returns to normal by August 31?</td><td class="num">12.5%</td><td class="num">2.2%</td><td class="num">0.6%</td></tr>
+                <tr><td>Iran agrees to surrender enriched uranium stockpile by December 31, 2026?</td><td class="num">12.5%</td><td class="num">12.3%</td><td class="num">1.8%</td></tr>
+                <tr><td>Will the U.S. invade Cuba in 2026?</td><td class="num">12.5%</td><td class="num">3.6%</td><td class="num">1.0%</td></tr>
+                <tr><td>Will the Doge-1 Lunar Mission launch by December 31, 2026?</td><td class="num">11.9%</td><td class="num">29.9%</td><td class="num">3.3%</td></tr>
+                <tr><td>US obtains Iranian enriched uranium by December 31?</td><td class="num">11.5%</td><td class="num">8.1%</td><td class="num">1.4%</td></tr>
+                <tr><td>Will Yulia Navalnaya win the Nobel Peace Prize in 2026?</td><td class="num">10.5%</td><td class="num">11.3%</td><td class="num">2.3%</td></tr>
+                <tr><td>Will China invade Taiwan by June 30, 2027?</td><td class="num">10.5%</td><td class="num">6.8%</td><td class="num">1.1%</td></tr>
+                <tr><td>GTA 6 launch postponed again?</td><td class="num">9.5%</td><td class="num">14.1%</td><td class="num">1.6%</td></tr>
+                <tr><td>Will Ukraine recapture Crimean territory by December 31, 2026?</td><td class="num">9.5%</td><td class="num">3.6%</td><td class="num">0.8%</td></tr>
+                <tr><td>Iran leadership change by September 30?</td><td class="num">8.5%</td><td class="num">11.2%</td><td class="num">1.7%</td></tr>
+                <tr><td>Putin out as President of Russia by December 31, 2026?</td><td class="num">8.5%</td><td class="num">4.9%</td><td class="num">0.9%</td></tr>
+                <tr><td>Will the Iranian regime fall before 2027?</td><td class="num">8.5%</td><td class="num">7.5%</td><td class="num">1.4%</td></tr>
+                <tr><td>Zelenskyy out as Ukraine president by end of 2026?</td><td class="num">7.5%</td><td class="num">13.8%</td><td class="num">2.0%</td></tr>
+                <tr><td>Trump out as President before 2027?</td><td class="num">7.5%</td><td class="num">2.2%</td><td class="num">0.5%</td></tr>
+                <tr><td>Will the US acquire part of Greenland in 2026?</td><td class="num">7.0%</td><td class="num">1.6%</td><td class="num">0.3%</td></tr>
+                <tr><td>China x Taiwan military clash before 2027?</td><td class="num">6.7%</td><td class="num">5.9%</td><td class="num">1.3%</td></tr>
+                <tr><td>Will Samuel Alito announce his retirement by September 30, 2026?</td><td class="num">6.5%</td><td class="num">4.0%</td><td class="num">0.9%</td></tr>
+                <tr><td>Russia x Ukraine ceasefire agreement by August 31, 2026?</td><td class="num">6.5%</td><td class="num">6.0%</td><td class="num">1.3%</td></tr>
+                <tr><td>US-Iran Final Nuclear Deal by August 31, 2026?</td><td class="num">6.5%</td><td class="num">2.2%</td><td class="num">0.6%</td></tr>
+                <tr><td>US obtains Iranian enriched uranium by September 30?</td><td class="num">6.5%</td><td class="num">5.1%</td><td class="num">1.1%</td></tr>
+                <tr><td>China x Japan military clash before 2027?</td><td class="num">6.5%</td><td class="num">3.9%</td><td class="num">0.7%</td></tr>
+                <tr><td>Will Russia capture Sumy by March 31, 2027?</td><td class="num">6.5%</td><td class="num">5.0%</td><td class="num">1.0%</td></tr>
+                <tr><td>Will Anthropic IPO by September 30, 2026?</td><td class="num">5.5%</td><td class="num">29.9%</td><td class="num">5.5%</td></tr>
+                <tr><td>Iran agrees to surrender enriched uranium stockpile by October 31, 2026?</td><td class="num">5.5%</td><td class="num">9.7%</td><td class="num">1.5%</td></tr>
+                <tr><td>Will the US confirm that aliens exist before 2027?</td><td class="num">5.5%</td><td class="num">1.8%</td><td class="num">0.4%</td></tr>
+                <tr><td>US-Iran Final Nuclear Deal by August 18, 2026?</td><td class="num">4.7%</td><td class="num">1.9%</td><td class="num">0.4%</td></tr>
+                <tr><td>Xi Jinping out before 2027?</td><td class="num">4.7%</td><td class="num">1.7%</td><td class="num">0.4%</td></tr>
+                <tr><td>NATO x Russia military clash by August 31, 2026?</td><td class="num">4.5%</td><td class="num">41.1%</td><td class="num">13.7%</td></tr>
+                <tr><td>Ukraine signs peace deal with Russia by August 31?</td><td class="num">4.5%</td><td class="num">5.6%</td><td class="num">1.3%</td></tr>
+                <tr><td>Will Trump acquire Greenland before 2027?</td><td class="num">4.5%</td><td class="num">0.7%</td><td class="num">0.2%</td></tr>
+                <tr><td>Major volcano eruption (VEI ≥6) in 2026?</td><td class="num">4.4%</td><td class="num">0.8%</td><td class="num">0.2%</td></tr>
+                <tr><td>Will China invade Taiwan by end of 2026?</td><td class="num">3.8%</td><td class="num">5.2%</td><td class="num">1.1%</td></tr>
+                <tr><td>Iran leadership change by August 31?</td><td class="num">3.6%</td><td class="num">7.9%</td><td class="num">1.6%</td></tr>
+                <tr><td>Putin out as President of Russia by September 30, 2026?</td><td class="num">3.6%</td><td class="num">2.3%</td><td class="num">0.5%</td></tr>
+                <tr><td>Iran invades Kuwait by August 31?</td><td class="num">3.3%</td><td class="num">1.5%</td><td class="num">0.4%</td></tr>
+                <tr><td>Hantavirus pandemic in 2026?</td><td class="num">3.3%</td><td class="num">0.4%</td><td class="num">0.2%</td></tr>
+                <tr><td>Iran agrees to surrender enriched uranium stockpile by August 31, 2026?</td><td class="num">3.1%</td><td class="num">6.3%</td><td class="num">1.3%</td></tr>
+                <tr><td>Will the US confirm that aliens exist by September 30?</td><td class="num">2.6%</td><td class="num">1.1%</td><td class="num">0.3%</td></tr>
+                <tr><td>Will Jesus Christ return before 2027?</td><td class="num">1.9%</td><td class="num">0.1%</td><td class="num">0.0%</td></tr>
+                <tr><td>US-Iran Final Nuclear Deal by August 13, 2026?</td><td class="num">1.8%</td><td class="num">1.7%</td><td class="num">0.5%</td></tr>
+                <tr><td>Putin out as President of Russia by August 31, 2026?</td><td class="num">1.7%</td><td class="num">1.7%</td><td class="num">0.4%</td></tr>
+                <tr><td>Will China invade Taiwan by September 30, 2026?</td><td class="num">1.5%</td><td class="num">1.9%</td><td class="num">0.5%</td></tr>
+                <tr><td>Will Anthropic IPO by September 15, 2026?</td><td class="num">1.1%</td><td class="num">21.6%</td><td class="num">4.9%</td></tr>
+              </tbody>
+            </table>
+          <!-- /static:markets --></div>
           <figcaption id="rankcap"></figcaption>
         </figure>
       </section>

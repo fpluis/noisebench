@@ -1,0 +1,42 @@
+# noisebench
+
+> In the latest run (finished 29 July 2026; 20 AI models, 100 Polymarket questions and 23,861 answers), the least noisy forecaster was gpt-5.6-sol-pro (OpenAI) with a noise score of 4.3%, and the noisiest was mistral-large-2512 (Mistral) at 16.2%. The average across all models was 8.6%. Lower is better: 0% means a model gave the same answer every time it was asked, in every wording.
+
+noisebench is an open benchmark of judgment noise in large language models used as forecasters. Each model is asked the same live Polymarket questions repeatedly, in both the Yes and the No wording, and is asked which of two markets is likelier in all four negation combinations of the pair. Made by Luis Fominaya Parra (https://luisfominaya.com/). MIT licensed.
+
+## Pages
+
+- [Overview](https://noisebench.com/): the Noise Index, its five parts, and noise against cost.
+- [Compare](https://noisebench.com/compare): two models side by side.
+- [Markets](https://noisebench.com/markets): every question, the panel's odds against the market price.
+- [Details](https://noisebench.com/details): methodology and the five measures.
+
+## Ranking (least noisy first)
+
+1. gpt-5.6-sol-pro (OpenAI): noise 4.3%, $0.0811 per answer
+2. gemini-3.6-flash (Google): noise 5.5%, $0.0160 per answer
+3. gpt-5.5 (OpenAI): noise 5.5%, $0.0411 per answer
+4. claude-opus-5 (Anthropic): noise 6.1%, $0.0279 per answer
+5. claude-fable-5 (Anthropic): noise 6.4%, $0.0637 per answer
+6. deepseek-v4-pro (DeepSeek): noise 7.0%, $0.0032 per answer
+7. gemini-3.1-pro-preview (Google): noise 7.1%, $0.0181 per answer
+8. grok-4.5 (xAI (Grok)): noise 7.7%, $0.0110 per answer
+9. glm-5.2 (Zhipu (GLM)): noise 7.8%, $0.0038 per answer
+10. gpt-5.6-terra-pro (OpenAI): noise 7.8%, $0.0143 per answer
+11. kimi-k3 (Moonshot (Kimi)): noise 8.5%, $0.0123 per answer
+12. deepseek-v4-flash (DeepSeek): noise 8.9%, $0.0004 per answer
+13. gpt-5.6-luna-pro (OpenAI): noise 9.0%, $0.0080 per answer
+14. nemotron-3-ultra-550b-a55b (NVIDIA (Nemotron)): noise 9.1%, $0.0088 per answer
+15. gemini-3.5-flash-lite (Google): noise 9.3%, $0.0033 per answer
+16. qwen3.5-plus-20260420 (Alibaba (Qwen)): noise 10.5%, $0.0049 per answer
+17. claude-sonnet-5 (Anthropic): noise 10.5%, $0.0076 per answer
+18. mimo-v2.5 (Xiaomi (MiMo)): noise 11.3%, $0.0009 per answer
+19. gpt-5-nano (OpenAI): noise 14.1%, $0.0010 per answer
+20. mistral-large-2512 (Mistral): noise 16.2%, $0.0018 per answer
+
+## Data
+
+- [metrics.json](https://noisebench.com/data/metrics.json): per-model and per-question metrics.
+- [negation.json](https://noisebench.com/data/negation.json): negation breakdown.
+- [noise.json](https://noisebench.com/data/noise.json): noise scales and subsets.
+- [run.json](https://noisebench.com/data/run.json): run configuration.

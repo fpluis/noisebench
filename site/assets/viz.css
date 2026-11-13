@@ -893,3 +893,24 @@ button.sort span.on {
     font-size: 25px;
   }
 }
+
+/* Written into the HTML by scripts/gen-static.mjs. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+dl.faq dt {
+  font-weight: 600;
+  margin-top: 18px;
+}
+
+dl.faq dd {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  max-width: 72ch;
+}

@@ -10,6 +10,7 @@ What is already in the repo, and the two things that need a human with a login.
 | `site/sitemap.xml`   | The four pages, at their canonical addresses. Written by `npm run sitemap`.      |
 | `site/assets/og.png` | 1200×630 card that X, LinkedIn and Slack unfurl a link into.                     |
 | `site/<key>.txt`     | IndexNow key. Proves the deploy's submissions come from whoever owns the domain. |
+| `site/llms.txt`      | Plain-text summary and ranking for AI assistants. Written by `npm run static`.   |
 
 Every page carries a `<link rel="canonical">`, a `<meta name="description">`,
 and `og:`/`twitter:` tags. The home page also carries a JSON-LD `Dataset` node,
@@ -21,6 +22,29 @@ One page, one address: the pages link to `/markets`, the canonical tags claim
 `/markets`, and the CloudFront function 301s `/markets.html` and
 `www.noisebench.com` onto it. Nothing has to guess which of the two keys in the
 bucket is the real page.
+
+## Results in the HTML
+
+The charts draw from `site/data/*.json` in the browser, which crawlers that
+skip JavaScript (Bing often, most AI crawlers always) never see.
+`npm run static` (`scripts/gen-static.mjs`) writes the same numbers into the
+pages between `<!-- static:NAME -->` markers: a one-paragraph answer and the
+ranking table on the home page, a Q&A block with matching FAQPage JSON-LD, and
+every question as a plain table on `/markets` (the sortable table replaces it
+once the script runs). It also writes `llms.txt` and the Dataset's
+`dateModified` and `temporalCoverage`. The deploy runs it before every upload,
+so the pages cannot go out of step with the data; run it locally to preview.
+
+The author is the Person declared on luisfominaya.com
+(`https://luisfominaya.com/#person`), so every project points at one identity.
+
+## "Page with redirect" in Search Console
+
+`http://`, `www.`, `/index.html` and `/compare.html` style addresses show up in
+Search Console under "Page with redirect". That is the router doing its job:
+each 301s to the one canonical address, and Google is reporting that it will
+index the target instead. Nothing to fix, as long as the pages and the
+sitemap only ever use the canonical form.
 
 ## Google Search Console
 
@@ -80,6 +104,7 @@ regenerated and before you commit:
 
 ```bash
 npx tsx scripts/analyze.ts --run 1
+npm run static
 npm run sitemap
 git commit -am "…" && git push
 ```
