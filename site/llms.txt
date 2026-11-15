@@ -40,3 +40,5 @@ noisebench is an open benchmark of judgment noise in large language models used 
 - [negation.json](https://noisebench.com/data/negation.json): negation breakdown.
 - [noise.json](https://noisebench.com/data/noise.json): noise scales and subsets.
 - [run.json](https://noisebench.com/data/run.json): run configuration.
+- [Hugging Face dataset](https://huggingface.co/datasets/fpluis/noisebench): the same data as a Hugging Face dataset.
+- [Source code](https://github.com/fpluis/noisebench): the benchmark and this site.

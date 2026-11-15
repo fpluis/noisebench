@@ -208,6 +208,8 @@ ${models.map((m, i) => `${i + 1}. ${shortModel(m.model)} (${vendorOf(m)}): noise
 - [negation.json](${ORIGIN}/data/negation.json): negation breakdown.
 - [noise.json](${ORIGIN}/data/noise.json): noise scales and subsets.
 - [run.json](${ORIGIN}/data/run.json): run configuration.
+- [Hugging Face dataset](https://huggingface.co/datasets/fpluis/noisebench): the same data as a Hugging Face dataset.
+- [Source code](https://github.com/fpluis/noisebench): the benchmark and this site.
 `;
 fs.writeFileSync(path.join(SITE, "llms.txt"), llms);
 console.log("wrote llms.txt");
